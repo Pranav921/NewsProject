@@ -1,0 +1,150 @@
+"use client";
+
+import {
+  getNewArticleLinks,
+  PENDING_PREVIOUS_LINKS_KEY,
+} from "@/lib/news-updates";
+import type { NewsItem } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+
+type NewArticlesPromptProps = {
+  initialLinks: string[];
+};
+
+type NewsApiResponse = {
+  articles: NewsItem[];
+};
+
+export function NewArticlesPrompt({
+  initialLinks,
+}: NewArticlesPromptProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [newArticleLinks, setNewArticleLinks] = useState<string[]>([]);
+  const [dismissedSignature, setDismissedSignature] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function checkForNewArticles() {
+      try {
+        const response = await fetch("/api/news", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data: NewsApiResponse = await response.json();
+        const latestLinks = data.articles.map((article) => article.link);
+        const detectedNewLinks = getNewArticleLinks(initialLinks, latestLinks);
+        const detectedSignature = detectedNewLinks.join("|");
+
+        console.log("[NewArticlesPrompt] current article links count:", initialLinks.length);
+        console.log("[NewArticlesPrompt] latest article links count:", latestLinks.length);
+        console.log("[NewArticlesPrompt] newly detected links count:", detectedNewLinks.length);
+
+        if (!isCancelled) {
+          setNewArticleLinks(detectedNewLinks);
+
+          // If the set of new links changes, clear the previous dismissal so a
+          // brand new notification can be shown again.
+          if (detectedSignature !== dismissedSignature) {
+            setDismissedSignature(null);
+          }
+        }
+      } catch {
+        // Ignore temporary network errors and try again on the next check.
+      }
+    }
+
+    function handleVisibilityChange() {
+      console.log(
+        "[NewArticlesPrompt] visibilitychange event:",
+        document.visibilityState,
+      );
+
+      if (document.visibilityState === "visible") {
+        void checkForNewArticles();
+      }
+    }
+
+    console.log("[NewArticlesPrompt] attaching visibilitychange listener");
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Poll every minute while the page stays open so returning users can still
+    // see the prompt even if the tab never fully loses visibility.
+    const pollInterval = window.setInterval(() => {
+      console.log("[NewArticlesPrompt] running 60 second poll");
+
+      if (document.visibilityState === "visible") {
+        void checkForNewArticles();
+      }
+    }, 60_000);
+
+    // Run one check on mount so the prompt can recover even if the page stayed
+    // visible the whole time.
+    void checkForNewArticles();
+
+    return () => {
+      isCancelled = true;
+      console.log("[NewArticlesPrompt] removing visibilitychange listener");
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.clearInterval(pollInterval);
+    };
+  }, [dismissedSignature, initialLinks]);
+
+  function handleRefresh() {
+    sessionStorage.setItem(
+      PENDING_PREVIOUS_LINKS_KEY,
+      JSON.stringify(initialLinks),
+    );
+
+    startTransition(() => {
+      router.refresh();
+    });
+  }
+
+  const newArticleCount = newArticleLinks.length;
+  const notificationSignature = newArticleLinks.join("|");
+  const isDismissed = newArticleCount > 0 && dismissedSignature === notificationSignature;
+  const isShowingNotification = newArticleCount > 0 && !isDismissed;
+
+  console.log("[NewArticlesPrompt] showing notification:", isShowingNotification);
+
+  if (!isShowingNotification) {
+    return null;
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm leading-6 text-slate-700">
+          {newArticleCount} new {newArticleCount === 1 ? "article has" : "articles have"}{" "}
+          been added. Would you like to see {newArticleCount === 1 ? "it" : "them"}?
+        </p>
+
+        <div className="flex items-center gap-3">
+          <button
+            className="inline-flex min-h-10 items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-70"
+            type="button"
+            onClick={handleRefresh}
+            disabled={isPending}
+          >
+            {isPending ? "Refreshing..." : "Refresh"}
+          </button>
+
+          <button
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            type="button"
+            onClick={() => setDismissedSignature(notificationSignature)}
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
