@@ -13,6 +13,7 @@ type NewsFeedProps = {
 };
 
 export function NewsFeed({ articles }: NewsFeedProps) {
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedSource, setSelectedSource] = useState("All Sources");
   const currentLinks = useMemo(
     () => articles.map((article) => article.link),
@@ -29,13 +30,31 @@ export function NewsFeed({ articles }: NewsFeedProps) {
   const activeSource = sourceOptions.includes(selectedSource)
     ? selectedSource
     : "All Sources";
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredArticles = useMemo(() => {
-    if (activeSource === "All Sources") {
-      return articles;
-    }
+    return articles.filter((article) => {
+      const matchesSource =
+        activeSource === "All Sources" || article.source === activeSource;
 
-    return articles.filter((article) => article.source === activeSource);
-  }, [activeSource, articles]);
+      if (!matchesSource) {
+        return false;
+      }
+
+      if (!normalizedSearchQuery) {
+        return true;
+      }
+
+      const searchableText = [
+        article.title,
+        article.source,
+        article.summary ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(normalizedSearchQuery);
+    });
+  }, [activeSource, articles, normalizedSearchQuery]);
 
   useEffect(() => {
     const savedPreviousLinks = sessionStorage.getItem(PENDING_PREVIOUS_LINKS_KEY);
@@ -61,23 +80,42 @@ export function NewsFeed({ articles }: NewsFeedProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <label
-              className="text-sm font-medium text-slate-700"
-              htmlFor="source-filter"
-            >
-              Filter by source
-            </label>
-            <p className="text-sm text-slate-500">
-              Choose a source to narrow the current article list.
-            </p>
-          </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <label
+            className="text-sm font-medium text-slate-700"
+            htmlFor="article-search"
+          >
+            Search articles
+          </label>
+          <p className="text-sm text-slate-500">
+            Search by title, source, or summary.
+          </p>
+
+          <input
+            id="article-search"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+            type="search"
+            placeholder="Search headlines, sources, or summaries"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <label
+            className="text-sm font-medium text-slate-700"
+            htmlFor="source-filter"
+          >
+            Filter by source
+          </label>
+          <p className="text-sm text-slate-500">
+            Choose a source to narrow the current article list.
+          </p>
 
           <select
             id="source-filter"
-            className="min-h-11 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
             value={activeSource}
             onChange={(event) => setSelectedSource(event.target.value)}
           >
@@ -94,7 +132,7 @@ export function NewsFeed({ articles }: NewsFeedProps) {
         articles={filteredArticles}
         newArticleLinks={newArticleLinks}
         emptyStateTitle="No matching articles"
-        emptyStateMessage="There are no articles for the currently selected source. Try choosing All Sources to see the full list again."
+        emptyStateMessage="No articles match the current search or source filter. Try clearing the search box or choosing All Sources."
       />
     </div>
   );
