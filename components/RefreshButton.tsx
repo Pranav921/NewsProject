@@ -1,6 +1,9 @@
 "use client";
 
-import { PENDING_PREVIOUS_LINKS_KEY } from "@/lib/news-updates";
+import {
+  PENDING_NEW_ARTICLE_LINKS_KEY,
+  PENDING_PREVIOUS_LINKS_KEY,
+} from "@/lib/news-updates";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
@@ -19,6 +22,7 @@ export function RefreshButton({ currentLinks = [] }: RefreshButtonProps) {
       PENDING_PREVIOUS_LINKS_KEY,
       JSON.stringify(currentLinks),
     );
+    sessionStorage.removeItem(PENDING_NEW_ARTICLE_LINKS_KEY);
 
     // router.refresh() asks Next.js to refetch the current route on the server.
     // That lets us refresh the feed data without restarting the dev server.

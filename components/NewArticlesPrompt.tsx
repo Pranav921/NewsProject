@@ -2,6 +2,7 @@
 
 import {
   getNewArticleLinks,
+  PENDING_NEW_ARTICLE_LINKS_KEY,
   PENDING_PREVIOUS_LINKS_KEY,
 } from "@/lib/news-updates";
 import type { NewsItem } from "@/lib/types";
@@ -29,6 +30,10 @@ export function NewArticlesPrompt({
 
     async function checkForNewArticles() {
       try {
+        if (isPending) {
+          return;
+        }
+
         const response = await fetch("/api/news", {
           cache: "no-store",
         });
@@ -41,10 +46,6 @@ export function NewArticlesPrompt({
         const latestLinks = data.articles.map((article) => article.link);
         const detectedNewLinks = getNewArticleLinks(initialLinks, latestLinks);
         const detectedSignature = detectedNewLinks.join("|");
-
-        console.log("[NewArticlesPrompt] current article links count:", initialLinks.length);
-        console.log("[NewArticlesPrompt] latest article links count:", latestLinks.length);
-        console.log("[NewArticlesPrompt] newly detected links count:", detectedNewLinks.length);
 
         if (!isCancelled) {
           setNewArticleLinks(detectedNewLinks);
@@ -61,24 +62,16 @@ export function NewArticlesPrompt({
     }
 
     function handleVisibilityChange() {
-      console.log(
-        "[NewArticlesPrompt] visibilitychange event:",
-        document.visibilityState,
-      );
-
       if (document.visibilityState === "visible") {
         void checkForNewArticles();
       }
     }
 
-    console.log("[NewArticlesPrompt] attaching visibilitychange listener");
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // Poll every minute while the page stays open so returning users can still
     // see the prompt even if the tab never fully loses visibility.
     const pollInterval = window.setInterval(() => {
-      console.log("[NewArticlesPrompt] running 60 second poll");
-
       if (document.visibilityState === "visible") {
         void checkForNewArticles();
       }
@@ -90,16 +83,19 @@ export function NewArticlesPrompt({
 
     return () => {
       isCancelled = true;
-      console.log("[NewArticlesPrompt] removing visibilitychange listener");
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.clearInterval(pollInterval);
     };
-  }, [dismissedSignature, initialLinks]);
+  }, [dismissedSignature, initialLinks, isPending]);
 
   function handleRefresh() {
     sessionStorage.setItem(
       PENDING_PREVIOUS_LINKS_KEY,
       JSON.stringify(initialLinks),
+    );
+    sessionStorage.setItem(
+      PENDING_NEW_ARTICLE_LINKS_KEY,
+      JSON.stringify(newArticleLinks),
     );
 
     startTransition(() => {
@@ -111,8 +107,6 @@ export function NewArticlesPrompt({
   const notificationSignature = newArticleLinks.join("|");
   const isDismissed = newArticleCount > 0 && dismissedSignature === notificationSignature;
   const isShowingNotification = newArticleCount > 0 && !isDismissed;
-
-  console.log("[NewArticlesPrompt] showing notification:", isShowingNotification);
 
   if (!isShowingNotification) {
     return null;

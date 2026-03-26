@@ -3,6 +3,7 @@
 import { NewsList } from "@/components/NewsList";
 import {
   getNewArticleLinks,
+  PENDING_NEW_ARTICLE_LINKS_KEY,
   PENDING_PREVIOUS_LINKS_KEY,
 } from "@/lib/news-updates";
 import type { NewsItem } from "@/lib/types";
@@ -12,9 +13,12 @@ type NewsFeedProps = {
   articles: NewsItem[];
 };
 
+type ViewMode = "standard" | "compact";
+
 export function NewsFeed({ articles }: NewsFeedProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSource, setSelectedSource] = useState("All Sources");
+  const [viewMode, setViewMode] = useState<ViewMode>("standard");
   const currentLinks = useMemo(
     () => articles.map((article) => article.link),
     [articles],
@@ -58,13 +62,33 @@ export function NewsFeed({ articles }: NewsFeedProps) {
 
   useEffect(() => {
     const savedPreviousLinks = sessionStorage.getItem(PENDING_PREVIOUS_LINKS_KEY);
+    const pendingNewLinks = sessionStorage.getItem(PENDING_NEW_ARTICLE_LINKS_KEY);
 
-    if (!savedPreviousLinks) {
+    if (!savedPreviousLinks && !pendingNewLinks) {
       setNewArticleLinks([]);
       return;
     }
 
     try {
+      if (pendingNewLinks) {
+        const promptDetectedLinks = JSON.parse(pendingNewLinks) as string[];
+        const promptDetectedLinkSet = new Set(promptDetectedLinks);
+
+        // When the user refreshes from the prompt, highlight the exact same
+        // link set that triggered the notification, in the order they now
+        // appear on the refreshed page.
+        setNewArticleLinks(
+          currentLinks.filter((link) => promptDetectedLinkSet.has(link)),
+        );
+
+        return;
+      }
+
+      if (!savedPreviousLinks) {
+        setNewArticleLinks([]);
+        return;
+      }
+
       const previousLinks = JSON.parse(savedPreviousLinks) as string[];
 
       // Compare the full pre-refresh link list with the full refreshed list so
@@ -75,11 +99,45 @@ export function NewsFeed({ articles }: NewsFeedProps) {
     } finally {
       // Only clear the saved links after the full comparison has happened.
       sessionStorage.removeItem(PENDING_PREVIOUS_LINKS_KEY);
+      sessionStorage.removeItem(PENDING_NEW_ARTICLE_LINKS_KEY);
     }
   }, [currentLinks]);
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-start">
+        <div
+          className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm"
+          role="group"
+          aria-label="Article view mode"
+        >
+          <button
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              viewMode === "standard"
+                ? "bg-slate-900 text-white"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
+            type="button"
+            onClick={() => setViewMode("standard")}
+            aria-pressed={viewMode === "standard"}
+          >
+            Standard View
+          </button>
+          <button
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              viewMode === "compact"
+                ? "bg-slate-900 text-white"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
+            type="button"
+            onClick={() => setViewMode("compact")}
+            aria-pressed={viewMode === "compact"}
+          >
+            Compact View
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <label
@@ -131,6 +189,7 @@ export function NewsFeed({ articles }: NewsFeedProps) {
       <NewsList
         articles={filteredArticles}
         newArticleLinks={newArticleLinks}
+        viewMode={viewMode}
         emptyStateTitle="No matching articles"
         emptyStateMessage="No articles match the current search or source filter. Try clearing the search box or choosing All Sources."
       />

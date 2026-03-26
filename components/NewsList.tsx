@@ -6,6 +6,7 @@ type NewsListProps = {
   emptyStateMessage?: string;
   emptyStateTitle?: string;
   newArticleLinks?: string[];
+  viewMode?: "standard" | "compact";
 };
 
 export function NewsList({
@@ -13,6 +14,7 @@ export function NewsList({
   emptyStateMessage = "The RSS parser is ready, but no articles were returned right now. This can happen if a feed is temporarily unavailable while developing locally.",
   emptyStateTitle = "No news yet",
   newArticleLinks = [],
+  viewMode = "standard",
 }: NewsListProps) {
   const newArticleLinkSet = new Set(newArticleLinks);
 
@@ -36,6 +38,7 @@ export function NewsList({
           key={article.link}
           article={article}
           isNew={newArticleLinkSet.has(article.link)}
+          viewMode={viewMode}
         />
       ))}
     </div>
