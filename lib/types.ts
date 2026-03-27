@@ -10,3 +10,5 @@ export type NewsItem = {
   summary: string | null;
   publishedAt: string | null;
 };
+
+export type SavedArticle = NewsItem;

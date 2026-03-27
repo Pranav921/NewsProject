@@ -5,8 +5,14 @@ import {
   getNewArticleLinks,
   PENDING_NEW_ARTICLE_LINKS_KEY,
   PENDING_PREVIOUS_LINKS_KEY,
+  resolveCurrentLinks,
 } from "@/lib/news-updates";
-import type { NewsItem } from "@/lib/types";
+import {
+  parseSavedArticles,
+  SAVED_ARTICLES_STORAGE_KEY,
+  updateSavedArticles,
+} from "@/lib/saved-articles";
+import type { NewsItem, SavedArticle } from "@/lib/types";
 import { useEffect, useMemo, useState } from "react";
 
 type NewsFeedProps = {
@@ -14,29 +20,39 @@ type NewsFeedProps = {
 };
 
 type ViewMode = "standard" | "compact";
+type FeedMode = "all" | "saved";
 
 export function NewsFeed({ articles }: NewsFeedProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSource, setSelectedSource] = useState("All Sources");
   const [viewMode, setViewMode] = useState<ViewMode>("standard");
+  const [feedMode, setFeedMode] = useState<FeedMode>("all");
+  const [showOnlyNew, setShowOnlyNew] = useState(false);
+  const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([]);
+  const [hasLoadedSavedArticles, setHasLoadedSavedArticles] = useState(false);
   const currentLinks = useMemo(
     () => articles.map((article) => article.link),
     [articles],
   );
+  const [newArticleLinks, setNewArticleLinks] = useState<string[]>([]);
+  const savedArticleLinks = useMemo(
+    () => savedArticles.map((article) => article.link),
+    [savedArticles],
+  );
+  const baseArticles = feedMode === "saved" ? savedArticles : articles;
   const sourceOptions = useMemo(
     () => [
       "All Sources",
-      ...Array.from(new Set(articles.map((article) => article.source))).sort(),
+      ...Array.from(new Set(baseArticles.map((article) => article.source))).sort(),
     ],
-    [articles],
+    [baseArticles],
   );
-  const [newArticleLinks, setNewArticleLinks] = useState<string[]>([]);
   const activeSource = sourceOptions.includes(selectedSource)
     ? selectedSource
     : "All Sources";
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredArticles = useMemo(() => {
-    return articles.filter((article) => {
+    return baseArticles.filter((article) => {
       const matchesSource =
         activeSource === "All Sources" || article.source === activeSource;
 
@@ -58,7 +74,34 @@ export function NewsFeed({ articles }: NewsFeedProps) {
 
       return searchableText.includes(normalizedSearchQuery);
     });
-  }, [activeSource, articles, normalizedSearchQuery]);
+  }, [activeSource, baseArticles, normalizedSearchQuery]);
+  const newArticleLinkSet = useMemo(
+    () => new Set(newArticleLinks),
+    [newArticleLinks],
+  );
+  const displayedArticles = useMemo(() => {
+    if (!showOnlyNew) {
+      return filteredArticles;
+    }
+
+    return filteredArticles.filter((article) => newArticleLinkSet.has(article.link));
+  }, [filteredArticles, newArticleLinkSet, showOnlyNew]);
+
+  useEffect(() => {
+    setSavedArticles(parseSavedArticles(localStorage.getItem(SAVED_ARTICLES_STORAGE_KEY)));
+    setHasLoadedSavedArticles(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedSavedArticles) {
+      return;
+    }
+
+    localStorage.setItem(
+      SAVED_ARTICLES_STORAGE_KEY,
+      JSON.stringify(savedArticles),
+    );
+  }, [hasLoadedSavedArticles, savedArticles]);
 
   useEffect(() => {
     const savedPreviousLinks = sessionStorage.getItem(PENDING_PREVIOUS_LINKS_KEY);
@@ -69,17 +112,25 @@ export function NewsFeed({ articles }: NewsFeedProps) {
       return;
     }
 
+    let shouldClearPendingLinks = true;
+
     try {
       if (pendingNewLinks) {
         const promptDetectedLinks = JSON.parse(pendingNewLinks) as string[];
-        const promptDetectedLinkSet = new Set(promptDetectedLinks);
+        const resolvedPromptDetectedLinks = resolveCurrentLinks(
+          currentLinks,
+          promptDetectedLinks,
+        );
 
         // When the user refreshes from the prompt, highlight the exact same
         // link set that triggered the notification, in the order they now
         // appear on the refreshed page.
-        setNewArticleLinks(
-          currentLinks.filter((link) => promptDetectedLinkSet.has(link)),
-        );
+        setNewArticleLinks(resolvedPromptDetectedLinks);
+
+        // Only clear the pending handoff once the refreshed page has the full
+        // exact set that the prompt detected.
+        shouldClearPendingLinks =
+          resolvedPromptDetectedLinks.length === promptDetectedLinks.length;
 
         return;
       }
@@ -98,43 +149,115 @@ export function NewsFeed({ articles }: NewsFeedProps) {
       setNewArticleLinks([]);
     } finally {
       // Only clear the saved links after the full comparison has happened.
-      sessionStorage.removeItem(PENDING_PREVIOUS_LINKS_KEY);
-      sessionStorage.removeItem(PENDING_NEW_ARTICLE_LINKS_KEY);
+      if (shouldClearPendingLinks) {
+        sessionStorage.removeItem(PENDING_PREVIOUS_LINKS_KEY);
+        sessionStorage.removeItem(PENDING_NEW_ARTICLE_LINKS_KEY);
+      }
     }
   }, [currentLinks]);
 
+  useEffect(() => {
+    if (newArticleLinks.length === 0 && showOnlyNew) {
+      setShowOnlyNew(false);
+    }
+  }, [newArticleLinks, showOnlyNew]);
+
+  useEffect(() => {
+    if (!sourceOptions.includes(selectedSource)) {
+      setSelectedSource("All Sources");
+    }
+  }, [selectedSource, sourceOptions]);
+
+  function handleToggleSavedArticle(article: NewsItem) {
+    setSavedArticles((currentSavedArticles) =>
+      updateSavedArticles(currentSavedArticles, article),
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-start">
-        <div
-          className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm"
-          role="group"
-          aria-label="Article view mode"
-        >
+      <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
+        <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
           <button
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              viewMode === "standard"
+              feedMode === "all"
                 ? "bg-slate-900 text-white"
                 : "text-slate-600 hover:bg-slate-50"
             }`}
             type="button"
-            onClick={() => setViewMode("standard")}
-            aria-pressed={viewMode === "standard"}
+            onClick={() => setFeedMode("all")}
+            aria-pressed={feedMode === "all"}
           >
-            Standard View
+            All articles
           </button>
           <button
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              viewMode === "compact"
+              feedMode === "saved"
                 ? "bg-slate-900 text-white"
                 : "text-slate-600 hover:bg-slate-50"
             }`}
             type="button"
-            onClick={() => setViewMode("compact")}
-            aria-pressed={viewMode === "compact"}
+            onClick={() => setFeedMode("saved")}
+            aria-pressed={feedMode === "saved"}
           >
-            Compact View
+            Saved articles
           </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {newArticleLinks.length > 0 ? (
+            <button
+              className={`inline-flex rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition-colors ${
+                showOnlyNew
+                  ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+              type="button"
+              onClick={() => setShowOnlyNew((currentValue) => !currentValue)}
+              aria-pressed={showOnlyNew}
+            >
+              {showOnlyNew ? "Show all articles" : "Only new"}
+            </button>
+          ) : null}
+
+          <p className="text-sm text-slate-600">
+            Saved:
+            {" "}
+            <span className="font-semibold text-slate-900">
+              {savedArticles.length}
+            </span>
+          </p>
+
+          <div
+            className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm"
+            role="group"
+            aria-label="Article view mode"
+          >
+            <button
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                viewMode === "standard"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600 hover:bg-slate-50"
+              }`}
+              type="button"
+              onClick={() => setViewMode("standard")}
+              aria-pressed={viewMode === "standard"}
+            >
+              Standard View
+            </button>
+            <button
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                viewMode === "compact"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600 hover:bg-slate-50"
+              }`}
+              type="button"
+              onClick={() => setViewMode("compact")}
+              aria-pressed={viewMode === "compact"}
+            >
+              Compact View
+            </button>
+          </div>
         </div>
       </div>
 
@@ -187,11 +310,13 @@ export function NewsFeed({ articles }: NewsFeedProps) {
       </div>
 
       <NewsList
-        articles={filteredArticles}
+        articles={displayedArticles}
         newArticleLinks={newArticleLinks}
+        onToggleSavedArticle={handleToggleSavedArticle}
+        savedArticleLinks={savedArticleLinks}
         viewMode={viewMode}
         emptyStateTitle="No matching articles"
-        emptyStateMessage="No articles match the current search or source filter. Try clearing the search box or choosing All Sources."
+        emptyStateMessage="No articles match the current search, source filter, selected article view, or new-articles filter. Try clearing the search box or choosing All Sources."
       />
     </div>
   );

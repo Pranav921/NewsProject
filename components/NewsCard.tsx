@@ -3,6 +3,8 @@ import type { NewsItem } from "@/lib/types";
 type NewsCardProps = {
   article: NewsItem;
   isNew?: boolean;
+  isSaved?: boolean;
+  onToggleSaved?: (article: NewsItem) => void;
   viewMode?: "standard" | "compact";
 };
 
@@ -20,6 +22,8 @@ function formatPublishedDate(publishedAt: string | null): string {
 export function NewsCard({
   article,
   isNew = false,
+  isSaved = false,
+  onToggleSaved,
   viewMode = "standard",
 }: NewsCardProps) {
   const isCompact = viewMode === "compact";
@@ -61,17 +65,34 @@ export function NewsCard({
         </div>
       ) : null}
 
-      <a
-        className={`mx-auto inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-medium transition-colors hover:bg-slate-700 ${
-          isCompact ? "mt-4" : "mt-6"
+      <div
+        className={`flex items-center justify-center gap-3 ${
+          isCompact ? "mt-4 flex-wrap" : "mt-6 flex-wrap"
         }`}
-        href={article.link}
-        target="_blank"
-        rel="noreferrer noopener"
-        style={{ color: "#ffffff" }}
       >
-        Read original article
-      </a>
+        <button
+          className={`inline-flex min-h-11 items-center justify-center rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+            isSaved
+              ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+              : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+          }`}
+          type="button"
+          onClick={() => onToggleSaved?.(article)}
+          aria-pressed={isSaved}
+        >
+          {isSaved ? "Saved" : "Save article"}
+        </button>
+
+        <a
+          className="inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-medium transition-colors hover:bg-slate-700"
+          href={article.link}
+          target="_blank"
+          rel="noreferrer noopener"
+          style={{ color: "#ffffff" }}
+        >
+          Read original article
+        </a>
+      </div>
     </article>
   );
 }

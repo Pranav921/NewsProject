@@ -1,4 +1,5 @@
 import { RSS_FEEDS } from "@/lib/feeds";
+import { normalizeArticleLink } from "@/lib/news-updates";
 import type { FeedDefinition, NewsItem } from "@/lib/types";
 
 function stripCdata(value: string): string {
@@ -142,11 +143,12 @@ function parseDate(value: string | null): string | null {
 
 function parseNewsItem(block: string, fallbackSource: string): NewsItem | null {
   const title = stripHtml(getFirstTagValue(block, "title") ?? "");
-  const link =
+  const rawLink =
     getFirstTagValue(block, "link")?.trim() ??
     getAtomLink(block) ??
     getFirstTagValue(block, "guid")?.trim() ??
     "";
+  const link = normalizeArticleLink(rawLink);
   const summarySource =
     getFirstTagValue(block, "description") ??
     getFirstTagValue(block, "content:encoded") ??
@@ -236,11 +238,13 @@ function dedupeByLink(items: NewsItem[]): NewsItem[] {
   return items.filter((item) => {
     // Links make a practical unique key because the same story can appear
     // across multiple feeds.
-    if (seenLinks.has(item.link)) {
+    const normalizedLink = normalizeArticleLink(item.link);
+
+    if (seenLinks.has(normalizedLink)) {
       return false;
     }
 
-    seenLinks.add(item.link);
+    seenLinks.add(normalizedLink);
     return true;
   });
 }

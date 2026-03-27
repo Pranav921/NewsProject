@@ -2,6 +2,8 @@
 
 import {
   getNewArticleLinks,
+  HANDLED_NEW_ARTICLE_LINKS_KEY,
+  normalizeArticleLink,
   PENDING_NEW_ARTICLE_LINKS_KEY,
   PENDING_PREVIOUS_LINKS_KEY,
 } from "@/lib/news-updates";
@@ -34,6 +36,25 @@ export function NewArticlesPrompt({
           return;
         }
 
+        const handledNewLinks = JSON.parse(
+          sessionStorage.getItem(HANDLED_NEW_ARTICLE_LINKS_KEY) ?? "[]",
+        ) as string[];
+        const handledNewLinkSet = new Set(
+          handledNewLinks.map(normalizeArticleLink),
+        );
+        const normalizedInitialLinks = new Set(
+          initialLinks.map(normalizeArticleLink),
+        );
+
+        if (
+          handledNewLinks.length > 0 &&
+          handledNewLinks.every((link) =>
+            normalizedInitialLinks.has(normalizeArticleLink(link)),
+          )
+        ) {
+          sessionStorage.removeItem(HANDLED_NEW_ARTICLE_LINKS_KEY);
+        }
+
         const response = await fetch("/api/news", {
           cache: "no-store",
         });
@@ -44,7 +65,8 @@ export function NewArticlesPrompt({
 
         const data: NewsApiResponse = await response.json();
         const latestLinks = data.articles.map((article) => article.link);
-        const detectedNewLinks = getNewArticleLinks(initialLinks, latestLinks);
+        const detectedNewLinks = getNewArticleLinks(initialLinks, latestLinks)
+          .filter((link) => !handledNewLinkSet.has(normalizeArticleLink(link)));
         const detectedSignature = detectedNewLinks.join("|");
 
         if (!isCancelled) {
@@ -95,6 +117,10 @@ export function NewArticlesPrompt({
     );
     sessionStorage.setItem(
       PENDING_NEW_ARTICLE_LINKS_KEY,
+      JSON.stringify(newArticleLinks),
+    );
+    sessionStorage.setItem(
+      HANDLED_NEW_ARTICLE_LINKS_KEY,
       JSON.stringify(newArticleLinks),
     );
 

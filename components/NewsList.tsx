@@ -6,6 +6,8 @@ type NewsListProps = {
   emptyStateMessage?: string;
   emptyStateTitle?: string;
   newArticleLinks?: string[];
+  onToggleSavedArticle?: (article: NewsItem) => void;
+  savedArticleLinks?: string[];
   viewMode?: "standard" | "compact";
 };
 
@@ -14,9 +16,12 @@ export function NewsList({
   emptyStateMessage = "The RSS parser is ready, but no articles were returned right now. This can happen if a feed is temporarily unavailable while developing locally.",
   emptyStateTitle = "No news yet",
   newArticleLinks = [],
+  onToggleSavedArticle,
+  savedArticleLinks = [],
   viewMode = "standard",
 }: NewsListProps) {
   const newArticleLinkSet = new Set(newArticleLinks);
+  const savedArticleLinkSet = new Set(savedArticleLinks);
 
   if (articles.length === 0) {
     return (
@@ -38,6 +43,8 @@ export function NewsList({
           key={article.link}
           article={article}
           isNew={newArticleLinkSet.has(article.link)}
+          isSaved={savedArticleLinkSet.has(article.link)}
+          onToggleSaved={onToggleSavedArticle}
           viewMode={viewMode}
         />
       ))}
