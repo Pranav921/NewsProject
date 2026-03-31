@@ -21,10 +21,38 @@ type NewsFeedProps = {
 
 type ViewMode = "standard" | "compact";
 type FeedMode = "all" | "saved";
+type TimeFilter =
+  | "all"
+  | "1h"
+  | "3h"
+  | "6h"
+  | "12h"
+  | "24h"
+  | "1w";
+
+const TIME_FILTER_OPTIONS: Array<{ label: string; value: TimeFilter }> = [
+  { label: "All Time", value: "all" },
+  { label: "Last Hour", value: "1h" },
+  { label: "Last 3 Hours", value: "3h" },
+  { label: "Last 6 Hours", value: "6h" },
+  { label: "Last 12 Hours", value: "12h" },
+  { label: "Last 24 Hours", value: "24h" },
+  { label: "Last Week", value: "1w" },
+];
+
+const TIME_FILTER_WINDOWS_MS: Record<Exclude<TimeFilter, "all">, number> = {
+  "1h": 60 * 60 * 1000,
+  "3h": 3 * 60 * 60 * 1000,
+  "6h": 6 * 60 * 60 * 1000,
+  "12h": 12 * 60 * 60 * 1000,
+  "24h": 24 * 60 * 60 * 1000,
+  "1w": 7 * 24 * 60 * 60 * 1000,
+};
 
 export function NewsFeed({ articles }: NewsFeedProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSource, setSelectedSource] = useState("All Sources");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("standard");
   const [feedMode, setFeedMode] = useState<FeedMode>("all");
   const [showOnlyNew, setShowOnlyNew] = useState(false);
@@ -51,7 +79,7 @@ export function NewsFeed({ articles }: NewsFeedProps) {
     ? selectedSource
     : "All Sources";
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const filteredArticles = useMemo(() => {
+  const searchedAndSourceFilteredArticles = useMemo(() => {
     return baseArticles.filter((article) => {
       const matchesSource =
         activeSource === "All Sources" || article.source === activeSource;
@@ -75,17 +103,39 @@ export function NewsFeed({ articles }: NewsFeedProps) {
       return searchableText.includes(normalizedSearchQuery);
     });
   }, [activeSource, baseArticles, normalizedSearchQuery]);
+  const timeFilteredArticles = useMemo(() => {
+    if (timeFilter === "all") {
+      return searchedAndSourceFilteredArticles;
+    }
+
+    const currentTime = Date.now();
+    const timeWindow = TIME_FILTER_WINDOWS_MS[timeFilter];
+
+    return searchedAndSourceFilteredArticles.filter((article) => {
+      if (!article.publishedAt) {
+        return false;
+      }
+
+      const publishedTime = Date.parse(article.publishedAt);
+
+      if (Number.isNaN(publishedTime)) {
+        return false;
+      }
+
+      return currentTime - publishedTime <= timeWindow;
+    });
+  }, [searchedAndSourceFilteredArticles, timeFilter]);
   const newArticleLinkSet = useMemo(
     () => new Set(newArticleLinks),
     [newArticleLinks],
   );
   const displayedArticles = useMemo(() => {
     if (!showOnlyNew) {
-      return filteredArticles;
+      return timeFilteredArticles;
     }
 
-    return filteredArticles.filter((article) => newArticleLinkSet.has(article.link));
-  }, [filteredArticles, newArticleLinkSet, showOnlyNew]);
+    return timeFilteredArticles.filter((article) => newArticleLinkSet.has(article.link));
+  }, [timeFilteredArticles, newArticleLinkSet, showOnlyNew]);
 
   useEffect(() => {
     setSavedArticles(parseSavedArticles(localStorage.getItem(SAVED_ARTICLES_STORAGE_KEY)));
@@ -261,7 +311,7 @@ export function NewsFeed({ articles }: NewsFeedProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <label
             className="text-sm font-medium text-slate-700"
@@ -307,6 +357,31 @@ export function NewsFeed({ articles }: NewsFeedProps) {
             ))}
           </select>
         </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <label
+            className="text-sm font-medium text-slate-700"
+            htmlFor="time-filter"
+          >
+            Filter by time
+          </label>
+          <p className="text-sm text-slate-500">
+            Limit the list to recently published articles.
+          </p>
+
+          <select
+            id="time-filter"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+            value={timeFilter}
+            onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
+          >
+            {TIME_FILTER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <NewsList
@@ -316,7 +391,7 @@ export function NewsFeed({ articles }: NewsFeedProps) {
         savedArticleLinks={savedArticleLinks}
         viewMode={viewMode}
         emptyStateTitle="No matching articles"
-        emptyStateMessage="No articles match the current search, source filter, selected article view, or new-articles filter. Try clearing the search box or choosing All Sources."
+        emptyStateMessage="No articles match the current search, source filter, time filter, selected article view, or new-articles filter. Try clearing the search box or choosing broader filters."
       />
     </div>
   );
