@@ -2,6 +2,13 @@
 
 import { NewsList } from "@/components/NewsList";
 import {
+  addAlertKeyword,
+  articleMatchesAlertKeywords,
+  CUSTOM_ALERT_KEYWORDS_STORAGE_KEY,
+  parseAlertKeywords,
+  removeAlertKeyword,
+} from "@/lib/custom-alerts";
+import {
   getNewArticleLinks,
   PENDING_NEW_ARTICLE_LINKS_KEY,
   PENDING_PREVIOUS_LINKS_KEY,
@@ -13,6 +20,7 @@ import {
   updateSavedArticles,
 } from "@/lib/saved-articles";
 import type { NewsItem, SavedArticle } from "@/lib/types";
+import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 type NewsFeedProps = {
@@ -56,8 +64,12 @@ export function NewsFeed({ articles }: NewsFeedProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("standard");
   const [feedMode, setFeedMode] = useState<FeedMode>("all");
   const [showOnlyNew, setShowOnlyNew] = useState(false);
+  const [showOnlyAlertMatches, setShowOnlyAlertMatches] = useState(false);
+  const [alertKeywordInput, setAlertKeywordInput] = useState("");
+  const [alertKeywords, setAlertKeywords] = useState<string[]>([]);
   const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([]);
   const [hasLoadedSavedArticles, setHasLoadedSavedArticles] = useState(false);
+  const [hasLoadedAlertKeywords, setHasLoadedAlertKeywords] = useState(false);
   const currentLinks = useMemo(
     () => articles.map((article) => article.link),
     [articles],
@@ -129,17 +141,46 @@ export function NewsFeed({ articles }: NewsFeedProps) {
     () => new Set(newArticleLinks),
     [newArticleLinks],
   );
-  const displayedArticles = useMemo(() => {
+  const newAlertMatchLinks = useMemo(() => {
+    return articles
+      .filter(
+        (article) =>
+          newArticleLinkSet.has(article.link) &&
+          articleMatchesAlertKeywords(article, alertKeywords),
+      )
+      .map((article) => article.link);
+  }, [alertKeywords, articles, newArticleLinkSet]);
+  const newAlertMatchLinkSet = useMemo(
+    () => new Set(newAlertMatchLinks),
+    [newAlertMatchLinks],
+  );
+  const newOnlyFilteredArticles = useMemo(() => {
     if (!showOnlyNew) {
       return timeFilteredArticles;
     }
 
     return timeFilteredArticles.filter((article) => newArticleLinkSet.has(article.link));
   }, [timeFilteredArticles, newArticleLinkSet, showOnlyNew]);
+  const displayedArticles = useMemo(() => {
+    if (!showOnlyAlertMatches) {
+      return newOnlyFilteredArticles;
+    }
+
+    return newOnlyFilteredArticles.filter((article) =>
+      newAlertMatchLinkSet.has(article.link),
+    );
+  }, [newAlertMatchLinkSet, newOnlyFilteredArticles, showOnlyAlertMatches]);
 
   useEffect(() => {
     setSavedArticles(parseSavedArticles(localStorage.getItem(SAVED_ARTICLES_STORAGE_KEY)));
     setHasLoadedSavedArticles(true);
+  }, []);
+
+  useEffect(() => {
+    setAlertKeywords(
+      parseAlertKeywords(localStorage.getItem(CUSTOM_ALERT_KEYWORDS_STORAGE_KEY)),
+    );
+    setHasLoadedAlertKeywords(true);
   }, []);
 
   useEffect(() => {
@@ -152,6 +193,17 @@ export function NewsFeed({ articles }: NewsFeedProps) {
       JSON.stringify(savedArticles),
     );
   }, [hasLoadedSavedArticles, savedArticles]);
+
+  useEffect(() => {
+    if (!hasLoadedAlertKeywords) {
+      return;
+    }
+
+    localStorage.setItem(
+      CUSTOM_ALERT_KEYWORDS_STORAGE_KEY,
+      JSON.stringify(alertKeywords),
+    );
+  }, [alertKeywords, hasLoadedAlertKeywords]);
 
   useEffect(() => {
     const savedPreviousLinks = sessionStorage.getItem(PENDING_PREVIOUS_LINKS_KEY);
@@ -213,6 +265,12 @@ export function NewsFeed({ articles }: NewsFeedProps) {
   }, [newArticleLinks, showOnlyNew]);
 
   useEffect(() => {
+    if (newAlertMatchLinks.length === 0 && showOnlyAlertMatches) {
+      setShowOnlyAlertMatches(false);
+    }
+  }, [newAlertMatchLinks, showOnlyAlertMatches]);
+
+  useEffect(() => {
     if (!sourceOptions.includes(selectedSource)) {
       setSelectedSource("All Sources");
     }
@@ -221,6 +279,21 @@ export function NewsFeed({ articles }: NewsFeedProps) {
   function handleToggleSavedArticle(article: NewsItem) {
     setSavedArticles((currentSavedArticles) =>
       updateSavedArticles(currentSavedArticles, article),
+    );
+  }
+
+  function handleAddAlertKeyword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setAlertKeywords((currentAlertKeywords) =>
+      addAlertKeyword(currentAlertKeywords, alertKeywordInput),
+    );
+    setAlertKeywordInput("");
+  }
+
+  function handleRemoveAlertKeyword(keywordToRemove: string) {
+    setAlertKeywords((currentAlertKeywords) =>
+      removeAlertKeyword(currentAlertKeywords, keywordToRemove),
     );
   }
 
@@ -268,6 +341,28 @@ export function NewsFeed({ articles }: NewsFeedProps) {
             >
               {showOnlyNew ? "Show all articles" : "Only new"}
             </button>
+          ) : null}
+
+          <button
+            className={`inline-flex rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition-colors ${
+              showOnlyAlertMatches
+                ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            } disabled:cursor-not-allowed disabled:opacity-60`}
+            type="button"
+            onClick={() => setShowOnlyAlertMatches((currentValue) => !currentValue)}
+            aria-pressed={showOnlyAlertMatches}
+            disabled={newAlertMatchLinks.length === 0}
+          >
+            {showOnlyAlertMatches ? "Show all matches" : "Only alert matches"}
+          </button>
+
+          {newAlertMatchLinks.length > 0 ? (
+            <p className="text-sm text-rose-700">
+              <span className="font-semibold">{newAlertMatchLinks.length}</span>
+              {" "}
+              new alert {newAlertMatchLinks.length === 1 ? "match" : "matches"}
+            </p>
           ) : null}
 
           <p className="text-sm text-slate-600">
@@ -384,6 +479,68 @@ export function NewsFeed({ articles }: NewsFeedProps) {
         </div>
       </div>
 
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <label
+              className="text-sm font-medium text-slate-700"
+              htmlFor="alert-keyword-input"
+            >
+              Custom alerts
+            </label>
+            <p className="text-sm text-slate-500">
+              Save keywords to flag matching newly highlighted articles by title or
+              summary.
+            </p>
+          </div>
+
+          <form
+            className="flex w-full flex-col gap-3 sm:flex-row lg:max-w-xl"
+            onSubmit={handleAddAlertKeyword}
+          >
+            <input
+              id="alert-keyword-input"
+              className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              type="text"
+              placeholder="Add alert keyword"
+              value={alertKeywordInput}
+              onChange={(event) => setAlertKeywordInput(event.target.value)}
+            />
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
+              type="submit"
+            >
+              Add keyword
+            </button>
+          </form>
+        </div>
+
+        {alertKeywords.length > 0 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {alertKeywords.map((keyword) => (
+              <span
+                key={keyword}
+                className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+              >
+                {keyword}
+                <button
+                  className="font-medium text-rose-700 transition-colors hover:text-rose-900"
+                  type="button"
+                  onClick={() => handleRemoveAlertKeyword(keyword)}
+                  aria-label={`Remove alert keyword ${keyword}`}
+                >
+                  Remove
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-slate-500">
+            No alert keywords saved yet.
+          </p>
+        )}
+      </div>
+
       <NewsList
         articles={displayedArticles}
         newArticleLinks={newArticleLinks}
@@ -391,7 +548,7 @@ export function NewsFeed({ articles }: NewsFeedProps) {
         savedArticleLinks={savedArticleLinks}
         viewMode={viewMode}
         emptyStateTitle="No matching articles"
-        emptyStateMessage="No articles match the current search, source filter, time filter, selected article view, or new-articles filter. Try clearing the search box or choosing broader filters."
+        emptyStateMessage="No articles match the current search, source filter, time filter, selected article view, new-articles filter, or alert-match filter. Try clearing the search box or choosing broader filters."
       />
     </div>
   );
