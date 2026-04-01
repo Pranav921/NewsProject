@@ -3,7 +3,6 @@
 import { NewsList } from "@/components/NewsList";
 import {
   addAlertKeyword,
-  articleMatchesAlertKeywords,
   CUSTOM_ALERT_KEYWORDS_STORAGE_KEY,
   parseAlertKeywords,
   removeAlertKeyword,
@@ -19,6 +18,10 @@ import {
   SAVED_ARTICLES_STORAGE_KEY,
   updateSavedArticles,
 } from "@/lib/saved-articles";
+import {
+  getSmartAlertMatch,
+  type SmartAlertImportance,
+} from "@/lib/smart-alerts";
 import type { NewsItem, SavedArticle } from "@/lib/types";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -29,6 +32,7 @@ type NewsFeedProps = {
 
 type ViewMode = "standard" | "compact";
 type FeedMode = "all" | "saved";
+type AlertMatchView = "off" | "all" | "important" | "normal";
 type TimeFilter =
   | "all"
   | "1h"
@@ -64,7 +68,7 @@ export function NewsFeed({ articles }: NewsFeedProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("standard");
   const [feedMode, setFeedMode] = useState<FeedMode>("all");
   const [showOnlyNew, setShowOnlyNew] = useState(false);
-  const [showOnlyAlertMatches, setShowOnlyAlertMatches] = useState(false);
+  const [alertMatchView, setAlertMatchView] = useState<AlertMatchView>("off");
   const [alertKeywordInput, setAlertKeywordInput] = useState("");
   const [alertKeywords, setAlertKeywords] = useState<string[]>([]);
   const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([]);
@@ -141,19 +145,58 @@ export function NewsFeed({ articles }: NewsFeedProps) {
     () => new Set(newArticleLinks),
     [newArticleLinks],
   );
-  const newAlertMatchLinks = useMemo(() => {
-    return articles
-      .filter(
-        (article) =>
-          newArticleLinkSet.has(article.link) &&
-          articleMatchesAlertKeywords(article, alertKeywords),
-      )
-      .map((article) => article.link);
+  const smartAlertMatches = useMemo(() => {
+    return articles.flatMap((article) => {
+      if (!newArticleLinkSet.has(article.link)) {
+        return [];
+      }
+
+      const smartAlertMatch = getSmartAlertMatch(article, alertKeywords);
+
+      if (smartAlertMatch.status === "none" || !smartAlertMatch.importance) {
+        return [];
+      }
+
+      return [
+        {
+          article,
+          importance: smartAlertMatch.importance,
+          link: article.link,
+          matchedKeywords: smartAlertMatch.matchedKeywords,
+        },
+      ];
+    });
   }, [alertKeywords, articles, newArticleLinkSet]);
+  const importantAlertMatchCount = useMemo(
+    () =>
+      smartAlertMatches.filter((match) => match.importance === "important").length,
+    [smartAlertMatches],
+  );
+  const normalAlertMatchCount = useMemo(
+    () =>
+      smartAlertMatches.filter((match) => match.importance === "normal").length,
+    [smartAlertMatches],
+  );
+  const newAlertMatchLinks = useMemo(() => {
+    return smartAlertMatches.map((match) => match.link);
+  }, [smartAlertMatches]);
   const newAlertMatchLinkSet = useMemo(
     () => new Set(newAlertMatchLinks),
     [newAlertMatchLinks],
   );
+  const filteredAlertMatchLinkSet = useMemo(() => {
+    if (alertMatchView === "off" || alertMatchView === "all") {
+      return newAlertMatchLinkSet;
+    }
+
+    const allowedImportance = alertMatchView as SmartAlertImportance;
+
+    return new Set(
+      smartAlertMatches
+        .filter((match) => match.importance === allowedImportance)
+        .map((match) => match.link),
+    );
+  }, [alertMatchView, newAlertMatchLinkSet, smartAlertMatches]);
   const newOnlyFilteredArticles = useMemo(() => {
     if (!showOnlyNew) {
       return timeFilteredArticles;
@@ -162,14 +205,14 @@ export function NewsFeed({ articles }: NewsFeedProps) {
     return timeFilteredArticles.filter((article) => newArticleLinkSet.has(article.link));
   }, [timeFilteredArticles, newArticleLinkSet, showOnlyNew]);
   const displayedArticles = useMemo(() => {
-    if (!showOnlyAlertMatches) {
+    if (alertMatchView === "off") {
       return newOnlyFilteredArticles;
     }
 
     return newOnlyFilteredArticles.filter((article) =>
-      newAlertMatchLinkSet.has(article.link),
+      filteredAlertMatchLinkSet.has(article.link),
     );
-  }, [newAlertMatchLinkSet, newOnlyFilteredArticles, showOnlyAlertMatches]);
+  }, [alertMatchView, filteredAlertMatchLinkSet, newOnlyFilteredArticles]);
 
   useEffect(() => {
     setSavedArticles(parseSavedArticles(localStorage.getItem(SAVED_ARTICLES_STORAGE_KEY)));
@@ -265,10 +308,10 @@ export function NewsFeed({ articles }: NewsFeedProps) {
   }, [newArticleLinks, showOnlyNew]);
 
   useEffect(() => {
-    if (newAlertMatchLinks.length === 0 && showOnlyAlertMatches) {
-      setShowOnlyAlertMatches(false);
+    if (newAlertMatchLinks.length === 0 && alertMatchView !== "off") {
+      setAlertMatchView("off");
     }
-  }, [newAlertMatchLinks, showOnlyAlertMatches]);
+  }, [alertMatchView, newAlertMatchLinks]);
 
   useEffect(() => {
     if (!sourceOptions.includes(selectedSource)) {
@@ -343,26 +386,20 @@ export function NewsFeed({ articles }: NewsFeedProps) {
             </button>
           ) : null}
 
-          <button
-            className={`inline-flex rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition-colors ${
-              showOnlyAlertMatches
-                ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-            } disabled:cursor-not-allowed disabled:opacity-60`}
-            type="button"
-            onClick={() => setShowOnlyAlertMatches((currentValue) => !currentValue)}
-            aria-pressed={showOnlyAlertMatches}
-            disabled={newAlertMatchLinks.length === 0}
-          >
-            {showOnlyAlertMatches ? "Show all matches" : "Only alert matches"}
-          </button>
-
           {newAlertMatchLinks.length > 0 ? (
-            <p className="text-sm text-rose-700">
-              <span className="font-semibold">{newAlertMatchLinks.length}</span>
-              {" "}
-              new alert {newAlertMatchLinks.length === 1 ? "match" : "matches"}
-            </p>
+            <>
+              <p className="text-sm text-rose-700">
+                <span className="font-semibold">{importantAlertMatchCount}</span>
+                {" "}
+                important alert {importantAlertMatchCount === 1 ? "match" : "matches"}
+              </p>
+
+              <p className="text-sm text-amber-700">
+                <span className="font-semibold">{normalAlertMatchCount}</span>
+                {" "}
+                normal alert {normalAlertMatchCount === 1 ? "match" : "matches"}
+              </p>
+            </>
           ) : null}
 
           <p className="text-sm text-slate-600">
@@ -492,6 +529,10 @@ export function NewsFeed({ articles }: NewsFeedProps) {
               Save keywords to flag matching newly highlighted articles by title or
               summary.
             </p>
+            <p className="mt-2 text-sm text-slate-500">
+              Title matches or urgent titles are marked important. Summary-only
+              matches are marked normal.
+            </p>
           </div>
 
           <form
@@ -539,6 +580,35 @@ export function NewsFeed({ articles }: NewsFeedProps) {
             No alert keywords saved yet.
           </p>
         )}
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-500">
+            Smart Alerts are derived from the currently highlighted new articles only.
+          </p>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <label
+              className="text-sm font-medium text-slate-700"
+              htmlFor="alert-match-view"
+            >
+              Alert match view
+            </label>
+            <select
+              id="alert-match-view"
+              className="min-h-11 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              value={alertMatchView}
+              onChange={(event) =>
+                setAlertMatchView(event.target.value as AlertMatchView)
+              }
+              disabled={newAlertMatchLinks.length === 0}
+            >
+              <option value="off">Off</option>
+              <option value="all">All alert matches</option>
+              <option value="important">Important only</option>
+              <option value="normal">Normal only</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <NewsList
@@ -548,7 +618,7 @@ export function NewsFeed({ articles }: NewsFeedProps) {
         savedArticleLinks={savedArticleLinks}
         viewMode={viewMode}
         emptyStateTitle="No matching articles"
-        emptyStateMessage="No articles match the current search, source filter, time filter, selected article view, new-articles filter, or alert-match filter. Try clearing the search box or choosing broader filters."
+        emptyStateMessage="No articles match the current search, source filter, time filter, selected article view, new-articles filter, or smart-alert filter. Try clearing the search box or choosing broader filters."
       />
     </div>
   );
