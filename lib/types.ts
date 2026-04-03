@@ -12,3 +12,9 @@ export type NewsItem = {
 };
 
 export type SavedArticle = NewsItem;
+
+export type UserPreferences = {
+  defaultSourceFilter: string;
+  defaultTimeFilter: string;
+  defaultViewMode: "standard" | "compact";
+};

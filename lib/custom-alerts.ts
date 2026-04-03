@@ -3,6 +3,10 @@ import type { NewsItem } from "@/lib/types";
 export const CUSTOM_ALERT_KEYWORDS_STORAGE_KEY =
   "breaking-news-custom-alert-keywords";
 
+type AlertKeywordRow = {
+  keyword: string;
+};
+
 export function normalizeAlertKeyword(keyword: string): string {
   return keyword.trim().toLowerCase();
 }
@@ -24,6 +28,16 @@ export function parseAlertKeywords(value: string | null): string[] {
   } catch {
     return [];
   }
+}
+
+export function fromAlertKeywordRows(rows: AlertKeywordRow[] | null): string[] {
+  if (!rows) {
+    return [];
+  }
+
+  return [...new Set(rows.map((row) => normalizeAlertKeyword(row.keyword)))].filter(
+    Boolean,
+  );
 }
 
 export function addAlertKeyword(

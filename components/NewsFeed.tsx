@@ -14,20 +14,29 @@ import {
   resolveCurrentLinks,
 } from "@/lib/news-updates";
 import {
-  parseSavedArticles,
-  SAVED_ARTICLES_STORAGE_KEY,
-  updateSavedArticles,
+  toSavedArticle,
 } from "@/lib/saved-articles";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   getSmartAlertMatch,
   type SmartAlertImportance,
 } from "@/lib/smart-alerts";
-import type { NewsItem, SavedArticle } from "@/lib/types";
+import type { NewsItem, SavedArticle, UserPreferences } from "@/lib/types";
+import {
+  DEFAULT_SOURCE_FILTER,
+  DEFAULT_TIME_FILTER,
+  DEFAULT_VIEW_MODE,
+  normalizeUserPreferences,
+} from "@/lib/user-preferences";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 type NewsFeedProps = {
   articles: NewsItem[];
+  initialAlertKeywords?: string[];
+  initialPreferences?: UserPreferences | null;
+  initialSavedArticles?: SavedArticle[];
+  userId?: string | null;
 };
 
 type ViewMode = "standard" | "compact";
@@ -61,19 +70,35 @@ const TIME_FILTER_WINDOWS_MS: Record<Exclude<TimeFilter, "all">, number> = {
   "1w": 7 * 24 * 60 * 60 * 1000,
 };
 
-export function NewsFeed({ articles }: NewsFeedProps) {
+export function NewsFeed({
+  articles,
+  initialAlertKeywords = [],
+  initialPreferences = null,
+  initialSavedArticles = [],
+  userId = null,
+}: NewsFeedProps) {
+  const normalizedInitialPreferences = normalizeUserPreferences(initialPreferences);
+  const [supabase] = useState(() => createSupabaseBrowserClient());
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSource, setSelectedSource] = useState("All Sources");
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("standard");
+  const [selectedSource, setSelectedSource] = useState(
+    normalizedInitialPreferences.defaultSourceFilter,
+  );
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>(
+    normalizedInitialPreferences.defaultTimeFilter as TimeFilter,
+  );
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    normalizedInitialPreferences.defaultViewMode,
+  );
   const [feedMode, setFeedMode] = useState<FeedMode>("all");
   const [showOnlyNew, setShowOnlyNew] = useState(false);
   const [alertMatchView, setAlertMatchView] = useState<AlertMatchView>("off");
   const [alertKeywordInput, setAlertKeywordInput] = useState("");
-  const [alertKeywords, setAlertKeywords] = useState<string[]>([]);
-  const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([]);
-  const [hasLoadedSavedArticles, setHasLoadedSavedArticles] = useState(false);
+  const [alertKeywords, setAlertKeywords] = useState<string[]>(initialAlertKeywords);
+  const [savedArticles, setSavedArticles] = useState<SavedArticle[]>(initialSavedArticles);
+  const [isSavingArticle, setIsSavingArticle] = useState(false);
+  const [isSavingAlertKeyword, setIsSavingAlertKeyword] = useState(false);
   const [hasLoadedAlertKeywords, setHasLoadedAlertKeywords] = useState(false);
+  const [hasMountedPreferences, setHasMountedPreferences] = useState(false);
   const currentLinks = useMemo(
     () => articles.map((article) => article.link),
     [articles],
@@ -215,30 +240,28 @@ export function NewsFeed({ articles }: NewsFeedProps) {
   }, [alertMatchView, filteredAlertMatchLinkSet, newOnlyFilteredArticles]);
 
   useEffect(() => {
-    setSavedArticles(parseSavedArticles(localStorage.getItem(SAVED_ARTICLES_STORAGE_KEY)));
-    setHasLoadedSavedArticles(true);
-  }, []);
+    if (userId) {
+      setAlertKeywords(initialAlertKeywords);
+      setHasLoadedAlertKeywords(true);
+      return;
+    }
 
-  useEffect(() => {
     setAlertKeywords(
       parseAlertKeywords(localStorage.getItem(CUSTOM_ALERT_KEYWORDS_STORAGE_KEY)),
     );
     setHasLoadedAlertKeywords(true);
+  }, [initialAlertKeywords, userId]);
+
+  useEffect(() => {
+    setSavedArticles(initialSavedArticles);
+  }, [initialSavedArticles]);
+
+  useEffect(() => {
+    setHasMountedPreferences(true);
   }, []);
 
   useEffect(() => {
-    if (!hasLoadedSavedArticles) {
-      return;
-    }
-
-    localStorage.setItem(
-      SAVED_ARTICLES_STORAGE_KEY,
-      JSON.stringify(savedArticles),
-    );
-  }, [hasLoadedSavedArticles, savedArticles]);
-
-  useEffect(() => {
-    if (!hasLoadedAlertKeywords) {
+    if (!hasLoadedAlertKeywords || userId) {
       return;
     }
 
@@ -246,7 +269,29 @@ export function NewsFeed({ articles }: NewsFeedProps) {
       CUSTOM_ALERT_KEYWORDS_STORAGE_KEY,
       JSON.stringify(alertKeywords),
     );
-  }, [alertKeywords, hasLoadedAlertKeywords]);
+  }, [alertKeywords, hasLoadedAlertKeywords, userId]);
+
+  useEffect(() => {
+    if (!userId || !hasMountedPreferences) {
+      return;
+    }
+
+    const currentPreferences = {
+      default_source_filter: selectedSource || DEFAULT_SOURCE_FILTER,
+      default_time_filter: timeFilter || DEFAULT_TIME_FILTER,
+      default_view_mode: viewMode || DEFAULT_VIEW_MODE,
+      user_id: userId,
+    };
+
+    void supabase.from("user_preferences").upsert(currentPreferences);
+  }, [
+    hasMountedPreferences,
+    selectedSource,
+    supabase,
+    timeFilter,
+    userId,
+    viewMode,
+  ]);
 
   useEffect(() => {
     const savedPreviousLinks = sessionStorage.getItem(PENDING_PREVIOUS_LINKS_KEY);
@@ -315,29 +360,145 @@ export function NewsFeed({ articles }: NewsFeedProps) {
 
   useEffect(() => {
     if (!sourceOptions.includes(selectedSource)) {
-      setSelectedSource("All Sources");
+      setSelectedSource(DEFAULT_SOURCE_FILTER);
     }
   }, [selectedSource, sourceOptions]);
 
-  function handleToggleSavedArticle(article: NewsItem) {
-    setSavedArticles((currentSavedArticles) =>
-      updateSavedArticles(currentSavedArticles, article),
+  async function handleToggleSavedArticle(article: NewsItem) {
+    if (!userId || isSavingArticle) {
+      return;
+    }
+
+    const isAlreadySaved = savedArticles.some(
+      (savedArticle) => savedArticle.link === article.link,
     );
+
+    setIsSavingArticle(true);
+
+    if (isAlreadySaved) {
+      const previousSavedArticles = savedArticles;
+
+      setSavedArticles((currentSavedArticles) =>
+        currentSavedArticles.filter((savedArticle) => savedArticle.link !== article.link),
+      );
+
+      const { error } = await supabase
+        .from("saved_articles")
+        .delete()
+        .eq("user_id", userId)
+        .eq("article_link", article.link);
+
+      if (error) {
+        setSavedArticles(previousSavedArticles);
+      }
+
+      setIsSavingArticle(false);
+      return;
+    }
+
+    const nextSavedArticle = toSavedArticle(article);
+    const previousSavedArticles = savedArticles;
+
+    setSavedArticles((currentSavedArticles) => [
+      nextSavedArticle,
+      ...currentSavedArticles,
+    ]);
+
+    const { error } = await supabase.from("saved_articles").upsert(
+      {
+        article_link: article.link,
+        published_at: article.publishedAt,
+        source: article.source,
+        summary: article.summary,
+        title: article.title,
+        user_id: userId,
+      },
+      {
+        onConflict: "user_id,article_link",
+      },
+    );
+
+    if (error) {
+      setSavedArticles(previousSavedArticles);
+    }
+
+    setIsSavingArticle(false);
   }
 
-  function handleAddAlertKeyword(event: FormEvent<HTMLFormElement>) {
+  async function handleAddAlertKeyword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    setAlertKeywords((currentAlertKeywords) =>
-      addAlertKeyword(currentAlertKeywords, alertKeywordInput),
-    );
+    const nextAlertKeywords = addAlertKeyword(alertKeywords, alertKeywordInput);
+
+    if (nextAlertKeywords === alertKeywords) {
+      setAlertKeywordInput("");
+      return;
+    }
+
+    if (!userId) {
+      setAlertKeywords(nextAlertKeywords);
+      setAlertKeywordInput("");
+      return;
+    }
+
+    if (isSavingAlertKeyword) {
+      return;
+    }
+
+    const keywordToSave = nextAlertKeywords[nextAlertKeywords.length - 1];
+    const previousAlertKeywords = alertKeywords;
+
+    setIsSavingAlertKeyword(true);
+    setAlertKeywords(nextAlertKeywords);
     setAlertKeywordInput("");
+
+    const { error } = await supabase.from("user_alert_keywords").upsert(
+      {
+        keyword: keywordToSave,
+        user_id: userId,
+      },
+      {
+        onConflict: "user_id,keyword",
+      },
+    );
+
+    if (error) {
+      setAlertKeywords(previousAlertKeywords);
+    }
+
+    setIsSavingAlertKeyword(false);
   }
 
-  function handleRemoveAlertKeyword(keywordToRemove: string) {
+  async function handleRemoveAlertKeyword(keywordToRemove: string) {
+    if (!userId) {
+      setAlertKeywords((currentAlertKeywords) =>
+        removeAlertKeyword(currentAlertKeywords, keywordToRemove),
+      );
+      return;
+    }
+
+    if (isSavingAlertKeyword) {
+      return;
+    }
+
+    const previousAlertKeywords = alertKeywords;
+
+    setIsSavingAlertKeyword(true);
     setAlertKeywords((currentAlertKeywords) =>
       removeAlertKeyword(currentAlertKeywords, keywordToRemove),
     );
+
+    const { error } = await supabase
+      .from("user_alert_keywords")
+      .delete()
+      .eq("user_id", userId)
+      .eq("keyword", keywordToRemove);
+
+    if (error) {
+      setAlertKeywords(previousAlertKeywords);
+    }
+
+    setIsSavingAlertKeyword(false);
   }
 
   return (
@@ -568,6 +729,7 @@ export function NewsFeed({ articles }: NewsFeedProps) {
                   className="font-medium text-rose-700 transition-colors hover:text-rose-900"
                   type="button"
                   onClick={() => handleRemoveAlertKeyword(keyword)}
+                  disabled={isSavingAlertKeyword}
                   aria-label={`Remove alert keyword ${keyword}`}
                 >
                   Remove
