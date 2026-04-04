@@ -27,8 +27,8 @@ export default async function AccountPage() {
     .order("created_at", { ascending: true });
   const { data: newsletterRow } = await supabase
     .from("newsletter_subscriptions")
-    .select("preferred_frequency")
-    .eq("email", user.email ?? "")
+    .select("frequency, custom_frequency, is_active")
+    .eq("user_id", user.id)
     .maybeSingle();
 
   const initialPreferences = normalizeUserPreferences(
@@ -56,7 +56,12 @@ export default async function AccountPage() {
       <AccountSettings
         email={user.email ?? ""}
         initialAlertKeywords={initialAlertKeywords}
-        initialNewsletterFrequency={newsletterRow?.preferred_frequency ?? null}
+        initialNewsletterCustomFrequency={
+          newsletterRow?.is_active ? newsletterRow.custom_frequency : null
+        }
+        initialNewsletterFrequency={
+          newsletterRow?.is_active ? newsletterRow.frequency : null
+        }
         initialPreferences={initialPreferences}
         userId={user.id}
       />

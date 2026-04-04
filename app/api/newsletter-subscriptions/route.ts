@@ -10,6 +10,44 @@ type NewsletterSubscriptionRequest = {
 
 const VALID_FREQUENCIES = new Set(["hourly", "daily", "weekly", "custom"]);
 
+function getValidatedNewsletterSettings(
+  body: NewsletterSubscriptionRequest,
+) {
+  const frequency =
+    body.frequency?.trim().toLowerCase() ??
+    body.preferredFrequency?.trim().toLowerCase() ??
+    "";
+  const normalizedCustomFrequency = body.customFrequency?.trim() ?? "";
+
+  if (!VALID_FREQUENCIES.has(frequency)) {
+    return {
+      errorMessage: "Choose a valid newsletter frequency.",
+      status: 400,
+    };
+  }
+
+  if (frequency !== "custom") {
+    return {
+      customFrequency: null,
+      frequency,
+      status: 200,
+    };
+  }
+
+  if (!/^[1-9]\d*$/.test(normalizedCustomFrequency)) {
+    return {
+      errorMessage: "Enter a whole number of hours greater than 0.",
+      status: 400,
+    };
+  }
+
+  return {
+    customFrequency: normalizedCustomFrequency,
+    frequency,
+    status: 200,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createSupabaseServerClient();
@@ -25,30 +63,19 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as NewsletterSubscriptionRequest;
-    const frequency =
-      body.frequency?.trim().toLowerCase() ??
-      body.preferredFrequency?.trim().toLowerCase() ??
-      "";
-    const customFrequency = body.customFrequency?.trim() ?? null;
+    const validatedSettings = getValidatedNewsletterSettings(body);
 
-    if (!VALID_FREQUENCIES.has(frequency)) {
+    if ("errorMessage" in validatedSettings) {
       return NextResponse.json(
-        { message: "Choose a valid newsletter frequency." },
-        { status: 400 },
-      );
-    }
-
-    if (frequency === "custom" && !customFrequency) {
-      return NextResponse.json(
-        { message: "Enter a custom newsletter frequency." },
-        { status: 400 },
+        { message: validatedSettings.errorMessage },
+        { status: validatedSettings.status },
       );
     }
 
     const { error } = await supabase.from("newsletter_subscriptions").insert({
-      custom_frequency: frequency === "custom" ? customFrequency : null,
+      custom_frequency: validatedSettings.customFrequency,
       email: user.email.toLowerCase(),
-      frequency,
+      frequency: validatedSettings.frequency,
       is_active: true,
       user_id: user.id,
     });
@@ -101,31 +128,20 @@ export async function PUT(request: Request) {
     }
 
     const body = (await request.json()) as NewsletterSubscriptionRequest;
-    const frequency =
-      body.frequency?.trim().toLowerCase() ??
-      body.preferredFrequency?.trim().toLowerCase() ??
-      "";
-    const customFrequency = body.customFrequency?.trim() ?? null;
+    const validatedSettings = getValidatedNewsletterSettings(body);
 
-    if (!VALID_FREQUENCIES.has(frequency)) {
+    if ("errorMessage" in validatedSettings) {
       return NextResponse.json(
-        { message: "Choose a valid newsletter frequency." },
-        { status: 400 },
-      );
-    }
-
-    if (frequency === "custom" && !customFrequency) {
-      return NextResponse.json(
-        { message: "Enter a custom newsletter frequency." },
-        { status: 400 },
+        { message: validatedSettings.errorMessage },
+        { status: validatedSettings.status },
       );
     }
 
     const { error } = await supabase.from("newsletter_subscriptions").upsert(
       {
-        custom_frequency: frequency === "custom" ? customFrequency : null,
+        custom_frequency: validatedSettings.customFrequency,
         email: user.email.toLowerCase(),
-        frequency,
+        frequency: validatedSettings.frequency,
         is_active: true,
         user_id: user.id,
       },

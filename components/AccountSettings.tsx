@@ -12,6 +12,7 @@ import { useState } from "react";
 type AccountSettingsProps = {
   email: string;
   initialAlertKeywords: string[];
+  initialNewsletterCustomFrequency: string | null;
   initialNewsletterFrequency: string | null;
   initialPreferences: UserPreferences;
   userId: string;
@@ -44,6 +45,7 @@ const NEWSLETTER_FREQUENCY_OPTIONS: Array<{
 export function AccountSettings({
   email,
   initialAlertKeywords,
+  initialNewsletterCustomFrequency,
   initialNewsletterFrequency,
   initialPreferences,
   userId,
@@ -67,6 +69,9 @@ export function AccountSettings({
     useState<NewsletterFrequency>(
       (initialNewsletterFrequency as NewsletterFrequency | null) ?? "daily",
     );
+  const [newsletterCustomFrequency, setNewsletterCustomFrequency] = useState(
+    initialNewsletterCustomFrequency ?? "",
+  );
   const [preferencesMessage, setPreferencesMessage] = useState<string | null>(null);
   const [alertsMessage, setAlertsMessage] = useState<string | null>(null);
   const [newsletterMessage, setNewsletterMessage] = useState<string | null>(null);
@@ -159,6 +164,15 @@ export function AccountSettings({
   }
 
   async function handleSaveNewsletter() {
+    if (
+      newsletterEnabled &&
+      newsletterFrequency === "custom" &&
+      !/^[1-9]\d*$/.test(newsletterCustomFrequency.trim())
+    ) {
+      setNewsletterMessage("Enter a whole number of hours greater than 0.");
+      return;
+    }
+
     setIsSavingNewsletter(true);
     setNewsletterMessage(null);
 
@@ -169,7 +183,13 @@ export function AccountSettings({
           "Content-Type": "application/json",
         },
         body: newsletterEnabled
-          ? JSON.stringify({ preferredFrequency: newsletterFrequency })
+          ? JSON.stringify({
+              customFrequency:
+                newsletterFrequency === "custom"
+                  ? newsletterCustomFrequency.trim()
+                  : null,
+              preferredFrequency: newsletterFrequency,
+            })
           : undefined,
       });
 
@@ -389,6 +409,30 @@ export function AccountSettings({
             ))}
           </select>
         </div>
+
+        {newsletterEnabled && newsletterFrequency === "custom" ? (
+          <div className="mt-4 max-w-sm">
+            <label
+              className="text-sm font-medium text-slate-700"
+              htmlFor="newsletter-custom-frequency"
+            >
+              Custom frequency in hours
+            </label>
+            <input
+              id="newsletter-custom-frequency"
+              className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              type="number"
+              min="1"
+              step="1"
+              inputMode="numeric"
+              placeholder="Enter hours"
+              value={newsletterCustomFrequency}
+              onChange={(event) =>
+                setNewsletterCustomFrequency(event.target.value)
+              }
+            />
+          </div>
+        ) : null}
 
         <button
           className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-70"

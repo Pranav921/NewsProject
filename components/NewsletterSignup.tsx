@@ -25,6 +25,7 @@ export function NewsletterSignup({
   const [email, setEmail] = useState(initialEmail ?? "");
   const [preferredFrequency, setPreferredFrequency] =
     useState<FrequencyOption>("daily");
+  const [customFrequency, setCustomFrequency] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"error" | "success" | null>(null);
@@ -34,6 +35,15 @@ export function NewsletterSignup({
 
     if (!email.trim()) {
       setMessage("Enter an email address.");
+      setMessageTone("error");
+      return;
+    }
+
+    if (
+      preferredFrequency === "custom" &&
+      !/^[1-9]\d*$/.test(customFrequency.trim())
+    ) {
+      setMessage("Enter a whole number of hours greater than 0.");
       setMessageTone("error");
       return;
     }
@@ -49,6 +59,8 @@ export function NewsletterSignup({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          customFrequency:
+            preferredFrequency === "custom" ? customFrequency.trim() : null,
           email: email.trim(),
           preferredFrequency,
         }),
@@ -101,6 +113,19 @@ export function NewsletterSignup({
             </option>
           ))}
         </select>
+
+        {preferredFrequency === "custom" ? (
+          <input
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+            type="number"
+            min="1"
+            step="1"
+            inputMode="numeric"
+            placeholder="Custom frequency in hours"
+            value={customFrequency}
+            onChange={(event) => setCustomFrequency(event.target.value)}
+          />
+        ) : null}
 
         <button
           className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-70"
