@@ -15,3 +15,17 @@ export function getSupabaseEnv() {
     supabaseAnonKey,
   };
 }
+
+export function getSupabaseServiceRoleEnv() {
+  const { supabaseUrl } = getSupabaseEnv();
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseServiceRoleKey) {
+    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY environment variable.");
+  }
+
+  return {
+    supabaseServiceRoleKey,
+    supabaseUrl,
+  };
+}
