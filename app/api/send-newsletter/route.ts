@@ -3,6 +3,7 @@ import {
   buildNewsletterEmailHtml,
   buildNewsletterEmailSubject,
   buildNewsletterEmailText,
+  buildNewsletterUnsubscribeUrl,
   canUserReceiveAutomaticNewsletterNow,
   getUserNewsletterPlan,
   getRecentNewsletterArticles,
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
   const { data: subscriptions, error: subscriptionsError } = await supabase
     .from("newsletter_subscriptions")
     .select(
-      "id, user_id, email, frequency, custom_frequency, is_active, last_sent_at, last_status, last_error",
+      "id, user_id, email, frequency, custom_frequency, is_active, last_sent_at, last_status, last_error, unsubscribe_token",
     )
     .eq("is_active", true)
     .order("created_at", { ascending: true });
@@ -98,15 +99,23 @@ export async function GET(request: Request) {
 
     summary.attempted += 1;
     const plan = getUserNewsletterPlan(subscription);
+    const unsubscribeToken = await ensureUnsubscribeToken(supabase, subscription);
+
+    if (!unsubscribeToken) {
+      summary.failed += 1;
+      continue;
+    }
+
+    const unsubscribeUrl = buildNewsletterUnsubscribeUrl(unsubscribeToken);
 
     const sendResult = await sendNewsletterEmail({
       email: subscription.email,
-      html: buildNewsletterEmailHtml(recentArticles, now),
+      html: buildNewsletterEmailHtml(recentArticles, now, unsubscribeUrl),
       idempotencyKey: `newsletter-${subscription.id}-${plan.automaticFrequency}-${now
         .toISOString()
         .slice(0, 13)}`,
       subject: buildNewsletterEmailSubject(recentArticles.length),
-      text: buildNewsletterEmailText(recentArticles),
+      text: buildNewsletterEmailText(recentArticles, unsubscribeUrl),
     });
 
     if (sendResult.ok) {
@@ -196,4 +205,29 @@ async function sendNewsletterEmail({
       ok: false as const,
     };
   }
+}
+
+async function ensureUnsubscribeToken(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  subscription: NewsletterSubscriptionRow,
+) {
+  if (subscription.unsubscribe_token) {
+    return subscription.unsubscribe_token;
+  }
+
+  const nextToken = crypto.randomUUID().replace(/-/g, "");
+  const { error } = await supabase
+    .from("newsletter_subscriptions")
+    .update({
+      unsubscribe_token: nextToken,
+    })
+    .eq("id", subscription.id)
+    .is("unsubscribe_token", null);
+
+  if (error) {
+    console.error("[send-newsletter][unsubscribe-token]", error);
+    return null;
+  }
+
+  return nextToken;
 }

@@ -9,6 +9,7 @@ export type NewsletterSubscriptionRow = {
   last_sent_at: string | null;
   last_status: string | null;
   frequency: string;
+  unsubscribe_token: string | null;
   user_id: string | null;
 };
 
@@ -124,6 +125,7 @@ export function buildNewsletterEmailSubject(articleCount: number): string {
 export function buildNewsletterEmailHtml(
   articles: NewsItem[],
   now: Date,
+  unsubscribeUrl: string,
 ): string {
   const articleMarkup = articles
     .map((article) => {
@@ -167,12 +169,19 @@ export function buildNewsletterEmailHtml(
         <section style="margin-top:28px;">
           ${articleMarkup}
         </section>
+        <p style="margin:28px 0 0;color:#64748b;font-size:13px;line-height:1.7;">
+          You are receiving this email because you subscribed to Kicker News updates.
+          <a href="${escapeAttribute(unsubscribeUrl)}" style="color:#0369a1;">Unsubscribe instantly</a>.
+        </p>
       </div>
     </div>
   `;
 }
 
-export function buildNewsletterEmailText(articles: NewsItem[]): string {
+export function buildNewsletterEmailText(
+  articles: NewsItem[],
+  unsubscribeUrl: string,
+): string {
   return [
     "Kicker News",
     "",
@@ -190,7 +199,15 @@ export function buildNewsletterEmailText(articles: NewsItem[]): string {
         "",
       ].filter((line): line is string => Boolean(line));
     }),
+    "Unsubscribe:",
+    unsubscribeUrl,
   ].join("\n");
+}
+
+export function buildNewsletterUnsubscribeUrl(token: string): string {
+  const baseUrl = getAppBaseUrl();
+
+  return `${baseUrl}/api/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
 function parseCustomFrequencyHours(value: string | null): number | null {
@@ -261,4 +278,18 @@ function escapeHtml(value: string): string {
 
 function escapeAttribute(value: string): string {
   return escapeHtml(value);
+}
+
+function getAppBaseUrl(): string {
+  const configuredBaseUrl = process.env.APP_BASE_URL?.trim();
+
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/+$/, "");
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:3000";
+  }
+
+  throw new Error("Missing APP_BASE_URL environment variable.");
 }
