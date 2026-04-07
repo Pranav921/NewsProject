@@ -5,13 +5,14 @@ import {
   removeAlertKeyword,
 } from "@/lib/custom-alerts";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { UserPreferences } from "@/lib/types";
+import type { EmailSendLog, UserPreferences } from "@/lib/types";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
 type AccountSettingsProps = {
   email: string;
   initialAlertKeywords: string[];
+  initialEmailSendLogs: EmailSendLog[];
   initialNewsletterCustomFrequency: string | null;
   initialNewsletterFrequency: string | null;
   initialPreferences: UserPreferences;
@@ -45,6 +46,7 @@ const NEWSLETTER_FREQUENCY_OPTIONS: Array<{
 export function AccountSettings({
   email,
   initialAlertKeywords,
+  initialEmailSendLogs,
   initialNewsletterCustomFrequency,
   initialNewsletterFrequency,
   initialPreferences,
@@ -447,6 +449,75 @@ export function AccountSettings({
           <p className="mt-3 text-sm text-slate-600">{newsletterMessage}</p>
         ) : null}
       </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+          Email send history
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Review your recent newsletter delivery activity.
+        </p>
+
+        {initialEmailSendLogs.length > 0 ? (
+          <div className="mt-6 space-y-3">
+            {initialEmailSendLogs.map((log) => (
+              <div
+                key={`${log.sentAt}-${log.status}-${log.articleCount ?? "na"}`}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">
+                      {formatSentAt(log.sentAt)}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {log.articleCount !== null
+                        ? `${log.articleCount} article${
+                            log.articleCount === 1 ? "" : "s"
+                          }`
+                        : "Article count unavailable"}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                      log.status === "sent"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : log.status === "failed"
+                          ? "bg-rose-100 text-rose-700"
+                          : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    {log.status}
+                  </span>
+                </div>
+
+                {log.error ? (
+                  <p className="mt-3 text-sm text-rose-700">{log.error}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-6 text-sm text-slate-500">
+            No newsletter send history yet.
+          </p>
+        )}
+      </section>
     </div>
   );
+}
+
+function formatSentAt(value: string): string {
+  const timestamp = Date.parse(value);
+
+  if (Number.isNaN(timestamp)) {
+    return "Unknown send time";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(timestamp));
 }

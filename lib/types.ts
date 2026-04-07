@@ -18,3 +18,10 @@ export type UserPreferences = {
   defaultTimeFilter: string;
   defaultViewMode: "standard" | "compact";
 };
+
+export type EmailSendLog = {
+  articleCount: number | null;
+  error: string | null;
+  sentAt: string;
+  status: "failed" | "sent" | "skipped";
+};

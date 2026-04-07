@@ -155,6 +155,9 @@ export function buildNewsletterEmailHtml(
     <div style="margin:0;padding:32px 16px;background:#f8fafc;font-family:Arial,sans-serif;">
       <div style="margin:0 auto;max-width:720px;background:#ffffff;border:1px solid #e2e8f0;border-radius:24px;padding:32px;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
         <p style="margin:0;color:#0369a1;font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Kicker News</p>
+        <p style="margin:14px 0 0;">
+          <a href="${escapeAttribute(unsubscribeUrl)}" style="display:inline-block;border-radius:9999px;border:1px solid #cbd5e1;color:#475569;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;">Unsubscribe</a>
+        </p>
         <h1 style="margin:14px 0 0;color:#0f172a;font-size:34px;line-height:1.1;">Latest headlines from the last 24 hours</h1>
         <p style="margin:14px 0 0;color:#475569;font-size:15px;line-height:1.7;">
           Your daily roundup for ${escapeHtml(
@@ -184,6 +187,8 @@ export function buildNewsletterEmailText(
 ): string {
   return [
     "Kicker News",
+    "",
+    `Unsubscribe: ${unsubscribeUrl}`,
     "",
     "Latest headlines from the last 24 hours",
     "",

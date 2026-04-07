@@ -1,5 +1,6 @@
 import { AccountSettings } from "@/components/AccountSettings";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { EmailSendLog } from "@/lib/types";
 import { normalizeUserPreferences } from "@/lib/user-preferences";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -30,6 +31,11 @@ export default async function AccountPage() {
     .select("frequency, custom_frequency, is_active")
     .eq("user_id", user.id)
     .maybeSingle();
+  const { data: emailSendLogRows } = await supabase
+    .from("email_send_logs")
+    .select("status, error, article_count, sent_at")
+    .eq("user_id", user.id)
+    .order("sent_at", { ascending: false });
 
   const initialPreferences = normalizeUserPreferences(
     userPreferencesRow
@@ -41,6 +47,14 @@ export default async function AccountPage() {
       : null,
   );
   const initialAlertKeywords = (alertKeywordRows ?? []).map((row) => row.keyword);
+  const initialEmailSendLogs: EmailSendLog[] = (emailSendLogRows ?? []).map(
+    (row) => ({
+      articleCount: row.article_count,
+      error: row.error,
+      sentAt: row.sent_at,
+      status: row.status,
+    }),
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-10 sm:px-6 lg:px-8">
@@ -56,6 +70,7 @@ export default async function AccountPage() {
       <AccountSettings
         email={user.email ?? ""}
         initialAlertKeywords={initialAlertKeywords}
+        initialEmailSendLogs={initialEmailSendLogs}
         initialNewsletterCustomFrequency={
           newsletterRow?.is_active ? newsletterRow.custom_frequency : null
         }

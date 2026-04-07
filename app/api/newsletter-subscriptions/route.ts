@@ -72,38 +72,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const { error } = await supabase.from("newsletter_subscriptions").insert({
-      custom_frequency: validatedSettings.customFrequency,
-      email: user.email.toLowerCase(),
+    return await upsertNewsletterSubscription({
+      actionLabel: "POST",
+      customFrequency: validatedSettings.customFrequency,
       frequency: validatedSettings.frequency,
-      is_active: true,
-      user_id: user.id,
-    });
-
-    if (error?.code === "23505") {
-      return NextResponse.json(
-        { message: "This account is already subscribed." },
-        { status: 409 },
-      );
-    }
-
-    if (error) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("[newsletter-subscriptions][POST]", error);
-      }
-
-      return NextResponse.json(
-        {
-          message:
-            error.message ||
-            "Unable to save your newsletter sign-up right now.",
-        },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json({
-      message: "You are on the list. Newsletter sending can be added later.",
+      successMessage: "You are on the list. Newsletter sending can be added later.",
+      supabase,
+      userEmail: user.email,
+      userId: user.id,
     });
   } catch {
     return NextResponse.json(
@@ -137,36 +113,14 @@ export async function PUT(request: Request) {
       );
     }
 
-    const { error } = await supabase.from("newsletter_subscriptions").upsert(
-      {
-        custom_frequency: validatedSettings.customFrequency,
-        email: user.email.toLowerCase(),
-        frequency: validatedSettings.frequency,
-        is_active: true,
-        user_id: user.id,
-      },
-      {
-        onConflict: "user_id,email",
-      },
-    );
-
-    if (error) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("[newsletter-subscriptions][PUT]", error);
-      }
-
-      return NextResponse.json(
-        {
-          message:
-            error.message ||
-            "Unable to update newsletter settings right now.",
-        },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json({
-      message: "Newsletter settings updated.",
+    return await upsertNewsletterSubscription({
+      actionLabel: "PUT",
+      customFrequency: validatedSettings.customFrequency,
+      frequency: validatedSettings.frequency,
+      successMessage: "Newsletter settings updated.",
+      supabase,
+      userEmail: user.email,
+      userId: user.id,
     });
   } catch {
     return NextResponse.json(
@@ -221,4 +175,148 @@ export async function DELETE() {
       { status: 400 },
     );
   }
+}
+
+async function upsertNewsletterSubscription({
+  actionLabel,
+  customFrequency,
+  frequency,
+  successMessage,
+  supabase,
+  userEmail,
+  userId,
+}: {
+  actionLabel: "POST" | "PUT";
+  customFrequency: string | null;
+  frequency: string;
+  successMessage: string;
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  userEmail: string;
+  userId: string;
+}) {
+  const normalizedEmail = userEmail.toLowerCase();
+  const { data: existingSubscription, error: lookupError } = await supabase
+    .from("newsletter_subscriptions")
+    .select("id, is_active")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (lookupError) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error(`[newsletter-subscriptions][${actionLabel}][LOOKUP]`, lookupError);
+    }
+
+    return NextResponse.json(
+      {
+        message:
+          lookupError.message ||
+          "Unable to load your newsletter subscription right now.",
+      },
+      { status: 500 },
+    );
+  }
+
+  if (existingSubscription?.is_active) {
+    if (actionLabel === "PUT") {
+      const { error: updateError } = await supabase
+        .from("newsletter_subscriptions")
+        .update({
+          custom_frequency: customFrequency,
+          frequency,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+          user_id: userId,
+        })
+        .eq("id", existingSubscription.id);
+
+      if (updateError) {
+        if (process.env.NODE_ENV !== "production") {
+          console.error(
+            `[newsletter-subscriptions][${actionLabel}][UPDATE]`,
+            updateError,
+          );
+        }
+
+        return NextResponse.json(
+          {
+            message:
+              updateError.message ||
+              "Unable to update newsletter settings right now.",
+          },
+          { status: 500 },
+        );
+      }
+
+      return NextResponse.json({
+        message: successMessage,
+      });
+    }
+
+    return NextResponse.json(
+      { message: "This account is already subscribed." },
+      { status: 409 },
+    );
+  }
+
+  if (existingSubscription) {
+    const { error: reactivateError } = await supabase
+      .from("newsletter_subscriptions")
+      .update({
+        custom_frequency: customFrequency,
+        frequency,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+        user_id: userId,
+      })
+      .eq("id", existingSubscription.id);
+
+    if (reactivateError) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error(
+          `[newsletter-subscriptions][${actionLabel}][REACTIVATE]`,
+          reactivateError,
+        );
+      }
+
+      return NextResponse.json(
+        {
+          message:
+            reactivateError.message ||
+            "Unable to restore your newsletter subscription right now.",
+        },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      message: actionLabel === "POST" ? "You have been resubscribed." : successMessage,
+    });
+  }
+
+  const { error: insertError } = await supabase.from("newsletter_subscriptions").insert({
+    custom_frequency: customFrequency,
+    email: normalizedEmail,
+    frequency,
+    is_active: true,
+    user_id: userId,
+  });
+
+  if (insertError) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error(`[newsletter-subscriptions][${actionLabel}][INSERT]`, insertError);
+    }
+
+    return NextResponse.json(
+      {
+        message:
+          insertError.message ||
+          "Unable to save your newsletter sign-up right now.",
+      },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({
+    message: successMessage,
+  });
 }
