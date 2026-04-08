@@ -29,7 +29,6 @@ export async function GET(request: Request) {
   const authorizationHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   const isDevelopment = process.env.NODE_ENV === "development";
-  const debugNewsletterSends = isDevelopment;
 
   if (
     !isDevelopment &&
@@ -76,14 +75,6 @@ export async function GET(request: Request) {
       )
     : activeSubscriptions;
 
-  if (debugNewsletterSends) {
-    console.log("[send-newsletter][debug] active subscriptions", {
-      activeCount: activeSubscriptions.length,
-      filteredCount: filteredSubscriptions.length,
-      testNewsletterEmailOverride: testEmail || null,
-    });
-  }
-
   const recentArticles = getRecentNewsletterArticles(
     await getAllNewsItems({ fresh: true }),
     now,
@@ -98,29 +89,9 @@ export async function GET(request: Request) {
   };
 
   for (const subscription of filteredSubscriptions) {
-    if (debugNewsletterSends) {
-      console.log("[send-newsletter][debug] evaluating subscription", {
-        custom_frequency: subscription.custom_frequency,
-        email: subscription.email,
-        frequency: subscription.frequency,
-        id: subscription.id,
-        is_active: subscription.is_active,
-        last_sent_at: subscription.last_sent_at,
-        user_id: subscription.user_id,
-      });
-    }
-
     const eligibility = canUserReceiveAutomaticNewsletterNow(subscription, now);
 
     if (!eligibility.eligible) {
-      if (debugNewsletterSends) {
-        console.log("[send-newsletter][debug] skipped subscription", {
-          email: subscription.email,
-          reason: eligibility.reason,
-          subscriptionId: subscription.id,
-        });
-      }
-
       summary.skipped += 1;
 
       await insertEmailSendLog(supabase, {
@@ -154,6 +125,30 @@ export async function GET(request: Request) {
       continue;
     }
 
+    const sentArticleLinks = await getSentArticleLinksForSubscription(
+      supabase,
+      subscription.id,
+    );
+    const unsentArticles = recentArticles.filter(
+      (article) => !sentArticleLinks.has(article.link),
+    );
+
+    if (unsentArticles.length === 0) {
+      summary.skipped += 1;
+
+      await insertEmailSendLog(supabase, {
+        articleCount: 0,
+        email: subscription.email,
+        error: "all-articles-already-sent",
+        sentAt: now.toISOString(),
+        status: "skipped",
+        subscriptionId: subscription.id,
+        userId: subscription.user_id,
+      });
+
+      continue;
+    }
+
     summary.attempted += 1;
 
     const plan = getUserNewsletterPlan(subscription);
@@ -163,16 +158,6 @@ export async function GET(request: Request) {
     );
 
     if (!unsubscribeToken) {
-      if (debugNewsletterSends) {
-        console.error(
-          "[send-newsletter][debug] unsubscribe token generation failed",
-          {
-            email: subscription.email,
-            subscriptionId: subscription.id,
-          },
-        );
-      }
-
       summary.failed += 1;
 
       await insertEmailSendLog(supabase, {
@@ -190,41 +175,20 @@ export async function GET(request: Request) {
 
     const unsubscribeUrl = buildNewsletterUnsubscribeUrl(unsubscribeToken);
 
-    if (debugNewsletterSends) {
-      console.log("[send-newsletter][debug] attempting send", {
-        articleCount: recentArticles.length,
-        email: subscription.email,
-        frequency: subscription.frequency,
-        last_sent_at: subscription.last_sent_at,
-        overrideRecipient: testEmail || null,
-        planFrequency: plan.automaticFrequency,
-        subscriptionId: subscription.id,
-        unsubscribeUrl,
-      });
-    }
-
     const sendResult = await sendNewsletterEmail({
       email: subscription.email,
-      debug: debugNewsletterSends,
-      html: buildNewsletterEmailHtml(recentArticles, now, unsubscribeUrl),
+      debug: isDevelopment,
+      html: buildNewsletterEmailHtml(unsentArticles, now, unsubscribeUrl),
       idempotencyKey: crypto.randomUUID(),
-      subject: buildNewsletterEmailSubject(recentArticles.length),
-      text: buildNewsletterEmailText(recentArticles, unsubscribeUrl),
+      subject: buildNewsletterEmailSubject(unsentArticles.length),
+      text: buildNewsletterEmailText(unsentArticles, unsubscribeUrl),
     });
 
     if (sendResult.ok) {
-      if (debugNewsletterSends) {
-        console.log("[send-newsletter][debug] send succeeded", {
-          email: subscription.email,
-          resendId: sendResult.resendId ?? null,
-          subscriptionId: subscription.id,
-        });
-      }
-
       summary.sent += 1;
 
-      await insertEmailSendLog(supabase, {
-        articleCount: recentArticles.length,
+      const sendLogId = await insertEmailSendLog(supabase, {
+        articleCount: unsentArticles.length,
         email: subscription.email,
         error: null,
         sentAt: now.toISOString(),
@@ -232,6 +196,17 @@ export async function GET(request: Request) {
         subscriptionId: subscription.id,
         userId: subscription.user_id,
       });
+
+      if (sendLogId) {
+        await insertSentArticles(supabase, {
+          articles: unsentArticles,
+          email: subscription.email,
+          sentAt: now.toISOString(),
+          sendLogId,
+          subscriptionId: subscription.id,
+          userId: subscription.user_id,
+        });
+      }
 
       const { error: updateError } = await supabase
         .from("newsletter_subscriptions")
@@ -249,18 +224,10 @@ export async function GET(request: Request) {
       continue;
     }
 
-    if (debugNewsletterSends) {
-      console.error("[send-newsletter][debug] send failed", {
-        email: subscription.email,
-        error: sendResult.errorMessage,
-        subscriptionId: subscription.id,
-      });
-    }
-
     summary.failed += 1;
 
     await insertEmailSendLog(supabase, {
-      articleCount: recentArticles.length,
+      articleCount: unsentArticles.length,
       email: subscription.email,
       error: sendResult.errorMessage,
       sentAt: now.toISOString(),
@@ -417,17 +384,97 @@ async function insertEmailSendLog(
     userId: string | null;
   },
 ) {
-  const { error: insertError } = await supabase.from("email_send_logs").insert({
-    article_count: articleCount,
-    email,
-    error,
-    sent_at: sentAt,
-    status,
-    subscription_id: subscriptionId,
-    user_id: userId,
-  });
+  const { data, error: insertError } = await supabase
+    .from("email_send_logs")
+    .insert({
+      article_count: articleCount,
+      email,
+      error,
+      sent_at: sentAt,
+      status,
+      subscription_id: subscriptionId,
+      user_id: userId,
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     console.error("[send-newsletter][email-send-log]", insertError);
+    return null;
+  }
+
+  if (data?.id) {
+    return data.id;
+  }
+
+  const { data: fallbackRow, error: fallbackError } = await supabase
+    .from("email_send_logs")
+    .select("id")
+    .eq("email", email)
+    .eq("sent_at", sentAt)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallbackError) {
+    console.error("[send-newsletter][email-send-log-fallback]", fallbackError);
+    return null;
+  }
+
+  return fallbackRow?.id ?? null;
+}
+
+async function getSentArticleLinksForSubscription(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  subscriptionId: number,
+) {
+  const { data, error } = await supabase
+    .from("newsletter_sent_articles")
+    .select("article_link")
+    .eq("subscription_id", subscriptionId);
+
+  if (error) {
+    console.error("[send-newsletter][sent-articles]", error);
+    return new Set<string>();
+  }
+
+  return new Set((data ?? []).map((row) => row.article_link));
+}
+
+async function insertSentArticles(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  {
+    articles,
+    email,
+    sentAt,
+    sendLogId,
+    subscriptionId,
+    userId,
+  }: {
+    articles: Array<{ link: string; title: string; source: string }>;
+    email: string;
+    sentAt: string;
+    sendLogId: string;
+    subscriptionId: number | null;
+    userId: string | null;
+  },
+) {
+  const payload = articles.map((article) => ({
+    article_link: article.link,
+    article_source: article.source,
+    article_title: article.title,
+    email,
+    send_log_id: sendLogId,
+    sent_at: sentAt,
+    subscription_id: subscriptionId,
+    user_id: userId,
+  }));
+
+  const { error } = await supabase
+    .from("newsletter_sent_articles")
+    .insert(payload);
+
+  if (error) {
+    console.error("[send-newsletter][sent-articles-insert]", error);
   }
 }
