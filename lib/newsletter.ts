@@ -1,5 +1,7 @@
 import type { NewsItem } from "@/lib/types";
 
+const NEWSLETTER_TIME_ZONE = "America/New_York";
+
 export type NewsletterSubscriptionRow = {
   custom_frequency: string | null;
   email: string;
@@ -41,8 +43,6 @@ export function getUserNewsletterPlan(
       subscription.custom_frequency,
     ),
     requestedFrequency: normalizedFrequency,
-    // Future membership logic can branch here to limit or upgrade the
-    // automatic frequency based on a paid membership check.
     tier: "free",
   };
 }
@@ -60,6 +60,35 @@ export function canUserReceiveAutomaticNewsletterNow(
   }
 
   const plan = getUserNewsletterPlan(subscription);
+
+  if (plan.automaticFrequency === "daily") {
+    if (!subscription.last_sent_at) {
+      return {
+        automaticFrequency: plan.automaticFrequency,
+        eligible: true,
+        reason: "inactive",
+      };
+    }
+
+    const lastSentTimestamp = Date.parse(subscription.last_sent_at);
+
+    if (Number.isNaN(lastSentTimestamp)) {
+      return {
+        automaticFrequency: plan.automaticFrequency,
+        eligible: true,
+        reason: "inactive",
+      };
+    }
+
+    const lastSentDate = new Date(lastSentTimestamp);
+
+    return {
+      automaticFrequency: plan.automaticFrequency,
+      eligible: !isSameZonedDay(lastSentDate, now, NEWSLETTER_TIME_ZONE),
+      reason: "already-sent-recently",
+    };
+  }
+
   const sendIntervalMs = getAutomaticSendIntervalMs(plan);
 
   if (sendIntervalMs === null) {
@@ -165,7 +194,7 @@ export function buildNewsletterEmailHtml(
               month: "long",
               day: "numeric",
               year: "numeric",
-              timeZone: "UTC",
+              timeZone: NEWSLETTER_TIME_ZONE,
             }),
           )}.
         </p>
@@ -254,6 +283,17 @@ function normalizeFrequency(
   }
 }
 
+function isSameZonedDay(a: Date, b: Date, timeZone: string): boolean {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  return formatter.format(a) === formatter.format(b);
+}
+
 function formatPublishedTime(value: string | null): string | null {
   if (!value) {
     return null;
@@ -268,7 +308,7 @@ function formatPublishedTime(value: string | null): string | null {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "UTC",
+    timeZone: NEWSLETTER_TIME_ZONE,
   }).format(new Date(timestamp));
 }
 
