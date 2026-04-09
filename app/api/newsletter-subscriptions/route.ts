@@ -4,11 +4,13 @@ import { NextResponse } from "next/server";
 type NewsletterSubscriptionRequest = {
   customFrequency?: string;
   email?: string;
+  emailFormat?: string;
   frequency?: string;
   preferredFrequency?: string;
 };
 
 const VALID_FREQUENCIES = new Set(["hourly", "daily", "weekly", "custom"]);
+const VALID_EMAIL_FORMATS = new Set(["compact", "standard"]);
 
 function getValidatedNewsletterSettings(
   body: NewsletterSubscriptionRequest,
@@ -18,6 +20,15 @@ function getValidatedNewsletterSettings(
     body.preferredFrequency?.trim().toLowerCase() ??
     "";
   const normalizedCustomFrequency = body.customFrequency?.trim() ?? "";
+  const emailFormat =
+    body.emailFormat?.trim().toLowerCase() ?? "standard";
+
+  if (!VALID_EMAIL_FORMATS.has(emailFormat)) {
+    return {
+      errorMessage: "Email format must be standard or compact.",
+      status: 400,
+    };
+  }
 
   if (!VALID_FREQUENCIES.has(frequency)) {
     return {
@@ -29,6 +40,7 @@ function getValidatedNewsletterSettings(
   if (frequency !== "custom") {
     return {
       customFrequency: null,
+      emailFormat,
       frequency,
       status: 200,
     };
@@ -43,6 +55,7 @@ function getValidatedNewsletterSettings(
 
   return {
     customFrequency: normalizedCustomFrequency,
+    emailFormat,
     frequency,
     status: 200,
   };
@@ -75,6 +88,7 @@ export async function POST(request: Request) {
     return await upsertNewsletterSubscription({
       actionLabel: "POST",
       customFrequency: validatedSettings.customFrequency,
+      emailFormat: validatedSettings.emailFormat,
       frequency: validatedSettings.frequency,
       successMessage: "You are on the list. Newsletter sending can be added later.",
       supabase,
@@ -116,6 +130,7 @@ export async function PUT(request: Request) {
     return await upsertNewsletterSubscription({
       actionLabel: "PUT",
       customFrequency: validatedSettings.customFrequency,
+      emailFormat: validatedSettings.emailFormat,
       frequency: validatedSettings.frequency,
       successMessage: "Newsletter settings updated.",
       supabase,
@@ -180,6 +195,7 @@ export async function DELETE() {
 async function upsertNewsletterSubscription({
   actionLabel,
   customFrequency,
+  emailFormat,
   frequency,
   successMessage,
   supabase,
@@ -188,6 +204,7 @@ async function upsertNewsletterSubscription({
 }: {
   actionLabel: "POST" | "PUT";
   customFrequency: string | null;
+  emailFormat: string;
   frequency: string;
   successMessage: string;
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -222,6 +239,7 @@ async function upsertNewsletterSubscription({
         .from("newsletter_subscriptions")
         .update({
           custom_frequency: customFrequency,
+          email_format: emailFormat,
           frequency,
           is_active: true,
           updated_at: new Date().toISOString(),
@@ -263,6 +281,7 @@ async function upsertNewsletterSubscription({
       .from("newsletter_subscriptions")
       .update({
         custom_frequency: customFrequency,
+        email_format: emailFormat,
         frequency,
         is_active: true,
         updated_at: new Date().toISOString(),
@@ -296,6 +315,7 @@ async function upsertNewsletterSubscription({
   const { error: insertError } = await supabase.from("newsletter_subscriptions").insert({
     custom_frequency: customFrequency,
     email: normalizedEmail,
+    email_format: emailFormat,
     frequency,
     is_active: true,
     user_id: userId,

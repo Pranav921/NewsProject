@@ -14,6 +14,7 @@ type AccountSettingsProps = {
   initialAlertKeywords: string[];
   initialEmailSendLogs: EmailSendLog[];
   initialNewsletterCustomFrequency: string | null;
+  initialNewsletterEmailFormat: string | null;
   initialNewsletterFrequency: string | null;
   initialPreferences: UserPreferences;
   userId: string;
@@ -22,6 +23,7 @@ type AccountSettingsProps = {
 type ViewMode = "standard" | "compact";
 type TimeFilter = "all" | "1h" | "3h" | "6h" | "12h" | "24h" | "1w";
 type NewsletterFrequency = "hourly" | "daily" | "weekly" | "custom";
+type NewsletterEmailFormat = "standard" | "compact";
 
 const TIME_FILTER_OPTIONS: Array<{ label: string; value: TimeFilter }> = [
   { label: "All Time", value: "all" },
@@ -43,11 +45,20 @@ const NEWSLETTER_FREQUENCY_OPTIONS: Array<{
   { label: "Custom", value: "custom" },
 ];
 
+const NEWSLETTER_EMAIL_FORMAT_OPTIONS: Array<{
+  label: string;
+  value: NewsletterEmailFormat;
+}> = [
+  { label: "Standard email", value: "standard" },
+  { label: "Compact email", value: "compact" },
+];
+
 export function AccountSettings({
   email,
   initialAlertKeywords,
   initialEmailSendLogs,
   initialNewsletterCustomFrequency,
+  initialNewsletterEmailFormat,
   initialNewsletterFrequency,
   initialPreferences,
   userId,
@@ -70,6 +81,11 @@ export function AccountSettings({
   const [newsletterFrequency, setNewsletterFrequency] =
     useState<NewsletterFrequency>(
       (initialNewsletterFrequency as NewsletterFrequency | null) ?? "daily",
+    );
+  const [newsletterEmailFormat, setNewsletterEmailFormat] =
+    useState<NewsletterEmailFormat>(
+      (initialNewsletterEmailFormat as NewsletterEmailFormat | null) ??
+        "standard",
     );
   const [newsletterCustomFrequency, setNewsletterCustomFrequency] = useState(
     initialNewsletterCustomFrequency ?? "",
@@ -190,6 +206,7 @@ export function AccountSettings({
                 newsletterFrequency === "custom"
                   ? newsletterCustomFrequency.trim()
                   : null,
+              emailFormat: newsletterEmailFormat,
               preferredFrequency: newsletterFrequency,
             })
           : undefined,
@@ -405,6 +422,32 @@ export function AccountSettings({
             disabled={!newsletterEnabled}
           >
             {NEWSLETTER_FREQUENCY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mt-4 max-w-sm">
+          <label
+            className="text-sm font-medium text-slate-700"
+            htmlFor="newsletter-email-format"
+          >
+            Email format
+          </label>
+          <select
+            id="newsletter-email-format"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+            value={newsletterEmailFormat}
+            onChange={(event) =>
+              setNewsletterEmailFormat(
+                event.target.value as NewsletterEmailFormat,
+              )
+            }
+            disabled={!newsletterEnabled}
+          >
+            {NEWSLETTER_EMAIL_FORMAT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

@@ -5,6 +5,7 @@ const NEWSLETTER_TIME_ZONE = "America/New_York";
 export type NewsletterSubscriptionRow = {
   custom_frequency: string | null;
   email: string;
+  email_format?: string | null;
   id: number;
   is_active: boolean;
   last_error: string | null;
@@ -155,7 +156,12 @@ export function buildNewsletterEmailHtml(
   articles: NewsItem[],
   now: Date,
   unsubscribeUrl: string,
+  emailFormat: "standard" | "compact" = "standard",
 ): string {
+  if (emailFormat === "compact") {
+    return buildCompactNewsletterEmailHtml(articles, now, unsubscribeUrl);
+  }
+
   const articleMarkup = articles
     .map((article) => {
       const publishedLabel = formatPublishedTime(article.publishedAt);
@@ -213,7 +219,12 @@ export function buildNewsletterEmailHtml(
 export function buildNewsletterEmailText(
   articles: NewsItem[],
   unsubscribeUrl: string,
+  emailFormat: "standard" | "compact" = "standard",
 ): string {
+  if (emailFormat === "compact") {
+    return buildCompactNewsletterEmailText(articles, unsubscribeUrl);
+  }
+
   return [
     "Kicker News",
     "",
@@ -233,6 +244,75 @@ export function buildNewsletterEmailText(
         "",
       ].filter((line): line is string => Boolean(line));
     }),
+    "Unsubscribe:",
+    unsubscribeUrl,
+  ].join("\n");
+}
+
+function buildCompactNewsletterEmailHtml(
+  articles: NewsItem[],
+  now: Date,
+  unsubscribeUrl: string,
+): string {
+  const articleMarkup = articles
+    .map((article) => {
+      return `
+        <article style="padding:16px 0;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(article.source)}</p>
+          <p style="margin:8px 0 0;font-size:16px;line-height:1.4;color:#0f172a;font-weight:600;">
+            <a href="${escapeAttribute(article.link)}" style="color:#0f172a;text-decoration:none;">${escapeHtml(article.title)}</a>
+          </p>
+        </article>
+      `;
+    })
+    .join("");
+
+  return `
+    <div style="margin:0;padding:24px 12px;background:#f8fafc;font-family:Arial,sans-serif;">
+      <div style="margin:0 auto;max-width:640px;background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;padding:24px;box-shadow:0 10px 26px rgba(15,23,42,0.08);">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;">
+          <p style="margin:0;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Kicker News</p>
+          <a href="${escapeAttribute(unsubscribeUrl)}" style="display:inline-block;border-radius:9999px;border:1px solid #cbd5e1;color:#475569;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;">Unsubscribe</a>
+        </div>
+        <h1 style="margin:14px 0 0;color:#0f172a;font-size:24px;line-height:1.2;">Latest headlines</h1>
+        <p style="margin:8px 0 0;color:#64748b;font-size:13px;line-height:1.6;">
+          ${escapeHtml(
+            now.toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+              timeZone: NEWSLETTER_TIME_ZONE,
+            }),
+          )} - Compact view
+        </p>
+        <section style="margin-top:18px;">
+          ${articleMarkup}
+        </section>
+        <p style="margin:18px 0 0;color:#64748b;font-size:12px;line-height:1.6;">
+          You are receiving this email because you subscribed to Kicker News updates.
+          <a href="${escapeAttribute(unsubscribeUrl)}" style="color:#0369a1;">Unsubscribe instantly</a>.
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+function buildCompactNewsletterEmailText(
+  articles: NewsItem[],
+  unsubscribeUrl: string,
+): string {
+  return [
+    "Kicker News",
+    "",
+    `Unsubscribe: ${unsubscribeUrl}`,
+    "",
+    "Latest headlines (compact)",
+    "",
+    ...articles.flatMap((article) => [
+      `${article.title} (${article.source})`,
+      article.link,
+      "",
+    ]),
     "Unsubscribe:",
     unsubscribeUrl,
   ].join("\n");

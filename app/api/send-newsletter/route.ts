@@ -5,7 +5,6 @@ import {
   buildNewsletterEmailText,
   buildNewsletterUnsubscribeUrl,
   canUserReceiveAutomaticNewsletterNow,
-  getUserNewsletterPlan,
   getRecentNewsletterArticles,
   type NewsletterSubscriptionRow,
 } from "@/lib/newsletter";
@@ -49,7 +48,7 @@ export async function GET(request: Request) {
   const { data: subscriptions, error: subscriptionsError } = await supabase
     .from("newsletter_subscriptions")
     .select(
-      "id, user_id, email, frequency, custom_frequency, is_active, last_sent_at, last_status, last_error, unsubscribe_token",
+      "id, user_id, email, frequency, custom_frequency, email_format, is_active, last_sent_at, last_status, last_error, unsubscribe_token",
     )
     .eq("is_active", true)
     .order("created_at", { ascending: true });
@@ -151,7 +150,6 @@ export async function GET(request: Request) {
 
     summary.attempted += 1;
 
-    const plan = getUserNewsletterPlan(subscription);
     const unsubscribeToken = await ensureUnsubscribeToken(
       supabase,
       subscription,
@@ -178,10 +176,19 @@ export async function GET(request: Request) {
     const sendResult = await sendNewsletterEmail({
       email: subscription.email,
       debug: isDevelopment,
-      html: buildNewsletterEmailHtml(unsentArticles, now, unsubscribeUrl),
+      html: buildNewsletterEmailHtml(
+        unsentArticles,
+        now,
+        unsubscribeUrl,
+        subscription.email_format === "compact" ? "compact" : "standard",
+      ),
       idempotencyKey: crypto.randomUUID(),
       subject: buildNewsletterEmailSubject(unsentArticles.length),
-      text: buildNewsletterEmailText(unsentArticles, unsubscribeUrl),
+      text: buildNewsletterEmailText(
+        unsentArticles,
+        unsubscribeUrl,
+        subscription.email_format === "compact" ? "compact" : "standard",
+      ),
     });
 
     if (sendResult.ok) {
