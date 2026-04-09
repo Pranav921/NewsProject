@@ -67,6 +67,23 @@ export default async function AccountPage() {
         </Link>
       </div>
 
+      <section className="mb-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+          Email analytics
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Review send performance, skip reasons, and top content trends.
+        </p>
+        <div className="mt-4">
+          <Link
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            href="/email-analytics"
+          >
+            View email analytics
+          </Link>
+        </div>
+      </section>
+
       <AccountSettings
         email={user.email ?? ""}
         initialAlertKeywords={initialAlertKeywords}
