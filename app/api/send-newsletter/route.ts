@@ -99,6 +99,7 @@ export async function GET(request: Request) {
         error: eligibility.reason,
         sentAt: now.toISOString(),
         status: "skipped",
+        sendLogId: crypto.randomUUID(),
         subscriptionId: subscription.id,
         userId: subscription.user_id,
       });
@@ -117,6 +118,7 @@ export async function GET(request: Request) {
         error: "no-recent-articles",
         sentAt: now.toISOString(),
         status: "skipped",
+        sendLogId: crypto.randomUUID(),
         subscriptionId: subscription.id,
         userId: subscription.user_id,
       });
@@ -141,6 +143,7 @@ export async function GET(request: Request) {
         error: "all-articles-already-sent",
         sentAt: now.toISOString(),
         status: "skipped",
+        sendLogId: crypto.randomUUID(),
         subscriptionId: subscription.id,
         userId: subscription.user_id,
       });
@@ -164,6 +167,7 @@ export async function GET(request: Request) {
         error: "unsubscribe-token-generation-failed",
         sentAt: now.toISOString(),
         status: "failed",
+        sendLogId: crypto.randomUUID(),
         subscriptionId: subscription.id,
         userId: subscription.user_id,
       });
@@ -173,6 +177,12 @@ export async function GET(request: Request) {
 
     const unsubscribeUrl = buildNewsletterUnsubscribeUrl(unsubscribeToken);
 
+    const trackingContext = {
+      sendLogId: crypto.randomUUID(),
+      subscriptionId: subscription.id,
+      email: subscription.email,
+    };
+
     const sendResult = await sendNewsletterEmail({
       email: subscription.email,
       debug: isDevelopment,
@@ -181,6 +191,7 @@ export async function GET(request: Request) {
         now,
         unsubscribeUrl,
         subscription.email_format === "compact" ? "compact" : "standard",
+        trackingContext,
       ),
       idempotencyKey: crypto.randomUUID(),
       subject: buildNewsletterEmailSubject(unsentArticles.length),
@@ -200,6 +211,7 @@ export async function GET(request: Request) {
         error: null,
         sentAt: now.toISOString(),
         status: "sent",
+        sendLogId: trackingContext.sendLogId,
         subscriptionId: subscription.id,
         userId: subscription.user_id,
       });
@@ -239,6 +251,7 @@ export async function GET(request: Request) {
       error: sendResult.errorMessage,
       sentAt: now.toISOString(),
       status: "failed",
+      sendLogId: trackingContext.sendLogId,
       subscriptionId: subscription.id,
       userId: subscription.user_id,
     });
@@ -379,6 +392,7 @@ async function insertEmailSendLog(
     error,
     sentAt,
     status,
+    sendLogId,
     subscriptionId,
     userId,
   }: {
@@ -387,6 +401,7 @@ async function insertEmailSendLog(
     error: string | null;
     sentAt: string;
     status: "failed" | "sent" | "skipped";
+    sendLogId?: string;
     subscriptionId: number | null;
     userId: string | null;
   },
@@ -394,6 +409,7 @@ async function insertEmailSendLog(
   const { data, error: insertError } = await supabase
     .from("email_send_logs")
     .insert({
+      id: sendLogId,
       article_count: articleCount,
       email,
       error,

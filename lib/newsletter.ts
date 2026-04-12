@@ -157,9 +157,17 @@ export function buildNewsletterEmailHtml(
   now: Date,
   unsubscribeUrl: string,
   emailFormat: "standard" | "compact" = "standard",
+  tracking:
+    | { sendLogId: string; subscriptionId: number; email: string }
+    | null = null,
 ): string {
   if (emailFormat === "compact") {
-    return buildCompactNewsletterEmailHtml(articles, now, unsubscribeUrl);
+    return buildCompactNewsletterEmailHtml(
+      articles,
+      now,
+      unsubscribeUrl,
+      tracking,
+    );
   }
 
   const articleMarkup = articles
@@ -171,6 +179,12 @@ export function buildNewsletterEmailHtml(
       const publishedMarkup = publishedLabel
         ? `<p style="margin:8px 0 0;color:#64748b;font-size:13px;">Published ${escapeHtml(publishedLabel)}</p>`
         : "";
+      const trackedLink = buildTrackedUrl(
+        article.link,
+        tracking,
+        article.title,
+        article.source,
+      );
 
       return `
         <article style="padding:24px 0;border-top:1px solid #e2e8f0;">
@@ -179,12 +193,16 @@ export function buildNewsletterEmailHtml(
           ${publishedMarkup}
           ${summary}
           <p style="margin:16px 0 0;">
-            <a href="${escapeAttribute(article.link)}" style="display:inline-block;border-radius:9999px;background:#0f172a;color:#ffffff;padding:10px 18px;font-size:14px;font-weight:600;text-decoration:none;">Read more</a>
+            <a href="${escapeAttribute(trackedLink)}" style="display:inline-block;border-radius:9999px;background:#0f172a;color:#ffffff;padding:10px 18px;font-size:14px;font-weight:600;text-decoration:none;">Read more</a>
           </p>
         </article>
       `;
     })
     .join("");
+
+  const trackingPixel = tracking
+    ? `<img src="${escapeAttribute(buildOpenTrackingUrl(tracking))}" alt="" width="1" height="1" style="display:block;border:0;outline:none;opacity:0;" />`
+    : "";
 
   return `
     <div style="margin:0;padding:32px 16px;background:#f8fafc;font-family:Arial,sans-serif;">
@@ -211,6 +229,7 @@ export function buildNewsletterEmailHtml(
           You are receiving this email because you subscribed to Kicker News updates.
           <a href="${escapeAttribute(unsubscribeUrl)}" style="color:#0369a1;">Unsubscribe instantly</a>.
         </p>
+        ${trackingPixel}
       </div>
     </div>
   `;
@@ -246,26 +265,40 @@ export function buildNewsletterEmailText(
     }),
     "Unsubscribe:",
     unsubscribeUrl,
-  ].join("\n");
+  ].filter((line): line is string => Boolean(line)).join("\n");
 }
 
 function buildCompactNewsletterEmailHtml(
   articles: NewsItem[],
   now: Date,
   unsubscribeUrl: string,
+  tracking:
+    | { sendLogId: string; subscriptionId: number; email: string }
+    | null,
 ): string {
   const articleMarkup = articles
     .map((article) => {
+      const trackedLink = buildTrackedUrl(
+        article.link,
+        tracking,
+        article.title,
+        article.source,
+      );
+
       return `
         <article style="padding:16px 0;border-top:1px solid #e2e8f0;">
           <p style="margin:0;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(article.source)}</p>
           <p style="margin:8px 0 0;font-size:16px;line-height:1.4;color:#0f172a;font-weight:600;">
-            <a href="${escapeAttribute(article.link)}" style="color:#0f172a;text-decoration:none;">${escapeHtml(article.title)}</a>
+            <a href="${escapeAttribute(trackedLink)}" style="color:#0f172a;text-decoration:none;">${escapeHtml(article.title)}</a>
           </p>
         </article>
       `;
     })
     .join("");
+
+  const trackingPixel = tracking
+    ? `<img src="${escapeAttribute(buildOpenTrackingUrl(tracking))}" alt="" width="1" height="1" style="display:block;border:0;outline:none;opacity:0;" />`
+    : "";
 
   return `
     <div style="margin:0;padding:24px 12px;background:#f8fafc;font-family:Arial,sans-serif;">
@@ -292,6 +325,7 @@ function buildCompactNewsletterEmailHtml(
           You are receiving this email because you subscribed to Kicker News updates.
           <a href="${escapeAttribute(unsubscribeUrl)}" style="color:#0369a1;">Unsubscribe instantly</a>.
         </p>
+        ${trackingPixel}
       </div>
     </div>
   `;
@@ -315,13 +349,58 @@ function buildCompactNewsletterEmailText(
     ]),
     "Unsubscribe:",
     unsubscribeUrl,
-  ].join("\n");
+  ].filter((line): line is string => Boolean(line)).join("\n");
 }
 
 export function buildNewsletterUnsubscribeUrl(token: string): string {
   const baseUrl = getAppBaseUrl();
 
   return `${baseUrl}/api/unsubscribe?token=${encodeURIComponent(token)}`;
+}
+
+export function buildOpenTrackingUrl(tracking: {
+  sendLogId: string;
+  subscriptionId: number;
+  email: string;
+}) {
+  const baseUrl = getAppBaseUrl();
+
+  return `${baseUrl}/api/newsletter/open?sendLogId=${encodeURIComponent(
+    tracking.sendLogId,
+  )}&subscriptionId=${encodeURIComponent(
+    tracking.subscriptionId,
+  )}&email=${encodeURIComponent(tracking.email)}`;
+}
+
+export function buildTrackedUrl(
+  destination: string,
+  tracking:
+    | { sendLogId: string; subscriptionId: number; email: string }
+    | null,
+  title?: string,
+  source?: string,
+) {
+  if (!tracking) {
+    return destination;
+  }
+
+  const baseUrl = getAppBaseUrl();
+  const params = new URLSearchParams({
+    sendLogId: tracking.sendLogId,
+    subscriptionId: String(tracking.subscriptionId),
+    email: tracking.email,
+    url: destination,
+  });
+
+  if (title) {
+    params.set("title", title);
+  }
+
+  if (source) {
+    params.set("source", source);
+  }
+
+  return `${baseUrl}/api/newsletter/click?${params.toString()}`;
 }
 
 function parseCustomFrequencyHours(value: string | null): number | null {

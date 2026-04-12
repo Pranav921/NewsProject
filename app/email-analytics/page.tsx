@@ -6,11 +6,15 @@ export const revalidate = 0;
 
 type AnalyticsResponse = {
   daily: Array<Record<string, unknown>>;
+  engagementDaily: Array<Record<string, unknown>>;
+  engagementOverview: Array<Record<string, unknown>>;
   frequencies: Array<Record<string, unknown>>;
   overview: Array<Record<string, unknown>>;
   skipReasons: Array<Record<string, unknown>>;
   sources: Array<Record<string, unknown>>;
+  topClickedArticles: Array<Record<string, unknown>>;
   topArticles: Array<Record<string, unknown>>;
+  userEngagement: Array<Record<string, unknown>>;
   userSummary: Array<Record<string, unknown>>;
 };
 
@@ -21,6 +25,13 @@ const OVERVIEW_CARDS: Array<{ label: string; keys: string[] }> = [
   { label: "Total failed", keys: ["total_failed", "failed"] },
   { label: "Total skipped", keys: ["total_skipped", "skipped"] },
   { label: "Total articles sent", keys: ["total_articles_sent", "articles_sent"] },
+];
+
+const ENGAGEMENT_CARDS: Array<{ label: string; keys: string[] }> = [
+  { label: "Total opens", keys: ["total_opens", "opens"] },
+  { label: "Unique opens", keys: ["unique_opens", "unique"] },
+  { label: "Total clicks", keys: ["total_clicks", "clicks"] },
+  { label: "Unique clicks", keys: ["unique_clicks", "unique"] },
 ];
 
 const FREQUENCY_COLUMNS = [
@@ -39,9 +50,21 @@ const TOP_ARTICLE_COLUMNS = [
   { label: "Times sent", keys: ["sent_count", "count", "total"] },
 ];
 
+const TOP_CLICKED_COLUMNS = [
+  { label: "Article", keys: ["article_title", "title"] },
+  { label: "Source", keys: ["article_source", "source"] },
+  { label: "Clicks", keys: ["click_count", "clicks", "total"] },
+];
+
 const SKIP_REASON_COLUMNS = [
   { label: "Reason", keys: ["reason", "skip_reason"] },
   { label: "Count", keys: ["count", "total"] },
+];
+
+const USER_ENGAGEMENT_COLUMNS = [
+  { label: "User", keys: ["email", "user_email"] },
+  { label: "Opens", keys: ["opens", "open_count", "total_opens"] },
+  { label: "Clicks", keys: ["clicks", "click_count", "total_clicks"] },
 ];
 
 type EmailAnalyticsPageProps = {
@@ -89,7 +112,15 @@ export default async function EmailAnalyticsPage({
   }
 
   const overviewRow = analytics.overview[0] ?? {};
+  const engagementRow = analytics.engagementOverview[0] ?? {};
   const dailyData = (analytics.daily ?? []) as Array<Record<string, unknown>>;
+  const engagementDaily =
+    (analytics.engagementDaily ?? []) as Array<Record<string, unknown>>;
+  const totalSent = Number(getFirstValue(overviewRow, ["total_sent", "sent"])) || 0;
+  const totalOpens =
+    Number(getFirstValue(engagementRow, ["total_opens", "opens"])) || 0;
+  const totalClicks =
+    Number(getFirstValue(engagementRow, ["total_clicks", "clicks"])) || 0;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6 lg:px-8">
@@ -149,6 +180,57 @@ export default async function EmailAnalyticsPage({
       <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Engagement overview
+          </h2>
+          <p className="text-sm text-slate-500">
+            Opens and clicks for the selected range
+          </p>
+        </div>
+
+        {ENGAGEMENT_CARDS.every(
+          (card) => getFirstValue(engagementRow, card.keys) === 0,
+        ) ? (
+          <p className="mt-6 text-sm text-slate-500">
+            No engagement data yet.
+          </p>
+        ) : (
+          <>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {ENGAGEMENT_CARDS.map((card) => (
+                <div
+                  key={card.label}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    {card.label}
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">
+                    {formatNumber(getFirstValue(engagementRow, card.keys))}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <RateCard
+                label="Open rate"
+                value={formatPercent(totalOpens, totalSent)}
+              />
+              <RateCard
+                label="Click rate"
+                value={formatPercent(totalClicks, totalSent)}
+              />
+              <RateCard
+                label="Click-to-open"
+                value={formatPercent(totalClicks, totalOpens)}
+              />
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
             Daily activity
           </h2>
           <p className="text-sm text-slate-500">
@@ -163,6 +245,27 @@ export default async function EmailAnalyticsPage({
         ) : (
           <p className="mt-6 text-sm text-slate-500">
             No daily activity yet.
+          </p>
+        )}
+      </section>
+
+      <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Daily engagement
+          </h2>
+          <p className="text-sm text-slate-500">
+            Opens and clicks by day (UTC)
+          </p>
+        </div>
+
+        {engagementDaily.length > 0 ? (
+          <div className="mt-6">
+            <DualBarChart data={engagementDaily} />
+          </div>
+        ) : (
+          <p className="mt-6 text-sm text-slate-500">
+            No engagement activity yet.
           </p>
         )}
       </section>
@@ -198,6 +301,23 @@ export default async function EmailAnalyticsPage({
           rows={analytics.skipReasons}
           columns={SKIP_REASON_COLUMNS}
           emptyState="No skip reasons yet."
+        />
+      </div>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <TableCard
+          title="Top clicked articles"
+          description="Links receiving the most clicks."
+          rows={analytics.topClickedArticles}
+          columns={TOP_CLICKED_COLUMNS}
+          emptyState="No click data yet."
+        />
+        <TableCard
+          title="Most engaged users"
+          description="Users with the most opens and clicks."
+          rows={analytics.userEngagement}
+          columns={USER_ENGAGEMENT_COLUMNS}
+          emptyState="No engagement data yet."
         />
       </div>
     </main>
@@ -264,6 +384,27 @@ function formatNumber(value: unknown) {
   return new Intl.NumberFormat("en-US").format(numericValue);
 }
 
+function formatPercent(numerator: number, denominator: number) {
+  if (!denominator || Number.isNaN(denominator)) {
+    return "0%";
+  }
+
+  const value = Math.min(100, (numerator / denominator) * 100);
+
+  return `${value.toFixed(1)}%`;
+}
+
+function RateCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
 function BarChart({ data }: { data: Array<Record<string, unknown>> }) {
   const values = data.map((row) => Number(row.sent ?? row.total ?? 0));
   const maxValue = Math.max(1, ...values);
@@ -291,6 +432,63 @@ function BarChart({ data }: { data: Array<Record<string, unknown>> }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function DualBarChart({ data }: { data: Array<Record<string, unknown>> }) {
+  const openValues = data.map((row) => Number(row.opens ?? row.open_count ?? 0));
+  const clickValues = data.map((row) =>
+    Number(row.clicks ?? row.click_count ?? 0),
+  );
+  const maxValue = Math.max(1, ...openValues, ...clickValues);
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
+        {data.map((row, index) => {
+          const label = String(row.day ?? row.date ?? `Day ${index + 1}`);
+          const opens = Number(row.opens ?? row.open_count ?? 0);
+          const clicks = Number(row.clicks ?? row.click_count ?? 0);
+          const openPercent = Math.round((opens / maxValue) * 100);
+          const clickPercent = Math.round((clicks / maxValue) * 100);
+
+          return (
+            <div key={`${label}-${index}`} className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>{label}</span>
+                <span className="font-semibold text-slate-700">
+                  {opens} opens / {clicks} clicks
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="h-2 rounded-full bg-slate-200">
+                  <div
+                    className="h-2 rounded-full bg-emerald-500"
+                    style={{ width: `${openPercent}%` }}
+                  />
+                </div>
+                <div className="h-2 rounded-full bg-slate-200">
+                  <div
+                    className="h-2 rounded-full bg-slate-900"
+                    style={{ width: `${clickPercent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          Opens
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-slate-900" />
+          Clicks
+        </span>
       </div>
     </div>
   );

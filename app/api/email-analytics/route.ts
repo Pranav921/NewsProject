@@ -12,6 +12,10 @@ type AnalyticsResponse = {
   topArticles: unknown[];
   skipReasons: unknown[];
   userSummary: unknown[];
+  engagementOverview: unknown[];
+  engagementDaily: unknown[];
+  topClickedArticles: unknown[];
+  userEngagement: unknown[];
 };
 
 type RangeKey = "7" | "30" | "90" | "all";
@@ -29,6 +33,10 @@ export async function GET(request: Request) {
     topArticlesResult,
     skipReasonsResult,
     userSummaryResult,
+    engagementOverviewResult,
+    engagementDailyResult,
+    topClickedArticlesResult,
+    userEngagementResult,
   ] = await Promise.all([
     supabase.from("newsletter_analytics_overview").select("*"),
     supabase.from("newsletter_analytics_daily").select("*"),
@@ -37,6 +45,16 @@ export async function GET(request: Request) {
     supabase.from("newsletter_analytics_top_articles").select("*").limit(10),
     supabase.from("newsletter_analytics_skip_reasons").select("*"),
     supabase.from("newsletter_analytics_user_summary").select("*").limit(25),
+    supabase.from("newsletter_analytics_engagement_overview").select("*"),
+    supabase.from("newsletter_analytics_engagement_daily").select("*"),
+    supabase
+      .from("newsletter_analytics_top_clicked_articles")
+      .select("*")
+      .limit(10),
+    supabase
+      .from("newsletter_analytics_user_engagement")
+      .select("*")
+      .limit(25),
   ]);
 
   const errors = [
@@ -47,6 +65,10 @@ export async function GET(request: Request) {
     topArticlesResult.error,
     skipReasonsResult.error,
     userSummaryResult.error,
+    engagementOverviewResult.error,
+    engagementDailyResult.error,
+    topClickedArticlesResult.error,
+    userEngagementResult.error,
   ].filter(Boolean);
 
   if (errors.length > 0) {
@@ -74,6 +96,19 @@ export async function GET(request: Request) {
   });
   const filteredDaily = filterRowsByRange(dailyData, range);
 
+  const engagementDailyData = (engagementDailyResult.data ?? [])
+    .slice()
+    .sort((a, b) => {
+      const aValue = (a as { day?: string }).day ?? "";
+      const bValue = (b as { day?: string }).day ?? "";
+
+      return aValue.localeCompare(bValue);
+    });
+  const filteredEngagementDaily = filterRowsByRange(
+    engagementDailyData,
+    range,
+  );
+
   const response: AnalyticsResponse = {
     overview: overviewResult.data ?? [],
     daily: filteredDaily,
@@ -82,6 +117,16 @@ export async function GET(request: Request) {
     topArticles: filterRowsByRange(topArticlesResult.data ?? [], range).slice(0, 10),
     skipReasons: filterRowsByRange(skipReasonsResult.data ?? [], range),
     userSummary: filterRowsByRange(userSummaryResult.data ?? [], range).slice(0, 25),
+    engagementOverview: engagementOverviewResult.data ?? [],
+    engagementDaily: filteredEngagementDaily,
+    topClickedArticles: filterRowsByRange(
+      topClickedArticlesResult.data ?? [],
+      range,
+    ).slice(0, 10),
+    userEngagement: filterRowsByRange(
+      userEngagementResult.data ?? [],
+      range,
+    ).slice(0, 25),
   };
 
   return NextResponse.json(response);
