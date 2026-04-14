@@ -8,10 +8,15 @@ import {
   getRecentNewsletterArticles,
   type NewsletterSubscriptionRow,
 } from "@/lib/newsletter";
+import {
+  selectTopRankedArticlesForUser,
+  type PersonalizationProfile,
+} from "@/lib/personalization";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
 const NEWSLETTER_FROM = "Kicker News <latest@kicker.news>";
+const MAX_PERSONALIZED_ARTICLES = 12;
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -73,6 +78,10 @@ export async function GET(request: Request) {
         (subscription) => subscription.email.toLowerCase() === testEmail,
       )
     : activeSubscriptions;
+  const personalizationMaps = await getPersonalizationMaps(
+    supabase,
+    filteredSubscriptions,
+  );
 
   const recentArticles = getRecentNewsletterArticles(
     await getAllNewsItems({ fresh: true }),
@@ -130,11 +139,15 @@ export async function GET(request: Request) {
       supabase,
       subscription.id,
     );
-    const unsentArticles = recentArticles.filter(
-      (article) => !sentArticleLinks.has(article.link),
+    const rankedArticles = selectTopRankedArticlesForUser(
+      recentArticles,
+      getPersonalizationProfile(subscription, personalizationMaps),
+      now,
+      sentArticleLinks,
+      MAX_PERSONALIZED_ARTICLES,
     );
 
-    if (unsentArticles.length === 0) {
+    if (rankedArticles.length === 0) {
       summary.skipped += 1;
 
       await insertEmailSendLog(supabase, {
@@ -187,16 +200,16 @@ export async function GET(request: Request) {
       email: subscription.email,
       debug: isDevelopment,
       html: buildNewsletterEmailHtml(
-        unsentArticles,
+        rankedArticles,
         now,
         unsubscribeUrl,
         subscription.email_format === "compact" ? "compact" : "standard",
         trackingContext,
       ),
       idempotencyKey: crypto.randomUUID(),
-      subject: buildNewsletterEmailSubject(unsentArticles.length),
+      subject: buildNewsletterEmailSubject(rankedArticles.length),
       text: buildNewsletterEmailText(
-        unsentArticles,
+        rankedArticles,
         unsubscribeUrl,
         subscription.email_format === "compact" ? "compact" : "standard",
       ),
@@ -206,7 +219,7 @@ export async function GET(request: Request) {
       summary.sent += 1;
 
       const sendLogId = await insertEmailSendLog(supabase, {
-        articleCount: unsentArticles.length,
+        articleCount: rankedArticles.length,
         email: subscription.email,
         error: null,
         sentAt: now.toISOString(),
@@ -218,7 +231,7 @@ export async function GET(request: Request) {
 
       if (sendLogId) {
         await insertSentArticles(supabase, {
-          articles: unsentArticles,
+          articles: rankedArticles,
           email: subscription.email,
           sentAt: now.toISOString(),
           sendLogId,
@@ -246,7 +259,7 @@ export async function GET(request: Request) {
     summary.failed += 1;
 
     await insertEmailSendLog(supabase, {
-      articleCount: unsentArticles.length,
+      articleCount: rankedArticles.length,
       email: subscription.email,
       error: sendResult.errorMessage,
       sentAt: now.toISOString(),
@@ -271,6 +284,15 @@ export async function GET(request: Request) {
 
   return NextResponse.json(summary);
 }
+
+type PersonalizationMaps = {
+  alertKeywordsByUserId: Map<string, string[]>;
+  clickedArticleLinksByEmail: Map<string, string[]>;
+  clickedArticleLinksBySubscriptionId: Map<number, string[]>;
+  clickedSourcesByEmail: Map<string, string[]>;
+  clickedSourcesBySubscriptionId: Map<number, string[]>;
+  preferredSourceByUserId: Map<string, string | null>;
+};
 
 async function sendNewsletterEmail({
   debug,
@@ -359,6 +381,159 @@ async function sendNewsletterEmail({
   }
 }
 
+async function getPersonalizationMaps(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  subscriptions: NewsletterSubscriptionRow[],
+): Promise<PersonalizationMaps> {
+  const userIds = Array.from(
+    new Set(
+      subscriptions
+        .map((subscription) => subscription.user_id)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+  const subscriptionIds = Array.from(
+    new Set(subscriptions.map((subscription) => subscription.id)),
+  );
+  const emails = Array.from(
+    new Set(
+      subscriptions
+        .map((subscription) => subscription.email.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+
+  const [preferencesResult, alertKeywordsResult, clicksBySubscriptionResult, clicksByEmailResult] =
+    await Promise.all([
+      userIds.length > 0
+        ? supabase
+            .from("user_preferences")
+            .select("user_id, default_source_filter")
+            .in("user_id", userIds)
+        : Promise.resolve({ data: [], error: null }),
+      userIds.length > 0
+        ? supabase
+            .from("user_alert_keywords")
+            .select("user_id, keyword")
+            .in("user_id", userIds)
+            .order("created_at", { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
+      subscriptionIds.length > 0
+        ? supabase
+            .from("email_click_events")
+            .select("subscription_id, article_link, article_source")
+            .in("subscription_id", subscriptionIds)
+            .order("created_at", { ascending: false })
+            .limit(500)
+        : Promise.resolve({ data: [], error: null }),
+      emails.length > 0
+        ? supabase
+            .from("email_click_events")
+            .select("email, article_link, article_source")
+            .in("email", emails)
+            .order("created_at", { ascending: false })
+            .limit(500)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+  if (preferencesResult.error) {
+    console.error("[send-newsletter][personalization-preferences]", preferencesResult.error);
+  }
+
+  if (alertKeywordsResult.error) {
+    console.error("[send-newsletter][personalization-alert-keywords]", alertKeywordsResult.error);
+  }
+
+  if (clicksBySubscriptionResult.error) {
+    console.error("[send-newsletter][personalization-clicks-subscription]", clicksBySubscriptionResult.error);
+  }
+
+  if (clicksByEmailResult.error) {
+    console.error("[send-newsletter][personalization-clicks-email]", clicksByEmailResult.error);
+  }
+
+  const preferredSourceByUserId = new Map<string, string | null>();
+  for (const row of preferencesResult.data ?? []) {
+    preferredSourceByUserId.set(
+      row.user_id,
+      normalizePreferredSource(row.default_source_filter),
+    );
+  }
+
+  const alertKeywordsByUserId = new Map<string, string[]>();
+  for (const row of alertKeywordsResult.data ?? []) {
+    const normalizedKeyword = normalizeKeyword(row.keyword);
+    if (!normalizedKeyword) {
+      continue;
+    }
+
+    const existing = alertKeywordsByUserId.get(row.user_id) ?? [];
+    existing.push(normalizedKeyword);
+    alertKeywordsByUserId.set(row.user_id, existing);
+  }
+
+  const clickedArticleLinksBySubscriptionId = new Map<number, string[]>();
+  const clickedSourcesBySubscriptionId = new Map<number, string[]>();
+  for (const row of clicksBySubscriptionResult.data ?? []) {
+    appendUnique(
+      clickedArticleLinksBySubscriptionId,
+      row.subscription_id,
+      row.article_link,
+    );
+    appendUnique(
+      clickedSourcesBySubscriptionId,
+      row.subscription_id,
+      normalizeSource(row.article_source),
+    );
+  }
+
+  const clickedArticleLinksByEmail = new Map<string, string[]>();
+  const clickedSourcesByEmail = new Map<string, string[]>();
+  for (const row of clicksByEmailResult.data ?? []) {
+    const normalizedEmail = row.email.trim().toLowerCase();
+    appendUnique(clickedArticleLinksByEmail, normalizedEmail, row.article_link);
+    appendUnique(
+      clickedSourcesByEmail,
+      normalizedEmail,
+      normalizeSource(row.article_source),
+    );
+  }
+
+  return {
+    alertKeywordsByUserId,
+    clickedArticleLinksByEmail,
+    clickedArticleLinksBySubscriptionId,
+    clickedSourcesByEmail,
+    clickedSourcesBySubscriptionId,
+    preferredSourceByUserId,
+  };
+}
+
+function getPersonalizationProfile(
+  subscription: NewsletterSubscriptionRow,
+  maps: PersonalizationMaps,
+): PersonalizationProfile {
+  const normalizedEmail = subscription.email.trim().toLowerCase();
+  const userId = subscription.user_id;
+
+  // Ranking stays additive: we blend preferences, alerts, and click history,
+  // then fall back to recency if the user has little or no personal history.
+  return {
+    alertKeywords: userId ? maps.alertKeywordsByUserId.get(userId) ?? [] : [],
+    clickedArticleLinks:
+      maps.clickedArticleLinksBySubscriptionId.get(subscription.id) ??
+      maps.clickedArticleLinksByEmail.get(normalizedEmail) ??
+      [],
+    clickedSources:
+      maps.clickedSourcesBySubscriptionId.get(subscription.id) ??
+      maps.clickedSourcesByEmail.get(normalizedEmail) ??
+      [],
+    preferredSource: userId
+      ? maps.preferredSourceByUserId.get(userId) ?? null
+      : null,
+  };
+}
+
 async function ensureUnsubscribeToken(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   subscription: NewsletterSubscriptionRow,
@@ -382,6 +557,39 @@ async function ensureUnsubscribeToken(
   }
 
   return nextToken;
+}
+
+function appendUnique<TKey>(
+  map: Map<TKey, string[]>,
+  key: TKey,
+  value: string | null,
+) {
+  if (!value) {
+    return;
+  }
+
+  const existing = map.get(key) ?? [];
+
+  if (!existing.includes(value)) {
+    existing.push(value);
+    map.set(key, existing);
+  }
+}
+
+function normalizeKeyword(value: string | null) {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function normalizePreferredSource(value: string | null) {
+  if (!value || value === "All Sources") {
+    return null;
+  }
+
+  return value.trim();
+}
+
+function normalizeSource(value: string | null) {
+  return value?.trim().toLowerCase() ?? null;
 }
 
 async function insertEmailSendLog(
