@@ -1,17 +1,24 @@
-import type { NewsItem } from "@/lib/types";
+import type {
+  NewsItem,
+  NewsletterArticleMode,
+  NewsletterEmailFormat,
+  NewsletterFrequency,
+} from "./types.ts";
 
 const NEWSLETTER_TIME_ZONE = "America/New_York";
+export const NEWSLETTER_ARTICLE_LIMIT = 20;
 
 export type NewsletterSubscriptionRow = {
+  article_mode?: NewsletterArticleMode | null;
   custom_frequency: string | null;
   email: string;
-  email_format?: string | null;
+  email_format?: NewsletterEmailFormat | null;
   id: number;
   is_active: boolean;
   last_error: string | null;
   last_sent_at: string | null;
   last_status: string | null;
-  frequency: string;
+  frequency: NewsletterFrequency;
   unsubscribe_token: string | null;
   user_id: string | null;
 };

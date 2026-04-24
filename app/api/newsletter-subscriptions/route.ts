@@ -1,65 +1,14 @@
+import {
+  getValidatedNewsletterSettings,
+  type NewsletterSubscriptionRequest,
+} from "@/lib/newsletter-subscription-settings";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type {
+  NewsletterArticleMode,
+  NewsletterEmailFormat,
+  NewsletterFrequency,
+} from "@/lib/types";
 import { NextResponse } from "next/server";
-
-type NewsletterSubscriptionRequest = {
-  customFrequency?: string;
-  email?: string;
-  emailFormat?: string;
-  frequency?: string;
-  preferredFrequency?: string;
-};
-
-const VALID_FREQUENCIES = new Set(["hourly", "daily", "weekly", "custom"]);
-const VALID_EMAIL_FORMATS = new Set(["compact", "standard"]);
-
-function getValidatedNewsletterSettings(
-  body: NewsletterSubscriptionRequest,
-) {
-  const frequency =
-    body.frequency?.trim().toLowerCase() ??
-    body.preferredFrequency?.trim().toLowerCase() ??
-    "";
-  const normalizedCustomFrequency = body.customFrequency?.trim() ?? "";
-  const emailFormat =
-    body.emailFormat?.trim().toLowerCase() ?? "standard";
-
-  if (!VALID_EMAIL_FORMATS.has(emailFormat)) {
-    return {
-      errorMessage: "Email format must be standard or compact.",
-      status: 400,
-    };
-  }
-
-  if (!VALID_FREQUENCIES.has(frequency)) {
-    return {
-      errorMessage: "Choose a valid newsletter frequency.",
-      status: 400,
-    };
-  }
-
-  if (frequency !== "custom") {
-    return {
-      customFrequency: null,
-      emailFormat,
-      frequency,
-      status: 200,
-    };
-  }
-
-  if (!/^[1-9]\d*$/.test(normalizedCustomFrequency)) {
-    return {
-      errorMessage: "Enter a whole number of hours greater than 0.",
-      status: 400,
-    };
-  }
-
-  return {
-    customFrequency: normalizedCustomFrequency,
-    emailFormat,
-    frequency,
-    status: 200,
-  };
-}
 
 export async function POST(request: Request) {
   try {
@@ -87,6 +36,7 @@ export async function POST(request: Request) {
 
     return await upsertNewsletterSubscription({
       actionLabel: "POST",
+      articleMode: validatedSettings.articleMode,
       customFrequency: validatedSettings.customFrequency,
       emailFormat: validatedSettings.emailFormat,
       frequency: validatedSettings.frequency,
@@ -129,6 +79,7 @@ export async function PUT(request: Request) {
 
     return await upsertNewsletterSubscription({
       actionLabel: "PUT",
+      articleMode: validatedSettings.articleMode,
       customFrequency: validatedSettings.customFrequency,
       emailFormat: validatedSettings.emailFormat,
       frequency: validatedSettings.frequency,
@@ -194,6 +145,7 @@ export async function DELETE() {
 
 async function upsertNewsletterSubscription({
   actionLabel,
+  articleMode,
   customFrequency,
   emailFormat,
   frequency,
@@ -203,9 +155,10 @@ async function upsertNewsletterSubscription({
   userId,
 }: {
   actionLabel: "POST" | "PUT";
+  articleMode: NewsletterArticleMode;
   customFrequency: string | null;
-  emailFormat: string;
-  frequency: string;
+  emailFormat: NewsletterEmailFormat;
+  frequency: NewsletterFrequency;
   successMessage: string;
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   userEmail: string;
@@ -238,6 +191,7 @@ async function upsertNewsletterSubscription({
       const { error: updateError } = await supabase
         .from("newsletter_subscriptions")
         .update({
+          article_mode: articleMode,
           custom_frequency: customFrequency,
           email_format: emailFormat,
           frequency,
@@ -280,6 +234,7 @@ async function upsertNewsletterSubscription({
     const { error: reactivateError } = await supabase
       .from("newsletter_subscriptions")
       .update({
+        article_mode: articleMode,
         custom_frequency: customFrequency,
         email_format: emailFormat,
         frequency,
@@ -313,6 +268,7 @@ async function upsertNewsletterSubscription({
   }
 
   const { error: insertError } = await supabase.from("newsletter_subscriptions").insert({
+    article_mode: articleMode,
     custom_frequency: customFrequency,
     email: normalizedEmail,
     email_format: emailFormat,

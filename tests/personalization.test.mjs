@@ -4,8 +4,11 @@ import test from "node:test";
 import {
   computeArticleScore,
   rankArticlesForUser,
+  selectNewsletterArticlesForUser,
   selectTopRankedArticlesForUser,
 } from "../lib/personalization.ts";
+import { getValidatedNewsletterSettings } from "../lib/newsletter-subscription-settings.ts";
+import { NEWSLETTER_ARTICLE_LIMIT } from "../lib/newsletter.ts";
 
 const NOW = new Date("2026-04-14T12:00:00.000Z");
 
@@ -271,4 +274,79 @@ test("selectTopRankedArticlesForUser still returns a valid newsletter set for un
     selected.map((article) => article.link),
     ["https://example.com/a", "https://example.com/b"],
   );
+});
+
+test("selectNewsletterArticlesForUser caps personalized mode at NEWSLETTER_ARTICLE_LIMIT", () => {
+  const articles = Array.from({ length: NEWSLETTER_ARTICLE_LIMIT + 5 }, (_, index) =>
+    createArticle({
+      link: `https://example.com/personalized-${index}`,
+      publishedAt: new Date(NOW.getTime() - index * 60_000).toISOString(),
+      title: `Article ${index}`,
+    }),
+  );
+
+  const selected = selectNewsletterArticlesForUser(
+    articles,
+    createProfile(),
+    NOW,
+    new Set(),
+    "personalized",
+  );
+
+  assert.equal(selected.length, NEWSLETTER_ARTICLE_LIMIT);
+});
+
+test("selectNewsletterArticlesForUser includes all unsent articles in all_missed mode", () => {
+  const articles = Array.from({ length: NEWSLETTER_ARTICLE_LIMIT + 5 }, (_, index) =>
+    createArticle({
+      link: `https://example.com/all-missed-${index}`,
+      publishedAt: new Date(NOW.getTime() - index * 60_000).toISOString(),
+      title: `Article ${index}`,
+    }),
+  );
+
+  const selected = selectNewsletterArticlesForUser(
+    articles,
+    createProfile(),
+    NOW,
+    new Set(["https://example.com/all-missed-1"]),
+    "all_missed",
+  );
+
+  assert.equal(selected.length, articles.length - 1);
+  assert.ok(
+    !selected.some((article) => article.link === "https://example.com/all-missed-1"),
+  );
+});
+
+test("selectNewsletterArticlesForUser falls back to personalized mode when article_mode is missing", () => {
+  const articles = Array.from({ length: NEWSLETTER_ARTICLE_LIMIT + 3 }, (_, index) =>
+    createArticle({
+      link: `https://example.com/default-mode-${index}`,
+      publishedAt: new Date(NOW.getTime() - index * 60_000).toISOString(),
+      title: `Article ${index}`,
+    }),
+  );
+
+  const selected = selectNewsletterArticlesForUser(
+    articles,
+    createProfile(),
+    NOW,
+    new Set(),
+    null,
+  );
+
+  assert.equal(selected.length, NEWSLETTER_ARTICLE_LIMIT);
+});
+
+test("getValidatedNewsletterSettings rejects invalid article_mode values", () => {
+  const result = getValidatedNewsletterSettings({
+    articleMode: "everything",
+    preferredFrequency: "daily",
+  });
+
+  assert.deepEqual(result, {
+    errorMessage: "Article mode must be personalized or all_missed.",
+    status: 400,
+  });
 });

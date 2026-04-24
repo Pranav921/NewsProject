@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { headers } from "next/headers";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,54 +18,10 @@ type AnalyticsResponse = {
   userSummary: Array<Record<string, unknown>>;
 };
 
-const OVERVIEW_CARDS: Array<{ label: string; keys: string[] }> = [
-  { label: "Total subscriptions", keys: ["total_subscriptions", "total"] },
-  { label: "Active subscriptions", keys: ["active_subscriptions", "active"] },
-  { label: "Total sent", keys: ["total_sent", "sent"] },
-  { label: "Total failed", keys: ["total_failed", "failed"] },
-  { label: "Total skipped", keys: ["total_skipped", "skipped"] },
-  { label: "Total articles sent", keys: ["total_articles_sent", "articles_sent"] },
-];
-
-const ENGAGEMENT_CARDS: Array<{ label: string; keys: string[] }> = [
-  { label: "Total opens", keys: ["total_opens", "opens"] },
-  { label: "Unique opens", keys: ["unique_opens", "unique"] },
-  { label: "Total clicks", keys: ["total_clicks", "clicks"] },
-  { label: "Unique clicks", keys: ["unique_clicks", "unique"] },
-];
-
-const FREQUENCY_COLUMNS = [
-  { label: "Frequency", keys: ["frequency"] },
-  { label: "Active subscriptions", keys: ["active_subscriptions", "count", "total"] },
-];
-
-const SOURCE_COLUMNS = [
-  { label: "Source", keys: ["source"] },
-  { label: "Articles sent", keys: ["articles_sent", "count", "total"] },
-];
-
-const TOP_ARTICLE_COLUMNS = [
-  { label: "Article", keys: ["article_title", "title"] },
-  { label: "Source", keys: ["article_source", "source"] },
-  { label: "Times sent", keys: ["sent_count", "count", "total"] },
-];
-
-const TOP_CLICKED_COLUMNS = [
-  { label: "Article", keys: ["article_title", "title"] },
-  { label: "Source", keys: ["article_source", "source"] },
-  { label: "Clicks", keys: ["click_count", "clicks", "total"] },
-];
-
-const SKIP_REASON_COLUMNS = [
-  { label: "Reason", keys: ["reason", "skip_reason"] },
-  { label: "Count", keys: ["count", "total"] },
-];
-
-const USER_ENGAGEMENT_COLUMNS = [
-  { label: "User", keys: ["email", "user_email"] },
-  { label: "Opens", keys: ["opens", "open_count", "total_opens"] },
-  { label: "Clicks", keys: ["clicks", "click_count", "total_clicks"] },
-];
+type ColumnDefinition = {
+  label: string;
+  render: (row: Record<string, unknown>) => string;
+};
 
 type EmailAnalyticsPageProps = {
   searchParams: Promise<{
@@ -102,10 +58,8 @@ export default async function EmailAnalyticsPage({
         </div>
 
         <section className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-rose-700 shadow-sm">
-          <h1 className="text-2xl font-semibold">Email analytics</h1>
-          <p className="mt-2 text-sm">
-            {analytics.error}
-          </p>
+          <h1 className="text-2xl font-semibold">Newsletter performance</h1>
+          <p className="mt-2 text-sm">{analytics.error}</p>
         </section>
       </main>
     );
@@ -116,11 +70,33 @@ export default async function EmailAnalyticsPage({
   const dailyData = (analytics.daily ?? []) as Array<Record<string, unknown>>;
   const engagementDaily =
     (analytics.engagementDaily ?? []) as Array<Record<string, unknown>>;
-  const totalSent = Number(getFirstValue(overviewRow, ["total_sent", "sent"])) || 0;
-  const totalOpens =
-    Number(getFirstValue(engagementRow, ["total_opens", "opens"])) || 0;
-  const totalClicks =
+  const newslettersReceived = Number(
+    getFirstValue(overviewRow, ["total_sent", "sent"]),
+  ) || 0;
+  const articlesDelivered = Number(
+    getFirstValue(overviewRow, ["total_articles_sent", "articles_sent"]),
+  ) || 0;
+  const opens = Number(getFirstValue(engagementRow, ["total_opens", "opens"])) || 0;
+  const clicks =
     Number(getFirstValue(engagementRow, ["total_clicks", "clicks"])) || 0;
+  const totalFailed =
+    Number(getFirstValue(overviewRow, ["total_failed", "failed"])) || 0;
+  const totalSkipped =
+    Number(getFirstValue(overviewRow, ["total_skipped", "skipped"])) || 0;
+  const totalSubscriptions =
+    Number(getFirstValue(overviewRow, ["total_subscriptions", "total"])) || 0;
+  const activeSubscriptions =
+    Number(getFirstValue(overviewRow, ["active_subscriptions", "active"])) || 0;
+  const openRate = formatPercent(opens, newslettersReceived);
+  const clickRate = formatPercent(clicks, newslettersReceived);
+  const clickToOpenRate = formatPercent(clicks, opens);
+  const mostClickedSource = getMostClickedSource(analytics.topClickedArticles);
+  const hasAdvancedDetails =
+    totalFailed > 0 ||
+    totalSkipped > 0 ||
+    totalSubscriptions > 0 ||
+    activeSubscriptions > 0 ||
+    analytics.skipReasons.length > 0;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6 lg:px-8">
@@ -131,17 +107,16 @@ export default async function EmailAnalyticsPage({
         >
           Back to dashboard
         </Link>
-        <p className="text-sm text-slate-500">
-          Email analytics overview
-        </p>
+        <p className="text-sm text-slate-500">Your newsletter performance</p>
       </div>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-          Newsletter analytics
+          Your newsletter performance
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          Track subscription health, send performance, and content reach.
+          See how your newsletters are performing, what stories you received, and
+          which links were clicked.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-2">
@@ -150,9 +125,10 @@ export default async function EmailAnalyticsPage({
               key={option.value}
               className={`inline-flex min-h-9 items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-colors ${
                 selectedRange === option.value
-                  ? "border-slate-900 bg-slate-900 text-white"
+                  ? "border-slate-900 bg-slate-900 text-white shadow-sm"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               }`}
+              style={selectedRange === option.value ? { color: "#ffffff" } : undefined}
               href={`/email-analytics?range=${option.value}`}
             >
               {option.label}
@@ -161,80 +137,77 @@ export default async function EmailAnalyticsPage({
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {OVERVIEW_CARDS.map((card) => (
-            <div
-              key={card.label}
-              className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                {card.label}
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">
-                {formatNumber(getFirstValue(overviewRow, card.keys))}
-              </p>
-            </div>
-          ))}
+          <MetricCard
+            label="Newsletters received"
+            value={formatNumber(newslettersReceived)}
+          />
+          <MetricCard
+            label="Articles delivered"
+            value={formatNumber(articlesDelivered)}
+          />
+          <MetricCard label="Opens" value={formatNumber(opens)} />
+          <MetricCard label="Clicks" value={formatNumber(clicks)} />
+          <MetricCard
+            label="Open rate"
+            value={openRate}
+            helperText="How often your delivered emails were opened."
+          />
+          <MetricCard
+            label="Click rate"
+            value={clickRate}
+            helperText="How often delivered emails led to a link click."
+          />
         </div>
       </section>
 
       <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-            Engagement overview
+            Your activity summary
           </h2>
           <p className="text-sm text-slate-500">
-            Opens and clicks for the selected range
+            A simple view of how your newsletters are being used.
           </p>
         </div>
 
-        {ENGAGEMENT_CARDS.every(
-          (card) => getFirstValue(engagementRow, card.keys) === 0,
-        ) ? (
-          <p className="mt-6 text-sm text-slate-500">
-            No engagement data yet.
-          </p>
-        ) : (
-          <>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {ENGAGEMENT_CARDS.map((card) => (
-                <div
-                  key={card.label}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    {card.label}
-                  </p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-900">
-                    {formatNumber(getFirstValue(engagementRow, card.keys))}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <RateCard
-                label="Open rate"
-                value={formatPercent(totalOpens, totalSent)}
-              />
-              <RateCard
-                label="Click rate"
-                value={formatPercent(totalClicks, totalSent)}
-              />
-              <RateCard
-                label="Click-to-open"
-                value={formatPercent(totalClicks, totalOpens)}
-              />
-            </div>
-          </>
-        )}
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <MetricCard
+            label="Emails opened"
+            value={formatNumber(opens)}
+            helperText="Tracked opens in the selected time range."
+          />
+          <MetricCard
+            label="Links clicked"
+            value={formatNumber(clicks)}
+            helperText="Tracked clicks in the selected time range."
+          />
+          <MetricCard
+            label="Most clicked source"
+            value={mostClickedSource ?? "Not enough click data yet"}
+            helperText={
+              mostClickedSource
+                ? "The source you clicked most often in this time range."
+                : "We will show this once clicks include source details."
+            }
+          />
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <MetricCard
+            label="Click-to-open"
+            value={clickToOpenRate}
+            helperText="Of the emails that were opened, how many led to a click."
+          />
+        </div>
       </section>
 
       <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-            Daily activity
+            Newsletter history
           </h2>
           <p className="text-sm text-slate-500">
-            Sends by day (UTC)
+            How many newsletter sends were recorded over time.
           </p>
         </div>
 
@@ -244,7 +217,7 @@ export default async function EmailAnalyticsPage({
           </div>
         ) : (
           <p className="mt-6 text-sm text-slate-500">
-            No daily activity yet.
+            No newsletters have been tracked in this time range yet.
           </p>
         )}
       </section>
@@ -252,10 +225,10 @@ export default async function EmailAnalyticsPage({
       <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-            Daily engagement
+            Opens and clicks over time
           </h2>
           <p className="text-sm text-slate-500">
-            Opens and clicks by day (UTC)
+            A day-by-day view of tracked engagement.
           </p>
         </div>
 
@@ -265,61 +238,171 @@ export default async function EmailAnalyticsPage({
           </div>
         ) : (
           <p className="mt-6 text-sm text-slate-500">
-            No engagement activity yet.
+            No opens or clicks have been tracked in this time range yet.
           </p>
         )}
       </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <TableCard
-          title="Subscriptions by frequency"
-          description="Active subscriptions grouped by cadence."
+          title="Your newsletter schedule"
+          description="How your newsletter subscriptions are currently set up."
           rows={analytics.frequencies}
-          columns={FREQUENCY_COLUMNS}
-          emptyState="No frequency data yet."
+          columns={[
+            {
+              label: "Schedule",
+              render: (row) =>
+                formatScheduleLabel(String(getFirstValue(row, ["frequency"]))),
+            },
+            {
+              label: "Active subscriptions",
+              render: (row) =>
+                formatNumber(getFirstValue(row, ["active_subscriptions", "count", "total"])),
+            },
+          ]}
+          emptyState="No newsletter schedule data yet."
         />
         <TableCard
-          title="Top sources"
-          description="Most frequently sent sources."
+          title="Sources you receive most"
+          description="The publishers showing up most often in your delivered newsletters."
           rows={analytics.sources}
-          columns={SOURCE_COLUMNS}
-          emptyState="No source data yet."
+          columns={[
+            {
+              label: "Source",
+              render: (row) =>
+                formatSourceValue(getFirstValue(row, ["source"])),
+            },
+            {
+              label: "Articles delivered",
+              render: (row) =>
+                formatNumber(getFirstValue(row, ["articles_sent", "count", "total"])),
+            },
+          ]}
+          emptyState="No source activity in this time range yet."
         />
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <TableCard
-          title="Top sent articles"
-          description="Stories appearing most often in newsletters."
+          title="Recent articles delivered"
+          description="Stories that appeared most often in your newsletters."
           rows={analytics.topArticles}
-          columns={TOP_ARTICLE_COLUMNS}
-          emptyState="No article data yet."
+          columns={[
+            {
+              label: "Article",
+              render: (row) =>
+                formatArticleLabel(
+                  getFirstValue(row, ["article_title", "title"]),
+                  getFirstValue(row, ["article_link"]),
+                ),
+            },
+            {
+              label: "Source",
+              render: (row) =>
+                formatSourceValue(
+                  getFirstValue(row, ["article_source", "source"]),
+                  getFirstValue(row, ["article_link"]),
+                ),
+            },
+            {
+              label: "Times delivered",
+              render: (row) =>
+                formatNumber(getFirstValue(row, ["sent_count", "count", "total"])),
+            },
+          ]}
+          emptyState="No delivered articles in this time range yet."
         />
         <TableCard
-          title="Skip reasons"
-          description="Why sends are skipped."
-          rows={analytics.skipReasons}
-          columns={SKIP_REASON_COLUMNS}
-          emptyState="No skip reasons yet."
+          title="Articles you clicked"
+          description="Stories that got the most click activity from your newsletters."
+          rows={analytics.topClickedArticles}
+          columns={[
+            {
+              label: "Article",
+              render: (row) =>
+                formatArticleLabel(
+                  getFirstValue(row, ["article_title", "title"]),
+                  getFirstValue(row, ["article_link"]),
+                ),
+            },
+            {
+              label: "Source",
+              render: (row) =>
+                formatSourceValue(
+                  getFirstValue(row, ["article_source", "source"]),
+                  getFirstValue(row, ["article_link"]),
+                ),
+            },
+            {
+              label: "Clicks",
+              render: (row) =>
+                formatNumber(getFirstValue(row, ["click_count", "clicks", "total"])),
+            },
+          ]}
+          emptyState="No article clicks in this time range yet."
         />
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <TableCard
-          title="Top clicked articles"
-          description="Links receiving the most clicks."
-          rows={analytics.topClickedArticles}
-          columns={TOP_CLICKED_COLUMNS}
-          emptyState="No click data yet."
-        />
-        <TableCard
-          title="Most engaged users"
-          description="Users with the most opens and clicks."
-          rows={analytics.userEngagement}
-          columns={USER_ENGAGEMENT_COLUMNS}
-          emptyState="No engagement data yet."
-        />
-      </div>
+      {hasAdvancedDetails ? (
+        <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+              Advanced details
+            </h2>
+            <p className="text-sm text-slate-500">
+              Extra delivery details that can help when something looks off.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              label="Failed sends"
+              value={formatNumber(totalFailed)}
+              helperText="Emails that could not be delivered successfully."
+            />
+            <MetricCard
+              label="Skipped sends"
+              value={formatNumber(totalSkipped)}
+              helperText="Sends that were intentionally skipped in this time range."
+            />
+            <MetricCard
+              label="Total subscriptions"
+              value={formatNumber(totalSubscriptions)}
+            />
+            <MetricCard
+              label="Active subscriptions"
+              value={formatNumber(activeSubscriptions)}
+            />
+          </div>
+
+          <div className="mt-6">
+            {analytics.skipReasons.length > 0 ? (
+              <TableCard
+                title="Skipped send details"
+                description="The most common reasons a scheduled send did not go out."
+                rows={analytics.skipReasons}
+                columns={[
+                  {
+                    label: "Reason",
+                    render: (row) =>
+                      formatSkipReason(getFirstValue(row, ["reason", "skip_reason"])),
+                  },
+                  {
+                    label: "Count",
+                    render: (row) =>
+                      formatNumber(getFirstValue(row, ["count", "total"])),
+                  },
+                ]}
+                emptyState="No skipped sends in this time range."
+              />
+            ) : (
+              <p className="text-sm text-slate-500">
+                No skipped sends in this time range.
+              </p>
+            )}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }
@@ -328,17 +411,25 @@ async function fetchAnalytics(
   range: RangeKey,
 ): Promise<AnalyticsResponse | { error: string }> {
   try {
+    const headerList = await headers();
     const url = `${await getBaseUrl()}/api/email-analytics?range=${range}`;
-    const response = await fetch(url, { cache: "no-store" });
+    const cookie = headerList.get("cookie");
+    const response = await fetch(url, {
+      cache: "no-store",
+      credentials: "include",
+      headers: cookie ? { cookie } : undefined,
+    });
 
     if (!response.ok) {
       const body = (await response.json()) as { message?: string };
-      return { error: body.message ?? "Unable to load analytics right now." };
+      return {
+        error: body.message ?? "Unable to load newsletter analytics right now.",
+      };
     }
 
     return (await response.json()) as AnalyticsResponse;
   } catch {
-    return { error: "Unable to load analytics right now." };
+    return { error: "Unable to load newsletter analytics right now." };
   }
 }
 
@@ -389,18 +480,164 @@ function formatPercent(numerator: number, denominator: number) {
     return "0%";
   }
 
-  const value = Math.min(100, (numerator / denominator) * 100);
+  const value = (numerator / denominator) * 100;
 
   return `${value.toFixed(1)}%`;
 }
 
-function RateCard({ label, value }: { label: string; value: string }) {
+function formatChartDate(value: unknown) {
+  if (typeof value !== "string") {
+    return "Unknown date";
+  }
+
+  const timestamp = Date.parse(value);
+
+  if (Number.isNaN(timestamp)) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(timestamp));
+}
+
+function formatArticleLabel(title: unknown, link: unknown) {
+  const normalizedTitle =
+    typeof title === "string" ? decodeCommonHtmlEntities(title).trim() : "";
+
+  if (normalizedTitle && normalizedTitle !== "unknown") {
+    return normalizedTitle;
+  }
+
+  return shortenUrl(link);
+}
+
+function formatSourceValue(value: unknown, link?: unknown) {
+  if (typeof value !== "string") {
+    return deriveSourceFromLink(link) ?? "Unknown source";
+  }
+
+  const normalized = decodeCommonHtmlEntities(value).trim();
+
+  if (!normalized || normalized === "0") {
+    return deriveSourceFromLink(link) ?? "Unknown source";
+  }
+
+  return normalized;
+}
+
+function shortenUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) {
+    return "Unknown article";
+  }
+
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.replace(/^www\./, "");
+    const path = parsed.pathname === "/" ? "" : parsed.pathname;
+    const shortenedPath =
+      path.length > 28 ? `${path.slice(0, 28)}...` : path;
+
+    return `${host}${shortenedPath}`;
+  } catch {
+    const normalized = decodeCommonHtmlEntities(value).trim();
+    return normalized.length > 40 ? `${normalized.slice(0, 40)}...` : normalized;
+  }
+}
+
+function decodeCommonHtmlEntities(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function formatScheduleLabel(value: string) {
+  switch (value) {
+    case "hourly":
+      return "Hourly";
+    case "daily":
+      return "Daily";
+    case "weekly":
+      return "Weekly";
+    case "custom":
+      return "Custom";
+    default:
+      return "Unknown";
+  }
+}
+
+function deriveSourceFromLink(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(value);
+    const hostname = parsed.hostname.replace(/^www\./, "");
+    const primary = hostname.split(".")[0];
+
+    if (!primary) {
+      return hostname || null;
+    }
+
+    return primary
+      .split("-")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  } catch {
+    return null;
+  }
+}
+
+function formatSkipReason(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) {
+    return "Unknown reason";
+  }
+
+  return value
+    .split("-")
+    .join(" ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getMostClickedSource(rows: Array<Record<string, unknown>>) {
+  for (const row of rows) {
+    const source = formatSourceValue(
+      getFirstValue(row, ["article_source", "source"]),
+      getFirstValue(row, ["article_link"]),
+    );
+    if (source !== "Unknown source") {
+      return source;
+    }
+  }
+
+  return null;
+}
+
+function MetricCard({
+  helperText,
+  label,
+  value,
+}: {
+  helperText?: string;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
         {label}
       </p>
       <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+      {helperText ? (
+        <p className="mt-2 text-sm leading-6 text-slate-500">{helperText}</p>
+      ) : null}
     </div>
   );
 }
@@ -413,7 +650,7 @@ function BarChart({ data }: { data: Array<Record<string, unknown>> }) {
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
         {data.map((row, index) => {
-          const label = String(row.day ?? row.date ?? `Day ${index + 1}`);
+          const label = formatChartDate(row.day ?? row.date);
           const value = Number(row.sent ?? row.total ?? 0);
           const percent = Math.round((value / maxValue) * 100);
 
@@ -421,7 +658,9 @@ function BarChart({ data }: { data: Array<Record<string, unknown>> }) {
             <div key={`${label}-${index}`} className="space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>{label}</span>
-                <span className="font-semibold text-slate-700">{value}</span>
+                <span className="font-semibold text-slate-700">
+                  {formatNumber(value)}
+                </span>
               </div>
               <div className="h-2 rounded-full bg-slate-200">
                 <div
@@ -448,7 +687,7 @@ function DualBarChart({ data }: { data: Array<Record<string, unknown>> }) {
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
         {data.map((row, index) => {
-          const label = String(row.day ?? row.date ?? `Day ${index + 1}`);
+          const label = formatChartDate(row.day ?? row.date);
           const opens = Number(row.opens ?? row.open_count ?? 0);
           const clicks = Number(row.clicks ?? row.click_count ?? 0);
           const openPercent = Math.round((opens / maxValue) * 100);
@@ -459,7 +698,7 @@ function DualBarChart({ data }: { data: Array<Record<string, unknown>> }) {
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>{label}</span>
                 <span className="font-semibold text-slate-700">
-                  {opens} opens / {clicks} clicks
+                  {formatNumber(opens)} opens / {formatNumber(clicks)} clicks
                 </span>
               </div>
               <div className="space-y-1">
@@ -504,7 +743,7 @@ function TableCard({
   title: string;
   description: string;
   rows: Array<Record<string, unknown>>;
-  columns: Array<{ label: string; keys: string[] }>;
+  columns: ColumnDefinition[];
   emptyState: string;
 }) {
   return (
@@ -531,7 +770,7 @@ function TableCard({
                 <tr key={`${title}-${index}`}>
                   {columns.map((column) => (
                     <td key={column.label} className="px-4 py-3 text-slate-700">
-                      {String(getFirstValue(row, column.keys))}
+                      {column.render(row)}
                     </td>
                   ))}
                 </tr>

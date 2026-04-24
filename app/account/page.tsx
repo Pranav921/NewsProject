@@ -28,7 +28,7 @@ export default async function AccountPage() {
     .order("created_at", { ascending: true });
   const { data: newsletterRow } = await supabase
     .from("newsletter_subscriptions")
-    .select("frequency, custom_frequency, email_format, is_active")
+    .select("frequency, custom_frequency, email_format, article_mode, is_active")
     .eq("user_id", user.id)
     .maybeSingle();
   const { data: emailSendLogRows } = await supabase
@@ -88,6 +88,9 @@ export default async function AccountPage() {
         email={user.email ?? ""}
         initialAlertKeywords={initialAlertKeywords}
         initialEmailSendLogs={initialEmailSendLogs}
+        initialNewsletterArticleMode={
+          newsletterRow?.is_active ? newsletterRow.article_mode : null
+        }
         initialNewsletterCustomFrequency={
           newsletterRow?.is_active ? newsletterRow.custom_frequency : null
         }

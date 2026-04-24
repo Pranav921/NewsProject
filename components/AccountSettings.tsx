@@ -5,7 +5,13 @@ import {
   removeAlertKeyword,
 } from "@/lib/custom-alerts";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { EmailSendLog, UserPreferences } from "@/lib/types";
+import type {
+  EmailSendLog,
+  NewsletterArticleMode,
+  NewsletterEmailFormat,
+  NewsletterFrequency,
+  UserPreferences,
+} from "@/lib/types";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
@@ -13,17 +19,16 @@ type AccountSettingsProps = {
   email: string;
   initialAlertKeywords: string[];
   initialEmailSendLogs: EmailSendLog[];
+  initialNewsletterArticleMode: NewsletterArticleMode | null;
   initialNewsletterCustomFrequency: string | null;
-  initialNewsletterEmailFormat: string | null;
-  initialNewsletterFrequency: string | null;
+  initialNewsletterEmailFormat: NewsletterEmailFormat | null;
+  initialNewsletterFrequency: NewsletterFrequency | null;
   initialPreferences: UserPreferences;
   userId: string;
 };
 
 type ViewMode = "standard" | "compact";
 type TimeFilter = "all" | "1h" | "3h" | "6h" | "12h" | "24h" | "1w";
-type NewsletterFrequency = "hourly" | "daily" | "weekly" | "custom";
-type NewsletterEmailFormat = "standard" | "compact";
 
 const TIME_FILTER_OPTIONS: Array<{ label: string; value: TimeFilter }> = [
   { label: "All Time", value: "all" },
@@ -53,10 +58,30 @@ const NEWSLETTER_EMAIL_FORMAT_OPTIONS: Array<{
   { label: "Compact email", value: "compact" },
 ];
 
+const NEWSLETTER_ARTICLE_MODE_OPTIONS: Array<{
+  description: string;
+  label: string;
+  value: NewsletterArticleMode;
+}> = [
+  {
+    description:
+      "Rank and send up to the newsletter article limit using your preferences, alerts, and click history.",
+    label: "Personalized digest",
+    value: "personalized",
+  },
+  {
+    description:
+      "Send every recent article you have not received yet, while still avoiding duplicate sends.",
+    label: "All missed articles",
+    value: "all_missed",
+  },
+];
+
 export function AccountSettings({
   email,
   initialAlertKeywords,
   initialEmailSendLogs,
+  initialNewsletterArticleMode,
   initialNewsletterCustomFrequency,
   initialNewsletterEmailFormat,
   initialNewsletterFrequency,
@@ -80,12 +105,15 @@ export function AccountSettings({
   );
   const [newsletterFrequency, setNewsletterFrequency] =
     useState<NewsletterFrequency>(
-      (initialNewsletterFrequency as NewsletterFrequency | null) ?? "daily",
+      initialNewsletterFrequency ?? "daily",
     );
   const [newsletterEmailFormat, setNewsletterEmailFormat] =
     useState<NewsletterEmailFormat>(
-      (initialNewsletterEmailFormat as NewsletterEmailFormat | null) ??
-        "standard",
+      initialNewsletterEmailFormat ?? "standard",
+    );
+  const [newsletterArticleMode, setNewsletterArticleMode] =
+    useState<NewsletterArticleMode>(
+      initialNewsletterArticleMode ?? "personalized",
     );
   const [newsletterCustomFrequency, setNewsletterCustomFrequency] = useState(
     initialNewsletterCustomFrequency ?? "",
@@ -202,6 +230,7 @@ export function AccountSettings({
         },
         body: newsletterEnabled
           ? JSON.stringify({
+              articleMode: newsletterArticleMode,
               customFrequency:
                 newsletterFrequency === "custom"
                   ? newsletterCustomFrequency.trim()
@@ -453,6 +482,37 @@ export function AccountSettings({
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="mt-4 max-w-2xl">
+          <label
+            className="text-sm font-medium text-slate-700"
+            htmlFor="newsletter-article-mode"
+          >
+            Newsletter Article Mode
+          </label>
+          <select
+            id="newsletter-article-mode"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+            value={newsletterArticleMode}
+            onChange={(event) =>
+              setNewsletterArticleMode(
+                event.target.value as NewsletterArticleMode,
+              )
+            }
+            disabled={!newsletterEnabled}
+          >
+            {NEWSLETTER_ARTICLE_MODE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            {NEWSLETTER_ARTICLE_MODE_OPTIONS.find(
+              (option) => option.value === newsletterArticleMode,
+            )?.description ?? ""}
+          </p>
         </div>
 
         {newsletterEnabled && newsletterFrequency === "custom" ? (

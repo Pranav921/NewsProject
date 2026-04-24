@@ -1,4 +1,5 @@
-import type { NewsItem } from "@/lib/types";
+import { NEWSLETTER_ARTICLE_LIMIT } from "./newsletter.ts";
+import type { NewsItem, NewsletterArticleMode } from "./types.ts";
 
 export type PersonalizationProfile = {
   alertKeywords: string[];
@@ -102,6 +103,29 @@ export function selectTopRankedArticlesForUser(
   );
 
   return rankArticlesForUser(unsentArticles, profile, now).slice(0, limit);
+}
+
+export function selectNewsletterArticlesForUser(
+  articles: NewsItem[],
+  profile: PersonalizationProfile,
+  now: Date,
+  sentArticleLinks: Set<string>,
+  articleMode: NewsletterArticleMode | null | undefined,
+): NewsItem[] {
+  const unsentArticles = articles.filter(
+    (article) => !sentArticleLinks.has(article.link),
+  );
+
+  if (articleMode === "all_missed") {
+    // `articles` already arrive newest-first from the newsletter pipeline, so
+    // all_missed mode preserves that stable order after dedupe filtering.
+    return unsentArticles;
+  }
+
+  return rankArticlesForUser(unsentArticles, profile, now).slice(
+    0,
+    NEWSLETTER_ARTICLE_LIMIT,
+  );
 }
 
 function computeRecencyScore(publishedAt: string | null, now: Date): number {

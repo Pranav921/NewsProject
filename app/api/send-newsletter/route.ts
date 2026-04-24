@@ -9,14 +9,13 @@ import {
   type NewsletterSubscriptionRow,
 } from "@/lib/newsletter";
 import {
-  selectTopRankedArticlesForUser,
+  selectNewsletterArticlesForUser,
   type PersonalizationProfile,
 } from "@/lib/personalization";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
 const NEWSLETTER_FROM = "Kicker News <latest@kicker.news>";
-const MAX_PERSONALIZED_ARTICLES = 12;
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -53,7 +52,7 @@ export async function GET(request: Request) {
   const { data: subscriptions, error: subscriptionsError } = await supabase
     .from("newsletter_subscriptions")
     .select(
-      "id, user_id, email, frequency, custom_frequency, email_format, is_active, last_sent_at, last_status, last_error, unsubscribe_token",
+      "id, user_id, email, frequency, custom_frequency, email_format, article_mode, is_active, last_sent_at, last_status, last_error, unsubscribe_token",
     )
     .eq("is_active", true)
     .order("created_at", { ascending: true });
@@ -139,12 +138,12 @@ export async function GET(request: Request) {
       supabase,
       subscription.id,
     );
-    const rankedArticles = selectTopRankedArticlesForUser(
+    const rankedArticles = selectNewsletterArticlesForUser(
       recentArticles,
       getPersonalizationProfile(subscription, personalizationMaps),
       now,
       sentArticleLinks,
-      MAX_PERSONALIZED_ARTICLES,
+      subscription.article_mode,
     );
 
     if (rankedArticles.length === 0) {

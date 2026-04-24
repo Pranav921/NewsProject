@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test --test-isolation=none tests/personalization.test.mjs"
+    "test": "node --experimental-strip-types --experimental-specifier-resolution=node --test --test-isolation=none tests/personalization.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",

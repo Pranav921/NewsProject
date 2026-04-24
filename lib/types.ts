@@ -13,6 +13,10 @@ export type NewsItem = {
 
 export type SavedArticle = NewsItem;
 
+export type NewsletterArticleMode = "all_missed" | "personalized";
+export type NewsletterEmailFormat = "standard" | "compact";
+export type NewsletterFrequency = "hourly" | "daily" | "weekly" | "custom";
+
 export type UserPreferences = {
   defaultSourceFilter: string;
   defaultTimeFilter: string;
