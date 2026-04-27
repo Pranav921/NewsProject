@@ -4,6 +4,7 @@ import {
   addAlertKeyword,
   removeAlertKeyword,
 } from "@/lib/custom-alerts";
+import { PERSONALIZATION_MIN_UNIQUE_CLICKS } from "@/lib/personalization";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type {
   EmailSendLog,
@@ -18,11 +19,13 @@ import { useState } from "react";
 type AccountSettingsProps = {
   email: string;
   initialAlertKeywords: string[];
+  initialNewsletterClickedArticleCount: number;
   initialEmailSendLogs: EmailSendLog[];
   initialNewsletterArticleMode: NewsletterArticleMode | null;
   initialNewsletterCustomFrequency: string | null;
   initialNewsletterEmailFormat: NewsletterEmailFormat | null;
   initialNewsletterFrequency: NewsletterFrequency | null;
+  initialNewsletterPersonalizationReady: boolean;
   initialPreferences: UserPreferences;
   userId: string;
 };
@@ -65,26 +68,28 @@ const NEWSLETTER_ARTICLE_MODE_OPTIONS: Array<{
 }> = [
   {
     description:
-      "Rank and send up to the newsletter article limit using your preferences, alerts, and click history.",
-    label: "Personalized digest",
-    value: "personalized",
+      "Recommended. Send every recent article you have not received yet, while still avoiding duplicate sends.",
+    label: "All missed articles",
+    value: "all_missed",
   },
   {
     description:
-      "Send every recent article you have not received yet, while still avoiding duplicate sends.",
-    label: "All missed articles",
-    value: "all_missed",
+      "Rank and send up to the newsletter article limit using your preferences, alerts, and newsletter click history.",
+    label: "Personalized digest",
+    value: "personalized",
   },
 ];
 
 export function AccountSettings({
   email,
   initialAlertKeywords,
+  initialNewsletterClickedArticleCount,
   initialEmailSendLogs,
   initialNewsletterArticleMode,
   initialNewsletterCustomFrequency,
   initialNewsletterEmailFormat,
   initialNewsletterFrequency,
+  initialNewsletterPersonalizationReady,
   initialPreferences,
   userId,
 }: AccountSettingsProps) {
@@ -113,7 +118,7 @@ export function AccountSettings({
     );
   const [newsletterArticleMode, setNewsletterArticleMode] =
     useState<NewsletterArticleMode>(
-      initialNewsletterArticleMode ?? "personalized",
+      initialNewsletterArticleMode ?? "all_missed",
     );
   const [newsletterCustomFrequency, setNewsletterCustomFrequency] = useState(
     initialNewsletterCustomFrequency ?? "",
@@ -124,6 +129,13 @@ export function AccountSettings({
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [isSavingAlert, setIsSavingAlert] = useState(false);
   const [isSavingNewsletter, setIsSavingNewsletter] = useState(false);
+  const personalizationProgressLabel = `${Math.min(
+    initialNewsletterClickedArticleCount,
+    PERSONALIZATION_MIN_UNIQUE_CLICKS,
+  )}/${PERSONALIZATION_MIN_UNIQUE_CLICKS}`;
+  const personalizedSelectedButNotReady =
+    newsletterArticleMode === "personalized" &&
+    !initialNewsletterPersonalizationReady;
 
   async function handleSavePreferences() {
     setIsSavingPreferences(true);
@@ -503,7 +515,14 @@ export function AccountSettings({
             disabled={!newsletterEnabled}
           >
             {NEWSLETTER_ARTICLE_MODE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
+              <option
+                key={option.value}
+                value={option.value}
+                disabled={
+                  option.value === "personalized" &&
+                  !initialNewsletterPersonalizationReady
+                }
+              >
                 {option.label}
               </option>
             ))}
@@ -513,6 +532,23 @@ export function AccountSettings({
               (option) => option.value === newsletterArticleMode,
             )?.description ?? ""}
           </p>
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Personalized digest unlocks after you click at least{" "}
+            {PERSONALIZATION_MIN_UNIQUE_CLICKS} newsletter articles so
+            recommendations are based on real interests.
+          </p>
+          <p className="mt-2 text-sm font-medium text-slate-700">
+            Personalization progress: {personalizationProgressLabel} article
+            click{initialNewsletterClickedArticleCount === 1 ? "" : "s"}
+          </p>
+          {personalizedSelectedButNotReady ? (
+            <p className="mt-2 text-sm text-amber-700">
+              Personalized digest is saved on your account, but newsletters
+              will use all missed articles until you reach{" "}
+              {PERSONALIZATION_MIN_UNIQUE_CLICKS} unique newsletter article
+              clicks.
+            </p>
+          ) : null}
         </div>
 
         {newsletterEnabled && newsletterFrequency === "custom" ? (

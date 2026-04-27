@@ -1,4 +1,6 @@
 import { AccountSettings } from "@/components/AccountSettings";
+import { PERSONALIZATION_MIN_UNIQUE_CLICKS } from "@/lib/personalization";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { EmailSendLog } from "@/lib/types";
 import { normalizeUserPreferences } from "@/lib/user-preferences";
@@ -18,6 +20,8 @@ export default async function AccountPage() {
     redirect("/");
   }
 
+  const adminSupabase = createSupabaseAdminClient();
+
   const { data: userPreferencesRow } = await supabase
     .from("user_preferences")
     .select("default_source_filter, default_time_filter, default_view_mode")
@@ -28,7 +32,7 @@ export default async function AccountPage() {
     .order("created_at", { ascending: true });
   const { data: newsletterRow } = await supabase
     .from("newsletter_subscriptions")
-    .select("frequency, custom_frequency, email_format, article_mode, is_active")
+    .select("id, frequency, custom_frequency, email_format, article_mode, is_active")
     .eq("user_id", user.id)
     .maybeSingle();
   const { data: emailSendLogRows } = await supabase
@@ -36,6 +40,29 @@ export default async function AccountPage() {
     .select("status, error, article_count, sent_at")
     .eq("user_id", user.id)
     .order("sent_at", { ascending: false });
+  const [
+    clickEventsBySubscriptionResult,
+    clickEventsByEmailResult,
+    clickEventsByUserIdResult,
+  ] =
+    await Promise.all([
+      newsletterRow?.id
+        ? adminSupabase
+            .from("email_click_events")
+            .select("article_link")
+            .eq("subscription_id", newsletterRow.id)
+        : Promise.resolve({ data: [], error: null }),
+      user.email
+        ? adminSupabase
+            .from("email_click_events")
+            .select("article_link")
+            .eq("email", user.email.toLowerCase())
+        : Promise.resolve({ data: [], error: null }),
+      adminSupabase
+        .from("email_click_events")
+        .select("article_link")
+        .eq("user_id", user.id),
+    ]);
 
   const initialPreferences = normalizeUserPreferences(
     userPreferencesRow
@@ -55,6 +82,13 @@ export default async function AccountPage() {
       status: row.status,
     }),
   );
+  const newsletterClickedArticleCount = countUniqueArticleLinks([
+    ...((clickEventsBySubscriptionResult.data ?? []).map((row) => row.article_link)),
+    ...((clickEventsByUserIdResult.data ?? []).map((row) => row.article_link)),
+    ...((clickEventsByEmailResult.data ?? []).map((row) => row.article_link)),
+  ]);
+  const newsletterPersonalizationReady =
+    newsletterClickedArticleCount >= PERSONALIZATION_MIN_UNIQUE_CLICKS;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-10 sm:px-6 lg:px-8">
@@ -94,15 +128,21 @@ export default async function AccountPage() {
         initialNewsletterCustomFrequency={
           newsletterRow?.is_active ? newsletterRow.custom_frequency : null
         }
+        initialNewsletterClickedArticleCount={newsletterClickedArticleCount}
         initialNewsletterEmailFormat={
           newsletterRow?.is_active ? newsletterRow.email_format : null
         }
         initialNewsletterFrequency={
           newsletterRow?.is_active ? newsletterRow.frequency : null
         }
+        initialNewsletterPersonalizationReady={newsletterPersonalizationReady}
         initialPreferences={initialPreferences}
         userId={user.id}
       />
     </main>
   );
+}
+
+function countUniqueArticleLinks(links: Array<string | null>) {
+  return new Set(links.map((link) => link?.trim() ?? "").filter(Boolean)).size;
 }

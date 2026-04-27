@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   computeArticleScore,
+  PERSONALIZATION_MIN_UNIQUE_CLICKS,
   rankArticlesForUser,
+  resolveNewsletterArticleSelection,
   selectNewsletterArticlesForUser,
   selectTopRankedArticlesForUser,
 } from "../lib/personalization.ts";
@@ -287,7 +289,12 @@ test("selectNewsletterArticlesForUser caps personalized mode at NEWSLETTER_ARTIC
 
   const selected = selectNewsletterArticlesForUser(
     articles,
-    createProfile(),
+    createProfile({
+      clickedArticleLinks: Array.from(
+        { length: PERSONALIZATION_MIN_UNIQUE_CLICKS },
+        (_, index) => `https://example.com/clicked-${index}`,
+      ),
+    }),
     NOW,
     new Set(),
     "personalized",
@@ -296,30 +303,227 @@ test("selectNewsletterArticlesForUser caps personalized mode at NEWSLETTER_ARTIC
   assert.equal(selected.length, NEWSLETTER_ARTICLE_LIMIT);
 });
 
-test("selectNewsletterArticlesForUser includes all unsent articles in all_missed mode", () => {
+test("users with 0 clicks receive all missed articles even if personalized is requested", () => {
   const articles = Array.from({ length: NEWSLETTER_ARTICLE_LIMIT + 5 }, (_, index) =>
     createArticle({
-      link: `https://example.com/all-missed-${index}`,
+      link: `https://example.com/no-clicks-${index}`,
       publishedAt: new Date(NOW.getTime() - index * 60_000).toISOString(),
       title: `Article ${index}`,
     }),
   );
 
-  const selected = selectNewsletterArticlesForUser(
+  const result = resolveNewsletterArticleSelection(
     articles,
     createProfile(),
+    NOW,
+    new Set(),
+    "personalized",
+  );
+
+  assert.equal(result.effectiveMode, "all_missed");
+  assert.equal(result.personalizationReady, false);
+  assert.equal(result.uniqueClickedArticleCount, 0);
+  assert.equal(result.articles.length, articles.length);
+});
+
+test("users with 4 unique clicks still receive all missed articles", () => {
+  const articles = Array.from({ length: NEWSLETTER_ARTICLE_LIMIT + 3 }, (_, index) =>
+    createArticle({
+      link: `https://example.com/four-clicks-${index}`,
+      publishedAt: new Date(NOW.getTime() - index * 60_000).toISOString(),
+      title: `Article ${index}`,
+    }),
+  );
+
+  const result = resolveNewsletterArticleSelection(
+    articles,
+    createProfile({
+      clickedArticleLinks: [
+        "https://example.com/click-1",
+        "https://example.com/click-2",
+        "https://example.com/click-3",
+        "https://example.com/click-4",
+      ],
+    }),
+    NOW,
+    new Set(),
+    "personalized",
+  );
+
+  assert.equal(result.effectiveMode, "all_missed");
+  assert.equal(result.personalizationReady, false);
+  assert.equal(result.uniqueClickedArticleCount, 4);
+  assert.equal(result.articles.length, articles.length);
+});
+
+test("users with 5 unique clicks can receive personalized ranking", () => {
+  const articles = [
+    createArticle({
+      link: "https://example.com/reuters-1",
+      publishedAt: "2026-04-14T11:55:00.000Z",
+      source: "Reuters",
+      title: "Reuters one",
+    }),
+    createArticle({
+      link: "https://example.com/ap-1",
+      publishedAt: "2026-04-14T11:54:00.000Z",
+      source: "AP",
+      title: "AP one",
+    }),
+    createArticle({
+      link: "https://example.com/reuters-2",
+      publishedAt: "2026-04-14T11:53:00.000Z",
+      source: "Reuters",
+      title: "Reuters two",
+    }),
+  ];
+
+  const result = resolveNewsletterArticleSelection(
+    articles,
+    createProfile({
+      clickedArticleLinks: Array.from(
+        { length: PERSONALIZATION_MIN_UNIQUE_CLICKS },
+        (_, index) => `https://example.com/clicked-${index}`,
+      ),
+      preferredSource: "Reuters",
+    }),
+    NOW,
+    new Set(),
+    "personalized",
+  );
+
+  assert.equal(result.effectiveMode, "personalized");
+  assert.equal(result.personalizationReady, true);
+  assert.equal(result.uniqueClickedArticleCount, 5);
+  assert.deepEqual(
+    result.articles.map((article) => article.link),
+    [
+      "https://example.com/reuters-1",
+      "https://example.com/reuters-2",
+      "https://example.com/ap-1",
+    ],
+  );
+});
+
+test("repeated clicks on the same article count as one unique clicked article", () => {
+  const result = resolveNewsletterArticleSelection(
+    [createArticle({
+      link: "https://example.com/story",
+      publishedAt: "2026-04-14T11:55:00.000Z",
+      title: "Story",
+    })],
+    createProfile({
+      clickedArticleLinks: [
+        "https://example.com/repeat",
+        "https://example.com/repeat",
+        "https://example.com/repeat",
+      ],
+    }),
+    NOW,
+    new Set(),
+    "personalized",
+  );
+
+  assert.equal(result.uniqueClickedArticleCount, 1);
+  assert.equal(result.personalizationReady, false);
+  assert.equal(result.effectiveMode, "all_missed");
+});
+
+test("personalized mode falls back safely if click history is insufficient", () => {
+  const articles = [
+    createArticle({
+      link: "https://example.com/recent",
+      publishedAt: "2026-04-14T11:59:00.000Z",
+      title: "Recent",
+    }),
+    createArticle({
+      link: "https://example.com/older",
+      publishedAt: "2026-04-14T11:00:00.000Z",
+      title: "Older",
+    }),
+  ];
+
+  const result = resolveNewsletterArticleSelection(
+    articles,
+    createProfile({
+      clickedArticleLinks: [
+        "https://example.com/click-1",
+        "https://example.com/click-2",
+      ],
+      preferredSource: "Reuters",
+    }),
+    NOW,
+    new Set(),
+    "personalized",
+  );
+
+  assert.equal(result.effectiveMode, "all_missed");
+  assert.deepEqual(
+    result.articles.map((article) => article.link),
+    ["https://example.com/recent", "https://example.com/older"],
+  );
+});
+
+test("all_missed mode never uses personalization", () => {
+  const articles = Array.from({ length: NEWSLETTER_ARTICLE_LIMIT + 5 }, (_, index) =>
+    createArticle({
+      link: `https://example.com/all-missed-${index}`,
+      publishedAt: new Date(NOW.getTime() - index * 60_000).toISOString(),
+      source: index % 2 === 0 ? "Reuters" : "AP",
+      title: `Article ${index}`,
+    }),
+  );
+
+  const result = resolveNewsletterArticleSelection(
+    articles,
+    createProfile({
+      clickedArticleLinks: Array.from(
+        { length: PERSONALIZATION_MIN_UNIQUE_CLICKS + 2 },
+        (_, index) => `https://example.com/clicked-${index}`,
+      ),
+      preferredSource: "AP",
+    }),
     NOW,
     new Set(["https://example.com/all-missed-1"]),
     "all_missed",
   );
 
-  assert.equal(selected.length, articles.length - 1);
+  assert.equal(result.effectiveMode, "all_missed");
+  assert.equal(result.articles.length, articles.length - 1);
   assert.ok(
-    !selected.some((article) => article.link === "https://example.com/all-missed-1"),
+    !result.articles.some((article) => article.link === "https://example.com/all-missed-1"),
   );
 });
 
-test("selectNewsletterArticlesForUser falls back to personalized mode when article_mode is missing", () => {
+test("dedupe still prevents duplicate article sends before personalized fallback logic", () => {
+  const articles = [
+    createArticle({
+      link: "https://example.com/already-sent",
+      publishedAt: "2026-04-14T11:59:00.000Z",
+      title: "Already sent",
+    }),
+    createArticle({
+      link: "https://example.com/new-story",
+      publishedAt: "2026-04-14T11:58:00.000Z",
+      title: "New story",
+    }),
+  ];
+
+  const result = resolveNewsletterArticleSelection(
+    articles,
+    createProfile(),
+    NOW,
+    new Set(["https://example.com/already-sent"]),
+    "personalized",
+  );
+
+  assert.deepEqual(
+    result.articles.map((article) => article.link),
+    ["https://example.com/new-story"],
+  );
+});
+
+test("selectNewsletterArticlesForUser defaults missing article_mode to all_missed", () => {
   const articles = Array.from({ length: NEWSLETTER_ARTICLE_LIMIT + 3 }, (_, index) =>
     createArticle({
       link: `https://example.com/default-mode-${index}`,
@@ -330,13 +534,32 @@ test("selectNewsletterArticlesForUser falls back to personalized mode when artic
 
   const selected = selectNewsletterArticlesForUser(
     articles,
-    createProfile(),
+    createProfile({
+      clickedArticleLinks: Array.from(
+        { length: PERSONALIZATION_MIN_UNIQUE_CLICKS + 1 },
+        (_, index) => `https://example.com/clicked-${index}`,
+      ),
+    }),
     NOW,
     new Set(),
     null,
   );
 
-  assert.equal(selected.length, NEWSLETTER_ARTICLE_LIMIT);
+  assert.equal(selected.length, articles.length);
+});
+
+test("getValidatedNewsletterSettings defaults article_mode to all_missed", () => {
+  const result = getValidatedNewsletterSettings({
+    preferredFrequency: "daily",
+  });
+
+  assert.deepEqual(result, {
+    articleMode: "all_missed",
+    customFrequency: null,
+    emailFormat: "standard",
+    frequency: "daily",
+    status: 200,
+  });
 });
 
 test("getValidatedNewsletterSettings rejects invalid article_mode values", () => {

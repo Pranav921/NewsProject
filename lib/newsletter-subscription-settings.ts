@@ -50,7 +50,7 @@ export function getValidatedNewsletterSettings(
     "";
   const normalizedCustomFrequency = body.customFrequency?.trim() ?? "";
   const emailFormat = body.emailFormat?.trim().toLowerCase() ?? "standard";
-  const articleMode = body.articleMode?.trim().toLowerCase() ?? "personalized";
+  const articleMode = body.articleMode?.trim().toLowerCase() ?? "all_missed";
 
   if (!VALID_EMAIL_FORMATS.has(emailFormat as NewsletterEmailFormat)) {
     return {

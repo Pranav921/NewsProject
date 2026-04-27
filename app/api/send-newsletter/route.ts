@@ -288,8 +288,10 @@ type PersonalizationMaps = {
   alertKeywordsByUserId: Map<string, string[]>;
   clickedArticleLinksByEmail: Map<string, string[]>;
   clickedArticleLinksBySubscriptionId: Map<number, string[]>;
+  clickedArticleLinksByUserId: Map<string, string[]>;
   clickedSourcesByEmail: Map<string, string[]>;
   clickedSourcesBySubscriptionId: Map<number, string[]>;
+  clickedSourcesByUserId: Map<string, string[]>;
   preferredSourceByUserId: Map<string, string | null>;
 };
 
@@ -402,7 +404,13 @@ async function getPersonalizationMaps(
     ),
   );
 
-  const [preferencesResult, alertKeywordsResult, clicksBySubscriptionResult, clicksByEmailResult] =
+  const [
+    preferencesResult,
+    alertKeywordsResult,
+    clicksBySubscriptionResult,
+    clicksByEmailResult,
+    clicksByUserIdResult,
+  ] =
     await Promise.all([
       userIds.length > 0
         ? supabase
@@ -422,7 +430,7 @@ async function getPersonalizationMaps(
             .from("email_click_events")
             .select("subscription_id, article_link, article_source")
             .in("subscription_id", subscriptionIds)
-            .order("created_at", { ascending: false })
+            .order("clicked_at", { ascending: false })
             .limit(500)
         : Promise.resolve({ data: [], error: null }),
       emails.length > 0
@@ -430,7 +438,15 @@ async function getPersonalizationMaps(
             .from("email_click_events")
             .select("email, article_link, article_source")
             .in("email", emails)
-            .order("created_at", { ascending: false })
+            .order("clicked_at", { ascending: false })
+            .limit(500)
+        : Promise.resolve({ data: [], error: null }),
+      userIds.length > 0
+        ? supabase
+            .from("email_click_events")
+            .select("user_id, article_link, article_source")
+            .in("user_id", userIds)
+            .order("clicked_at", { ascending: false })
             .limit(500)
         : Promise.resolve({ data: [], error: null }),
     ]);
@@ -449,6 +465,10 @@ async function getPersonalizationMaps(
 
   if (clicksByEmailResult.error) {
     console.error("[send-newsletter][personalization-clicks-email]", clicksByEmailResult.error);
+  }
+
+  if (clicksByUserIdResult.error) {
+    console.error("[send-newsletter][personalization-clicks-user-id]", clicksByUserIdResult.error);
   }
 
   const preferredSourceByUserId = new Map<string, string | null>();
@@ -498,12 +518,25 @@ async function getPersonalizationMaps(
     );
   }
 
+  const clickedArticleLinksByUserId = new Map<string, string[]>();
+  const clickedSourcesByUserId = new Map<string, string[]>();
+  for (const row of clicksByUserIdResult.data ?? []) {
+    appendUnique(clickedArticleLinksByUserId, row.user_id, row.article_link);
+    appendUnique(
+      clickedSourcesByUserId,
+      row.user_id,
+      normalizeSource(row.article_source),
+    );
+  }
+
   return {
     alertKeywordsByUserId,
     clickedArticleLinksByEmail,
     clickedArticleLinksBySubscriptionId,
+    clickedArticleLinksByUserId,
     clickedSourcesByEmail,
     clickedSourcesBySubscriptionId,
+    clickedSourcesByUserId,
     preferredSourceByUserId,
   };
 }
@@ -514,19 +547,23 @@ function getPersonalizationProfile(
 ): PersonalizationProfile {
   const normalizedEmail = subscription.email.trim().toLowerCase();
   const userId = subscription.user_id;
+  const clickedArticleLinks = dedupeStrings([
+    ...(maps.clickedArticleLinksBySubscriptionId.get(subscription.id) ?? []),
+    ...(userId ? maps.clickedArticleLinksByUserId.get(userId) ?? [] : []),
+    ...(maps.clickedArticleLinksByEmail.get(normalizedEmail) ?? []),
+  ]);
+  const clickedSources = dedupeStrings([
+    ...(maps.clickedSourcesBySubscriptionId.get(subscription.id) ?? []),
+    ...(userId ? maps.clickedSourcesByUserId.get(userId) ?? [] : []),
+    ...(maps.clickedSourcesByEmail.get(normalizedEmail) ?? []),
+  ]);
 
   // Ranking stays additive: we blend preferences, alerts, and click history,
   // then fall back to recency if the user has little or no personal history.
   return {
     alertKeywords: userId ? maps.alertKeywordsByUserId.get(userId) ?? [] : [],
-    clickedArticleLinks:
-      maps.clickedArticleLinksBySubscriptionId.get(subscription.id) ??
-      maps.clickedArticleLinksByEmail.get(normalizedEmail) ??
-      [],
-    clickedSources:
-      maps.clickedSourcesBySubscriptionId.get(subscription.id) ??
-      maps.clickedSourcesByEmail.get(normalizedEmail) ??
-      [],
+    clickedArticleLinks,
+    clickedSources,
     preferredSource: userId
       ? maps.preferredSourceByUserId.get(userId) ?? null
       : null,
@@ -589,6 +626,10 @@ function normalizePreferredSource(value: string | null) {
 
 function normalizeSource(value: string | null) {
   return value?.trim().toLowerCase() ?? null;
+}
+
+function dedupeStrings(values: string[]) {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
 async function insertEmailSendLog(
