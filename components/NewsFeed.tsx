@@ -13,9 +13,7 @@ import {
   PENDING_PREVIOUS_LINKS_KEY,
   resolveCurrentLinks,
 } from "@/lib/news-updates";
-import {
-  toSavedArticle,
-} from "@/lib/saved-articles";
+import { toSavedArticle } from "@/lib/saved-articles";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   getSmartAlertMatch,
@@ -28,7 +26,7 @@ import {
   DEFAULT_VIEW_MODE,
   normalizeUserPreferences,
 } from "@/lib/user-preferences";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 type NewsFeedProps = {
@@ -36,6 +34,7 @@ type NewsFeedProps = {
   initialAlertKeywords?: string[];
   initialPreferences?: UserPreferences | null;
   initialSavedArticles?: SavedArticle[];
+  onSavedArticlesCountChange?: (count: number) => void;
   userId?: string | null;
 };
 
@@ -75,6 +74,7 @@ export function NewsFeed({
   initialAlertKeywords = [],
   initialPreferences = null,
   initialSavedArticles = [],
+  onSavedArticlesCountChange,
   userId = null,
 }: NewsFeedProps) {
   const normalizedInitialPreferences = normalizeUserPreferences(initialPreferences);
@@ -202,9 +202,17 @@ export function NewsFeed({
       smartAlertMatches.filter((match) => match.importance === "normal").length,
     [smartAlertMatches],
   );
-  const newAlertMatchLinks = useMemo(() => {
-    return smartAlertMatches.map((match) => match.link);
-  }, [smartAlertMatches]);
+  const newAlertMatchLinks = useMemo(
+    () => smartAlertMatches.map((match) => match.link),
+    [smartAlertMatches],
+  );
+  const alertImportanceByLink = useMemo(
+    () =>
+      Object.fromEntries(
+        smartAlertMatches.map((match) => [match.link, match.importance]),
+      ) as Record<string, SmartAlertImportance>,
+    [smartAlertMatches],
+  );
   const newAlertMatchLinkSet = useMemo(
     () => new Set(newAlertMatchLinks),
     [newAlertMatchLinks],
@@ -238,6 +246,17 @@ export function NewsFeed({
       filteredAlertMatchLinkSet.has(article.link),
     );
   }, [alertMatchView, filteredAlertMatchLinkSet, newOnlyFilteredArticles]);
+  const filteredStoryCount = timeFilteredArticles.length;
+  const filteredSourceCount = useMemo(
+    () => new Set(timeFilteredArticles.map((article) => article.source)).size,
+    [timeFilteredArticles],
+  );
+  const hasActiveFilters =
+    normalizedSearchQuery.length > 0 ||
+    activeSource !== "All Sources" ||
+    timeFilter !== "all" ||
+    showOnlyNew ||
+    alertMatchView !== "off";
 
   useEffect(() => {
     if (userId) {
@@ -255,6 +274,10 @@ export function NewsFeed({
   useEffect(() => {
     setSavedArticles(initialSavedArticles);
   }, [initialSavedArticles]);
+
+  useEffect(() => {
+    onSavedArticlesCountChange?.(savedArticles.length);
+  }, [onSavedArticlesCountChange, savedArticles.length]);
 
   useEffect(() => {
     setHasMountedPreferences(true);
@@ -312,13 +335,7 @@ export function NewsFeed({
           promptDetectedLinks,
         );
 
-        // When the user refreshes from the prompt, highlight the exact same
-        // link set that triggered the notification, in the order they now
-        // appear on the refreshed page.
         setNewArticleLinks(resolvedPromptDetectedLinks);
-
-        // Only clear the pending handoff once the refreshed page has the full
-        // exact set that the prompt detected.
         shouldClearPendingLinks =
           resolvedPromptDetectedLinks.length === promptDetectedLinks.length;
 
@@ -331,14 +348,10 @@ export function NewsFeed({
       }
 
       const previousLinks = JSON.parse(savedPreviousLinks) as string[];
-
-      // Compare the full pre-refresh link list with the full refreshed list so
-      // every new article gets highlighted.
       setNewArticleLinks(getNewArticleLinks(previousLinks, currentLinks));
     } catch {
       setNewArticleLinks([]);
     } finally {
-      // Only clear the saved links after the full comparison has happened.
       if (shouldClearPendingLinks) {
         sessionStorage.removeItem(PENDING_PREVIOUS_LINKS_KEY);
         sessionStorage.removeItem(PENDING_NEW_ARTICLE_LINKS_KEY);
@@ -502,214 +515,236 @@ export function NewsFeed({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
-        <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
-          <button
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              feedMode === "all"
-                ? "bg-slate-900 text-white"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
-            type="button"
-            onClick={() => setFeedMode("all")}
-            aria-pressed={feedMode === "all"}
-          >
-            All articles
-          </button>
-          <button
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              feedMode === "saved"
-                ? "bg-slate-900 text-white"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
-            type="button"
-            onClick={() => setFeedMode("saved")}
-            aria-pressed={feedMode === "saved"}
-          >
-            Saved articles
-          </button>
-        </div>
+    <div className="space-y-4">
+      <section className="rounded-[1.4rem] border border-slate-200 bg-white px-4 py-3.5 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
+        <div className="flex flex-col gap-3">
+          <div className="grid gap-3.5 xl:grid-cols-[minmax(0,1.5fr)_220px_220px]">
+            <input
+              id="article-search"
+              className="min-h-10 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              type="search"
+              placeholder="Search headlines, sources, or summaries"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
 
-        <div className="flex items-center gap-3">
-          {newArticleLinks.length > 0 ? (
-            <button
-              className={`inline-flex rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition-colors ${
-                showOnlyNew
-                  ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-              type="button"
-              onClick={() => setShowOnlyNew((currentValue) => !currentValue)}
-              aria-pressed={showOnlyNew}
+            <select
+              id="source-filter"
+              className="min-h-10 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              value={activeSource}
+              onChange={(event) => setSelectedSource(event.target.value)}
             >
-              {showOnlyNew ? "Show all articles" : "Only new"}
-            </button>
-          ) : null}
+              {sourceOptions.map((source) => (
+                <option key={source} value={source}>
+                  {source}
+                </option>
+              ))}
+            </select>
 
-          {newAlertMatchLinks.length > 0 ? (
-            <>
-              <p className="text-sm text-rose-700">
-                <span className="font-semibold">{importantAlertMatchCount}</span>
-                {" "}
-                important alert {importantAlertMatchCount === 1 ? "match" : "matches"}
-              </p>
-
-              <p className="text-sm text-amber-700">
-                <span className="font-semibold">{normalAlertMatchCount}</span>
-                {" "}
-                normal alert {normalAlertMatchCount === 1 ? "match" : "matches"}
-              </p>
-            </>
-          ) : null}
-
-          <p className="text-sm text-slate-600">
-            Saved:
-            {" "}
-            <span className="font-semibold text-slate-900">
-              {savedArticles.length}
-            </span>
-          </p>
-
-          <div
-            className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm"
-            role="group"
-            aria-label="Article view mode"
-          >
-            <button
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                viewMode === "standard"
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-50"
-              }`}
-              type="button"
-              onClick={() => setViewMode("standard")}
-              aria-pressed={viewMode === "standard"}
+            <select
+              id="time-filter"
+              className="min-h-10 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              value={timeFilter}
+              onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
             >
-              Standard View
-            </button>
-            <button
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                viewMode === "compact"
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-50"
-              }`}
-              type="button"
-              onClick={() => setViewMode("compact")}
-              aria-pressed={viewMode === "compact"}
-            >
-              Compact View
-            </button>
+              {TIME_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
+
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-3 xl:gap-5">
+              <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
+                <button
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    feedMode === "all"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-white"
+                  }`}
+                  type="button"
+                  onClick={() => setFeedMode("all")}
+                  aria-pressed={feedMode === "all"}
+                >
+                  All articles
+                </button>
+                <button
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    feedMode === "saved"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-white"
+                  }`}
+                  type="button"
+                  onClick={() => setFeedMode("saved")}
+                  aria-pressed={feedMode === "saved"}
+                >
+                  Saved articles
+                </button>
+              </div>
+
+              <div
+                className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1"
+                role="group"
+                aria-label="Article view mode"
+              >
+                <button
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    viewMode === "standard"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-white"
+                  }`}
+                  type="button"
+                  onClick={() => setViewMode("standard")}
+                  aria-pressed={viewMode === "standard"}
+                >
+                  Standard
+                </button>
+                <button
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    viewMode === "compact"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-white"
+                  }`}
+                  type="button"
+                  onClick={() => setViewMode("compact")}
+                  aria-pressed={viewMode === "compact"}
+                >
+                  Compact
+                </button>
+              </div>
+
+              <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
+                <button
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    alertMatchView === "off"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-white"
+                  }`}
+                  type="button"
+                  onClick={() => setAlertMatchView("off")}
+                  aria-pressed={alertMatchView === "off"}
+                >
+                  Alerts off
+                </button>
+                <button
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    alertMatchView !== "off"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-white"
+                  }`}
+                  type="button"
+                  onClick={() =>
+                    setAlertMatchView(
+                      newAlertMatchLinks.length > 0 ? "all" : "off",
+                    )
+                  }
+                  aria-pressed={alertMatchView !== "off"}
+                  disabled={newAlertMatchLinks.length === 0}
+                >
+                  Alert matches
+                </button>
+              </div>
+
+              <a
+                className="ml-1 inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 xl:ml-2"
+                href="#dashboard-alerts"
+              >
+                Manage alerts
+              </a>
+            </div>
+
+            <div className="text-sm text-slate-500">
+              {filteredStoryCount} stories | {filteredSourceCount} sources | {savedArticles.length} saved
+            </div>
+          </div>
+
+          {newArticleLinks.length > 0 || hasActiveFilters ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {newArticleLinks.length > 0 ? (
+                <button
+                  className={`inline-flex rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    showOnlyNew
+                      ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                  type="button"
+                  onClick={() => setShowOnlyNew((currentValue) => !currentValue)}
+                  aria-pressed={showOnlyNew}
+                >
+                  {showOnlyNew ? "Showing only new" : "Only new"}
+                </button>
+              ) : null}
+
+              {newAlertMatchLinks.length > 0 ? (
+                <>
+                  {importantAlertMatchCount > 0 ? (
+                    <StatusBadge tone="rose">
+                      {importantAlertMatchCount} important {importantAlertMatchCount === 1 ? "match" : "matches"}
+                    </StatusBadge>
+                  ) : null}
+                  {normalAlertMatchCount > 0 ? (
+                    <StatusBadge tone="amber">
+                      {normalAlertMatchCount} normal {normalAlertMatchCount === 1 ? "match" : "matches"}
+                    </StatusBadge>
+                  ) : null}
+                </>
+              ) : null}
+
+              {hasActiveFilters ? (
+                <StatusBadge tone="slate">Filters active</StatusBadge>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <label
-            className="text-sm font-medium text-slate-700"
-            htmlFor="article-search"
-          >
-            Search articles
-          </label>
-          <p className="text-sm text-slate-500">
-            Search by title, source, or summary.
-          </p>
+      <NewsList
+        alertImportanceByLink={alertImportanceByLink}
+        articles={displayedArticles}
+        newArticleLinks={newArticleLinks}
+        onToggleSavedArticle={handleToggleSavedArticle}
+        savedArticleLinks={savedArticleLinks}
+        viewMode={viewMode}
+        emptyStateTitle="No matching articles"
+        emptyStateMessage="No articles match the current search, source filter, time filter, selected article view, new-articles filter, or smart-alert filter. Try clearing the search box or choosing broader filters."
+      />
 
-          <input
-            id="article-search"
-            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
-            type="search"
-            placeholder="Search headlines, sources, or summaries"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <label
-            className="text-sm font-medium text-slate-700"
-            htmlFor="source-filter"
-          >
-            Filter by source
-          </label>
-          <p className="text-sm text-slate-500">
-            Choose a source to narrow the current article list.
-          </p>
-
-          <select
-            id="source-filter"
-            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
-            value={activeSource}
-            onChange={(event) => setSelectedSource(event.target.value)}
-          >
-            {sourceOptions.map((source) => (
-              <option key={source} value={source}>
-                {source}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <label
-            className="text-sm font-medium text-slate-700"
-            htmlFor="time-filter"
-          >
-            Filter by time
-          </label>
-          <p className="text-sm text-slate-500">
-            Limit the list to recently published articles.
-          </p>
-
-          <select
-            id="time-filter"
-            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
-            value={timeFilter}
-            onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
-          >
-            {TIME_FILTER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <section
+        id="dashboard-alerts"
+        className="rounded-[1.55rem] border border-slate-200 bg-white p-4.5 shadow-[0_14px_36px_rgba(15,23,42,0.05)] scroll-mt-24 sm:p-5"
+      >
+        <div className="flex flex-col gap-3.5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <label
-              className="text-sm font-medium text-slate-700"
-              htmlFor="alert-keyword-input"
-            >
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
               Custom alerts
-            </label>
-            <p className="text-sm text-slate-500">
-              Save keywords to flag matching newly highlighted articles by title or
-              summary.
             </p>
-            <p className="mt-2 text-sm text-slate-500">
-              Title matches or urgent titles are marked important. Summary-only
-              matches are marked normal.
+            <h3 className="mt-1.5 text-lg font-semibold text-slate-900">
+              Track the topics that matter most
+            </h3>
+            <p className="mt-1.5 text-sm text-slate-500">
+              Save keywords to flag matching newly highlighted articles.
+            </p>
+            <p className="mt-1.5 text-sm text-slate-500">
+              Title matches or urgent language are marked important.
             </p>
           </div>
 
           <form
-            className="flex w-full flex-col gap-3 sm:flex-row lg:max-w-xl"
+            className="flex w-full flex-col gap-2.5 sm:flex-row lg:max-w-xl"
             onSubmit={handleAddAlertKeyword}
           >
             <input
               id="alert-keyword-input"
-              className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
               type="text"
               placeholder="Add alert keyword"
               value={alertKeywordInput}
               onChange={(event) => setAlertKeywordInput(event.target.value)}
             />
             <button
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
               type="submit"
             >
               Add keyword
@@ -722,11 +757,11 @@ export function NewsFeed({
             {alertKeywords.map((keyword) => (
               <span
                 key={keyword}
-                className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm text-sky-700"
               >
                 {keyword}
                 <button
-                  className="font-medium text-rose-700 transition-colors hover:text-rose-900"
+                  className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800"
                   type="button"
                   onClick={() => handleRemoveAlertKeyword(keyword)}
                   disabled={isSavingAlertKeyword}
@@ -743,45 +778,42 @@ export function NewsFeed({
           </p>
         )}
 
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3.5">
           <p className="text-sm text-slate-500">
-            Smart Alerts are derived from the currently highlighted new articles only.
+            Smart alerts only use the currently highlighted new articles.
           </p>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <label
-              className="text-sm font-medium text-slate-700"
-              htmlFor="alert-match-view"
-            >
-              Alert match view
-            </label>
-            <select
-              id="alert-match-view"
-              className="min-h-11 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-              value={alertMatchView}
-              onChange={(event) =>
-                setAlertMatchView(event.target.value as AlertMatchView)
-              }
-              disabled={newAlertMatchLinks.length === 0}
-            >
-              <option value="off">Off</option>
-              <option value="all">All alert matches</option>
-              <option value="important">Important only</option>
-              <option value="normal">Normal only</option>
-            </select>
-          </div>
+          <p className="mt-2 text-sm text-slate-500">
+            Normal alert matches are keyword matches found in the article summary and
+            appear with a deeper yellow highlight.
+          </p>
+          <p className="mt-1.5 text-sm text-slate-500">
+            Important alert matches happen when the keyword appears in the title or
+            the headline uses urgent language, and those articles appear with a light
+            red highlight.
+          </p>
         </div>
-      </div>
-
-      <NewsList
-        articles={displayedArticles}
-        newArticleLinks={newArticleLinks}
-        onToggleSavedArticle={handleToggleSavedArticle}
-        savedArticleLinks={savedArticleLinks}
-        viewMode={viewMode}
-        emptyStateTitle="No matching articles"
-        emptyStateMessage="No articles match the current search, source filter, time filter, selected article view, new-articles filter, or smart-alert filter. Try clearing the search box or choosing broader filters."
-      />
+      </section>
     </div>
+  );
+}
+
+function StatusBadge({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  tone: "amber" | "rose" | "slate";
+}) {
+  const toneClasses =
+    tone === "rose"
+      ? "border-rose-200 bg-rose-50 text-rose-700"
+      : tone === "amber"
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : "border-slate-200 bg-white text-slate-600";
+
+  return (
+    <span className={`inline-flex rounded-full border px-3 py-1.5 text-sm font-medium ${toneClasses}`}>
+      {children}
+    </span>
   );
 }

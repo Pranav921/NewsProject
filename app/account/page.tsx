@@ -91,30 +91,47 @@ export default async function AccountPage() {
     newsletterClickedArticleCount >= PERSONALIZATION_MIN_UNIQUE_CLICKS;
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-6">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <div className="mb-5">
         <Link
-          className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
           href="/"
         >
           Back to dashboard
         </Link>
       </div>
 
-      <section className="mb-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-          Email analytics
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Review send performance, skip reasons, and top content trends.
-        </p>
-        <div className="mt-4">
-          <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-            href="/email-analytics"
-          >
-            View email analytics
-          </Link>
+      <section className="mb-5 overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+        <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-center">
+          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+            <p className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sky-800">
+              Account
+            </p>
+            <h1 className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950 sm:text-[2.3rem]">
+              Settings and newsletter controls
+            </h1>
+            <p className="mt-2.5 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              Manage your feed defaults, alert keywords, newsletter preferences,
+              and delivery history from one place.
+            </p>
+          </div>
+
+          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+              Email analytics
+            </h2>
+            <p className="mt-1.5 text-sm leading-6 text-slate-500">
+              Review send performance, engagement, and top content trends.
+            </p>
+            <div className="mt-3.5">
+              <Link
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                href="/email-analytics"
+              >
+                View email analytics
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 

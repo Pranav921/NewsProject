@@ -13,6 +13,7 @@ type AnalyticsResponse = {
   engagementOverview: AnalyticsRow[];
   frequencies: AnalyticsRow[];
   overview: AnalyticsRow[];
+  recentDeliveredArticles: AnalyticsRow[];
   skipReasons: AnalyticsRow[];
   sources: AnalyticsRow[];
   topArticles: AnalyticsRow[];
@@ -55,12 +56,15 @@ type NewsletterSentArticleRecord = {
 
 type EmailOpenEventRecord = {
   created_at?: string | null;
+  opened_at?: string | null;
   subscription_id: number | null;
 };
 
 type EmailClickEventRecord = {
   article_link: string | null;
-  created_at?: string | null;
+  article_source?: string | null;
+  article_title?: string | null;
+  clicked_at?: string | null;
   subscription_id: number | null;
 };
 
@@ -203,18 +207,23 @@ export async function GET(request: Request) {
   );
   const scopedOpenEvents = dedupeRowsByKey(
     (openEventsBySubscriptionResult.data ?? []) as EmailOpenEventRecord[],
-    (row) => `${row.subscription_id ?? "null"}|${row.created_at ?? ""}`,
+    (row) =>
+      `${row.subscription_id ?? "null"}|${getOpenEventTimestamp(row) ?? ""}`,
   );
   const scopedClickEvents = dedupeRowsByKey(
     (clickEventsBySubscriptionResult.data ?? []) as EmailClickEventRecord[],
     (row) =>
-      `${row.subscription_id ?? "null"}|${row.created_at ?? ""}|${row.article_link ?? ""}`,
+      `${row.subscription_id ?? "null"}|${row.clicked_at ?? ""}|${row.article_link ?? ""}`,
   );
 
   const rangedLogs = filterByRange(scopedLogs, range, "sent_at");
   const rangedSentArticles = filterByRange(scopedSentArticles, range, "sent_at");
-  const rangedOpenEvents = filterByRange(scopedOpenEvents, range, "created_at");
-  const rangedClickEvents = filterByRange(scopedClickEvents, range, "created_at");
+  const rangedOpenEvents = filterRowsByResolvedTimestamp(
+    scopedOpenEvents,
+    range,
+    getOpenEventTimestamp,
+  );
+  const rangedClickEvents = filterByRange(scopedClickEvents, range, "clicked_at");
 
   const response: AnalyticsResponse = {
     overview: [
@@ -231,6 +240,7 @@ export async function GET(request: Request) {
     daily: buildDailySendRows(rangedLogs),
     frequencies: buildFrequencyRows(subscriptions),
     sources: buildSourceRows(rangedSentArticles),
+    recentDeliveredArticles: buildRecentDeliveredArticleRows(rangedSentArticles),
     topArticles: buildTopArticleRows(rangedSentArticles),
     skipReasons: buildSkipReasonRows(rangedLogs),
     userSummary: [
@@ -434,6 +444,20 @@ function buildTopArticleRows(rows: NewsletterSentArticleRecord[]): AnalyticsRow[
     }));
 }
 
+function buildRecentDeliveredArticleRows(
+  rows: NewsletterSentArticleRecord[],
+): AnalyticsRow[] {
+  return [...rows]
+    .sort((a, b) => b.sent_at.localeCompare(a.sent_at))
+    .slice(0, 12)
+    .map((row) => ({
+      article_link: row.article_link,
+      article_source: row.article_source,
+      article_title: row.article_title,
+      sent_at: row.sent_at,
+    }));
+}
+
 function buildSkipReasonRows(rows: EmailSendLogRecord[]): AnalyticsRow[] {
   const reasonMap = new Map<string, number>();
 
@@ -461,7 +485,7 @@ function buildEngagementDailyRows(
   const dayMap = new Map<string, { click_count: number; open_count: number }>();
 
   for (const row of openEvents) {
-    const day = getUtcDay(row.created_at);
+    const day = getUtcDay(getOpenEventTimestamp(row));
     if (!day) continue;
 
     const existing = dayMap.get(day) ?? { click_count: 0, open_count: 0 };
@@ -470,7 +494,7 @@ function buildEngagementDailyRows(
   }
 
   for (const row of clickEvents) {
-    const day = getUtcDay(row.created_at);
+    const day = getUtcDay(row.clicked_at);
     if (!day) continue;
 
     const existing = dayMap.get(day) ?? { click_count: 0, open_count: 0 };
@@ -489,23 +513,37 @@ function buildEngagementDailyRows(
 
 function buildTopClickedArticleRows(rows: EmailClickEventRecord[]): AnalyticsRow[] {
   const clickMap = new Map<string, { click_count: number }>();
+  const metadataMap = new Map<
+    string,
+    { article_source: string | null; article_title: string | null }
+  >();
 
   for (const row of rows) {
     const link = row.article_link ?? "unknown";
     const existing = clickMap.get(link) ?? { click_count: 0 };
     existing.click_count += 1;
     clickMap.set(link, existing);
+    if (!metadataMap.has(link)) {
+      metadataMap.set(link, {
+        article_source: row.article_source ?? null,
+        article_title: row.article_title ?? null,
+      });
+    }
   }
 
   return Array.from(clickMap.entries())
     .sort((a, b) => b[1].click_count - a[1].click_count)
     .slice(0, 10)
-    .map(([article_link, value]) => ({
+    .map(([article_link, value]) => {
+      const metadata = metadataMap.get(article_link);
+
+      return {
       article_link,
-      article_source: null,
-      article_title: article_link,
+      article_source: metadata?.article_source ?? null,
+      article_title: metadata?.article_title ?? article_link,
       click_count: value.click_count,
-    }));
+      };
+    });
 }
 
 function countByStatus(
@@ -524,6 +562,40 @@ function sumNumbers<T extends Record<string, unknown>>(rows: T[], key: keyof T) 
 
 function countDistinct<T>(rows: T[], getKey: (row: T) => string) {
   return new Set(rows.map(getKey)).size;
+}
+
+function getOpenEventTimestamp(row: EmailOpenEventRecord) {
+  return row.opened_at ?? row.created_at ?? null;
+}
+
+function filterRowsByResolvedTimestamp<T>(
+  rows: T[],
+  range: RangeKey,
+  getTimestamp: (row: T) => string | null | undefined,
+) {
+  if (range === "all") {
+    return rows;
+  }
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - Number(range));
+  const cutoffTime = cutoff.getTime();
+
+  return rows.filter((row) => {
+    const value = getTimestamp(row);
+
+    if (typeof value !== "string") {
+      return false;
+    }
+
+    const timestamp = Date.parse(value);
+
+    if (Number.isNaN(timestamp)) {
+      return false;
+    }
+
+    return timestamp >= cutoffTime;
+  });
 }
 
 async function selectBySubscriptionIds<T extends AnalyticsRow>(
@@ -546,7 +618,7 @@ async function selectOpenEventsBySubscriptionIds(
   const primaryResult = await selectBySubscriptionIds<EmailOpenEventRecord>(
     supabase,
     "email_open_events",
-    "subscription_id, created_at",
+    "subscription_id, opened_at",
     subscriptionIds,
   );
 
@@ -555,6 +627,22 @@ async function selectOpenEventsBySubscriptionIds(
   }
 
   logSupabaseQueryError("email_open_events.primary", primaryResult.error);
+
+  const fallbackCreatedAtResult = await selectBySubscriptionIds<EmailOpenEventRecord>(
+    supabase,
+    "email_open_events",
+    "subscription_id, created_at",
+    subscriptionIds,
+  );
+
+  if (!fallbackCreatedAtResult.error) {
+    return fallbackCreatedAtResult;
+  }
+
+  logSupabaseQueryError(
+    "email_open_events.fallback-created-at",
+    fallbackCreatedAtResult.error,
+  );
 
   const fallbackResult = await selectBySubscriptionIds<EmailOpenEventRecord>(
     supabase,
@@ -577,7 +665,7 @@ async function selectClickEventsBySubscriptionIds(
   const primaryResult = await selectBySubscriptionIds<EmailClickEventRecord>(
     supabase,
     "email_click_events",
-    "subscription_id, article_link, created_at",
+    "subscription_id, article_link, article_title, article_source, clicked_at",
     subscriptionIds,
   );
 
@@ -590,7 +678,7 @@ async function selectClickEventsBySubscriptionIds(
   const fallbackResult = await selectBySubscriptionIds<EmailClickEventRecord>(
     supabase,
     "email_click_events",
-    "subscription_id, article_link",
+    "subscription_id, article_link, article_title, article_source",
     subscriptionIds,
   );
 

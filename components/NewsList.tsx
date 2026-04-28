@@ -1,7 +1,9 @@
 import { NewsCard } from "@/components/NewsCard";
+import type { SmartAlertImportance } from "@/lib/smart-alerts";
 import type { NewsItem } from "@/lib/types";
 
 type NewsListProps = {
+  alertImportanceByLink?: Record<string, SmartAlertImportance>;
   articles: NewsItem[];
   emptyStateMessage?: string;
   emptyStateTitle?: string;
@@ -12,6 +14,7 @@ type NewsListProps = {
 };
 
 export function NewsList({
+  alertImportanceByLink = {},
   articles,
   emptyStateMessage = "The RSS parser is ready, but no articles were returned right now. This can happen if a feed is temporarily unavailable while developing locally.",
   emptyStateTitle = "No news yet",
@@ -25,8 +28,8 @@ export function NewsList({
 
   if (articles.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
-        <h2 className="text-2xl font-semibold text-slate-900">
+      <div className="rounded-[1.8rem] border border-dashed border-slate-300 bg-white p-10 text-center shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
           {emptyStateTitle}
         </h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -37,9 +40,10 @@ export function NewsList({
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
       {articles.map((article) => (
         <NewsCard
+          alertImportance={alertImportanceByLink[article.link] ?? null}
           key={article.link}
           article={article}
           isNew={newArticleLinkSet.has(article.link)}

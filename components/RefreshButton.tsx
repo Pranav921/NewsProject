@@ -9,10 +9,14 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 type RefreshButtonProps = {
+  className?: string;
   currentLinks?: string[];
 };
 
-export function RefreshButton({ currentLinks = [] }: RefreshButtonProps) {
+export function RefreshButton({
+  className,
+  currentLinks = [],
+}: RefreshButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -35,7 +39,7 @@ export function RefreshButton({ currentLinks = [] }: RefreshButtonProps) {
 
   return (
     <button
-      className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
+      className={`inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
       type="button"
       onClick={handleRefresh}
       disabled={isPending}

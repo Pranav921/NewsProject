@@ -68,8 +68,8 @@ export function AuthPanel() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-      <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm">
+    <div className="w-full max-w-md rounded-[1.4rem] border border-slate-200 bg-white p-4.5 shadow-[0_14px_32px_rgba(15,23,42,0.07)]">
+      <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
         <button
           className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
             authMode === "login"
@@ -102,18 +102,18 @@ export function AuthPanel() {
         </button>
       </div>
 
-      <h1 className="mt-6 text-3xl font-semibold tracking-tight text-slate-900">
+      <h1 className="mt-3.5 text-[1.55rem] font-semibold tracking-tight text-slate-900">
         {authMode === "login" ? "Welcome back" : "Create your account"}
       </h1>
-      <p className="mt-2 text-sm leading-6 text-slate-500">
+      <p className="mt-1.5 text-sm leading-5 text-slate-500">
         {authMode === "login"
-          ? "Log in to access your personalized breaking news dashboard."
-          : "Sign up with email and password to start saving your alerts and preferences."}
+          ? "Log in to your feed, saved stories, alerts, and newsletter settings."
+          : "Create an account to sync saved stories, alerts, and newsletter preferences."}
       </p>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-3.5 space-y-2.5">
         <input
-          className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+          className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
           type="email"
           placeholder="Email address"
           value={email}
@@ -122,7 +122,7 @@ export function AuthPanel() {
         />
 
         <input
-          className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+          className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
           type="password"
           placeholder="Password"
           value={password}
@@ -132,7 +132,7 @@ export function AuthPanel() {
       </div>
 
       <button
-        className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-70"
+        className="mt-3.5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
         type="button"
         onClick={authMode === "login" ? handleSignIn : handleSignUp}
         disabled={isSubmitting}
@@ -145,7 +145,9 @@ export function AuthPanel() {
       </button>
 
       {message ? (
-        <p className="mt-3 text-sm text-slate-600">{message}</p>
+        <p className="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-600">
+          {message}
+        </p>
       ) : null}
     </div>
   );

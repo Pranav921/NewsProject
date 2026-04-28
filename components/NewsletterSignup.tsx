@@ -84,15 +84,25 @@ export function NewsletterSignup({
   }
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-        {title}
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+    <div className="rounded-[1.4rem] border border-slate-200 bg-white p-4.5 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+            Newsletter
+          </p>
+          <h2 className="mt-1 text-[1.2rem] font-semibold tracking-tight text-slate-900">
+            {title}
+          </h2>
+        </div>
+        <span className="inline-flex w-fit rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
+          Tailor delivery
+        </span>
+      </div>
+      <p className="mt-2 text-sm leading-5 text-slate-500">{description}</p>
 
-      <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
+      <form className="mt-3.5 space-y-3" onSubmit={handleSubmit}>
         <input
-          className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+          className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
           type="email"
           placeholder="Email address"
           value={email}
@@ -101,7 +111,7 @@ export function NewsletterSignup({
         />
 
         <select
-          className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+          className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
           value={preferredFrequency}
           onChange={(event) =>
             setPreferredFrequency(event.target.value as FrequencyOption)
@@ -116,7 +126,7 @@ export function NewsletterSignup({
 
         {preferredFrequency === "custom" ? (
           <input
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
             type="number"
             min="1"
             step="1"
@@ -128,7 +138,7 @@ export function NewsletterSignup({
         ) : null}
 
         <button
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
           type="submit"
           disabled={isSubmitting}
         >
@@ -138,8 +148,10 @@ export function NewsletterSignup({
 
       {message ? (
         <p
-          className={`mt-3 text-sm ${
-            messageTone === "error" ? "text-rose-700" : "text-emerald-700"
+          className={`mt-2.5 rounded-xl border px-3.5 py-2.5 text-sm ${
+            messageTone === "error"
+              ? "border-rose-200 bg-rose-50 text-rose-700"
+              : "border-emerald-200 bg-emerald-50 text-emerald-700"
           }`}
         >
           {message}

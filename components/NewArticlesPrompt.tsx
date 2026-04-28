@@ -139,16 +139,21 @@ export function NewArticlesPrompt({
   }
 
   return (
-    <div className="mt-6 rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm">
+    <div className="mt-6 rounded-[1.5rem] border border-sky-200 bg-[linear-gradient(135deg,#eff6ff_0%,#f8fbff_100%)] p-4 shadow-[0_14px_30px_rgba(14,116,144,0.08)]">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm leading-6 text-slate-700">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
+            New stories ready
+          </p>
+          <p className="mt-1 text-sm leading-6 text-slate-700">
           {newArticleCount} new {newArticleCount === 1 ? "article has" : "articles have"}{" "}
           been added. Would you like to see {newArticleCount === 1 ? "it" : "them"}?
-        </p>
+          </p>
+        </div>
 
         <div className="flex items-center gap-3">
           <button
-            className="inline-flex min-h-10 items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
             type="button"
             onClick={handleRefresh}
             disabled={isPending}
@@ -157,7 +162,7 @@ export function NewArticlesPrompt({
           </button>
 
           <button
-            className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             type="button"
             onClick={() => setDismissedSignature(notificationSignature)}
           >

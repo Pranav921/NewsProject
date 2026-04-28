@@ -10,6 +10,7 @@ type AnalyticsResponse = {
   engagementOverview: Array<Record<string, unknown>>;
   frequencies: Array<Record<string, unknown>>;
   overview: Array<Record<string, unknown>>;
+  recentDeliveredArticles: Array<Record<string, unknown>>;
   skipReasons: Array<Record<string, unknown>>;
   sources: Array<Record<string, unknown>>;
   topClickedArticles: Array<Record<string, unknown>>;
@@ -47,17 +48,23 @@ export default async function EmailAnalyticsPage({
 
   if ("error" in analytics) {
     return (
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-6">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             href="/"
           >
             Back to dashboard
           </Link>
+          <Link
+            className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            href="/account"
+          >
+            Back to account settings
+          </Link>
         </div>
 
-        <section className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-rose-700 shadow-sm">
+        <section className="rounded-[1.9rem] border border-rose-200 bg-rose-50 p-8 text-rose-700 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
           <h1 className="text-2xl font-semibold">Newsletter performance</h1>
           <p className="mt-2 text-sm">{analytics.error}</p>
         </section>
@@ -68,8 +75,6 @@ export default async function EmailAnalyticsPage({
   const overviewRow = analytics.overview[0] ?? {};
   const engagementRow = analytics.engagementOverview[0] ?? {};
   const dailyData = (analytics.daily ?? []) as Array<Record<string, unknown>>;
-  const engagementDaily =
-    (analytics.engagementDaily ?? []) as Array<Record<string, unknown>>;
   const newslettersReceived = Number(
     getFirstValue(overviewRow, ["total_sent", "sent"]),
   ) || 0;
@@ -79,6 +84,10 @@ export default async function EmailAnalyticsPage({
   const opens = Number(getFirstValue(engagementRow, ["total_opens", "opens"])) || 0;
   const clicks =
     Number(getFirstValue(engagementRow, ["total_clicks", "clicks"])) || 0;
+  const uniqueOpens =
+    Number(getFirstValue(engagementRow, ["unique_opens"])) || 0;
+  const uniqueClicks =
+    Number(getFirstValue(engagementRow, ["unique_clicks"])) || 0;
   const totalFailed =
     Number(getFirstValue(overviewRow, ["total_failed", "failed"])) || 0;
   const totalSkipped =
@@ -87,7 +96,7 @@ export default async function EmailAnalyticsPage({
     Number(getFirstValue(overviewRow, ["total_subscriptions", "total"])) || 0;
   const activeSubscriptions =
     Number(getFirstValue(overviewRow, ["active_subscriptions", "active"])) || 0;
-  const openRate = formatPercent(opens, newslettersReceived);
+  const uniqueOpenRate = formatPercent(uniqueOpens, newslettersReceived);
   const clickRate = formatPercent(clicks, newslettersReceived);
   const clickToOpenRate = formatPercent(clicks, opens);
   const mostClickedSource = getMostClickedSource(analytics.topClickedArticles);
@@ -99,70 +108,106 @@ export default async function EmailAnalyticsPage({
     analytics.skipReasons.length > 0;
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
         <Link
-          className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
           href="/"
         >
           Back to dashboard
         </Link>
-        <p className="text-sm text-slate-500">Your newsletter performance</p>
+        <Link
+          className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          href="/account"
+        >
+          Back to account settings
+        </Link>
       </div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-          Your newsletter performance
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          See how your newsletters are performing, what stories you received, and
-          which links were clicked.
-        </p>
+      <section className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+        <div className="grid gap-4 p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_17rem]">
+          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+            <p className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sky-800">
+              Kicker News analytics
+            </p>
+            <h1 className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950 sm:text-[2.35rem]">
+              Your newsletter performance
+            </h1>
+            <p className="mt-2.5 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              See what reached your inbox, what you engaged with, and how your
+              newsletter habits are building over time.
+            </p>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          {RANGE_OPTIONS.map((option) => (
-            <Link
-              key={option.value}
-              className={`inline-flex min-h-9 items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-colors ${
-                selectedRange === option.value
-                  ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-              style={selectedRange === option.value ? { color: "#ffffff" } : undefined}
-              href={`/email-analytics?range=${option.value}`}
-            >
-              {option.label}
-            </Link>
-          ))}
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
+              <HeroStat label="Received" value={formatNumber(newslettersReceived)} />
+              <HeroStat label="Opened" value={formatNumber(opens)} />
+              <HeroStat label="Clicked" value={formatNumber(clicks)} />
+            </div>
+          </div>
+
+          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Time range
+            </p>
+            <div className="mt-3.5 flex flex-wrap gap-2">
+              {RANGE_OPTIONS.map((option) => (
+                <Link
+                  key={option.value}
+                  className={`inline-flex min-h-10 items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-colors ${
+                    selectedRange === option.value
+                      ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                  style={selectedRange === option.value ? { color: "#ffffff" } : undefined}
+                  href={`/email-analytics?range=${option.value}`}
+                >
+                  {option.label}
+                </Link>
+              ))}
+            </div>
+
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              Compare short-term engagement with your longer newsletter history.
+            </p>
+          </div>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <MetricCard
-            label="Newsletters received"
-            value={formatNumber(newslettersReceived)}
-          />
-          <MetricCard
-            label="Articles delivered"
-            value={formatNumber(articlesDelivered)}
-          />
-          <MetricCard label="Opens" value={formatNumber(opens)} />
-          <MetricCard label="Clicks" value={formatNumber(clicks)} />
-          <MetricCard
-            label="Open rate"
-            value={openRate}
-            helperText="How often your delivered emails were opened."
-          />
-          <MetricCard
-            label="Click rate"
-            value={clickRate}
-            helperText="How often delivered emails led to a link click."
-          />
+        <div className="border-t border-slate-200 p-4 sm:p-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <MetricCard
+              label="Articles delivered"
+              value={formatNumber(articlesDelivered)}
+            />
+            <MetricCard
+              label="Unique opens"
+              value={formatNumber(uniqueOpens)}
+            />
+            <MetricCard
+              label="Unique clicks"
+              value={formatNumber(uniqueClicks)}
+            />
+            <MetricCard
+              label="Unique open rate"
+              value={uniqueOpenRate}
+              helperText="Unique opens divided by newsletters received."
+            />
+            <MetricCard
+              label="Click rate"
+              value={clickRate}
+              helperText="Total clicks divided by newsletters received."
+            />
+            <MetricCard
+              label="Click-to-open"
+              value={clickToOpenRate}
+              helperText="Total clicks divided by total opens."
+            />
+          </div>
         </div>
       </section>
 
-      <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="mt-5 rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+          <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
             Your activity summary
           </h2>
           <p className="text-sm text-slate-500">
@@ -170,14 +215,14 @@ export default async function EmailAnalyticsPage({
           </p>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
           <MetricCard
-            label="Emails opened"
+            label="Total opens"
             value={formatNumber(opens)}
             helperText="Tracked opens in the selected time range."
           />
           <MetricCard
-            label="Links clicked"
+            label="Total clicks"
             value={formatNumber(clicks)}
             helperText="Tracked clicks in the selected time range."
           />
@@ -191,62 +236,32 @@ export default async function EmailAnalyticsPage({
             }
           />
         </div>
-
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <MetricCard
-            label="Click-to-open"
-            value={clickToOpenRate}
-            helperText="Of the emails that were opened, how many led to a click."
-          />
-        </div>
       </section>
 
-      <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="mt-5 rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+          <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
             Newsletter history
           </h2>
           <p className="text-sm text-slate-500">
-            How many newsletter sends were recorded over time.
+            A compact timeline of your recorded deliveries.
           </p>
         </div>
 
         {dailyData.length > 0 ? (
-          <div className="mt-6">
-            <BarChart data={dailyData} />
+          <div className="mt-5">
+            <HistoryList data={dailyData} />
           </div>
         ) : (
-          <p className="mt-6 text-sm text-slate-500">
-            No newsletters have been tracked in this time range yet.
-          </p>
+          <EmptyStateCard message="No newsletters have been tracked in this time range yet." />
         )}
       </section>
 
-      <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-            Opens and clicks over time
-          </h2>
-          <p className="text-sm text-slate-500">
-            A day-by-day view of tracked engagement.
-          </p>
-        </div>
-
-        {engagementDaily.length > 0 ? (
-          <div className="mt-6">
-            <DualBarChart data={engagementDaily} />
-          </div>
-        ) : (
-          <p className="mt-6 text-sm text-slate-500">
-            No opens or clicks have been tracked in this time range yet.
-          </p>
-        )}
-      </section>
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <TableCard
           title="Your newsletter schedule"
           description="How your newsletter subscriptions are currently set up."
+          contentAlignment="center"
           rows={analytics.frequencies}
           columns={[
             {
@@ -265,6 +280,7 @@ export default async function EmailAnalyticsPage({
         <TableCard
           title="Sources you receive most"
           description="The publishers showing up most often in your delivered newsletters."
+          contentAlignment="center"
           rows={analytics.sources}
           columns={[
             {
@@ -282,11 +298,13 @@ export default async function EmailAnalyticsPage({
         />
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <TableCard
           title="Recent articles delivered"
-          description="Stories that appeared most often in your newsletters."
-          rows={analytics.topArticles}
+          description="The latest stories sent to your inbox."
+          contentAlignment="center"
+          rows={analytics.recentDeliveredArticles}
+          maxBodyHeightClassName="max-h-[24rem]"
           columns={[
             {
               label: "Article",
@@ -305,17 +323,19 @@ export default async function EmailAnalyticsPage({
                 ),
             },
             {
-              label: "Times delivered",
+              label: "Delivered",
               render: (row) =>
-                formatNumber(getFirstValue(row, ["sent_count", "count", "total"])),
+                formatLongDate(getFirstValue(row, ["sent_at"])),
             },
           ]}
           emptyState="No delivered articles in this time range yet."
         />
         <TableCard
           title="Articles you clicked"
-          description="Stories that got the most click activity from your newsletters."
+          description="Links you opened from your newsletters."
+          contentAlignment="center"
           rows={analytics.topClickedArticles}
+          maxBodyHeightClassName="max-h-[24rem]"
           columns={[
             {
               label: "Article",
@@ -344,17 +364,17 @@ export default async function EmailAnalyticsPage({
       </div>
 
       {hasAdvancedDetails ? (
-        <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="mt-5 rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-              Advanced details
+            <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
+              Delivery details
             </h2>
             <p className="text-sm text-slate-500">
-              Extra delivery details that can help when something looks off.
+              Helpful context for gaps, skips, or delivery issues.
             </p>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="Failed sends"
               value={formatNumber(totalFailed)}
@@ -375,7 +395,7 @@ export default async function EmailAnalyticsPage({
             />
           </div>
 
-          <div className="mt-6">
+          <div className="mt-5">
             {analytics.skipReasons.length > 0 ? (
               <TableCard
                 title="Skipped send details"
@@ -503,9 +523,27 @@ function formatChartDate(value: unknown) {
   }).format(new Date(timestamp));
 }
 
+function formatLongDate(value: unknown) {
+  if (typeof value !== "string") {
+    return "Unknown date";
+  }
+
+  const timestamp = Date.parse(value);
+
+  if (Number.isNaN(timestamp)) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(timestamp));
+}
+
 function formatArticleLabel(title: unknown, link: unknown) {
   const normalizedTitle =
-    typeof title === "string" ? decodeCommonHtmlEntities(title).trim() : "";
+    typeof title === "string" ? decodeHtmlEntities(title).trim() : "";
 
   if (normalizedTitle && normalizedTitle !== "unknown") {
     return normalizedTitle;
@@ -519,13 +557,13 @@ function formatSourceValue(value: unknown, link?: unknown) {
     return deriveSourceFromLink(link) ?? "Unknown source";
   }
 
-  const normalized = decodeCommonHtmlEntities(value).trim();
+  const normalized = decodeHtmlEntities(value).trim();
 
   if (!normalized || normalized === "0") {
     return deriveSourceFromLink(link) ?? "Unknown source";
   }
 
-  return normalized;
+  return formatSourceName(normalized);
 }
 
 function shortenUrl(value: unknown) {
@@ -542,18 +580,43 @@ function shortenUrl(value: unknown) {
 
     return `${host}${shortenedPath}`;
   } catch {
-    const normalized = decodeCommonHtmlEntities(value).trim();
+    const normalized = decodeHtmlEntities(value).trim();
     return normalized.length > 40 ? `${normalized.slice(0, 40)}...` : normalized;
   }
 }
 
-function decodeCommonHtmlEntities(value: string) {
+function decodeHtmlEntities(value: string) {
   return value
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
+}
+
+function formatSourceName(value: string) {
+  const normalized = value.trim().toLowerCase();
+  const sourceNameMap: Record<string, string> = {
+    ap: "Associated Press",
+    associatedpress: "Associated Press",
+    bbc: "BBC News",
+    bbcnews: "BBC News",
+    bloomberg: "Bloomberg",
+    guardian: "The Guardian",
+    npr: "NPR",
+    nyt: "The New York Times",
+    nytimes: "The New York Times",
+    reuters: "Reuters",
+    wsj: "The Wall Street Journal",
+  };
+
+  const compactKey = normalized.replace(/[^a-z]/g, "");
+
+  if (sourceNameMap[compactKey]) {
+    return sourceNameMap[compactKey];
+  }
+
+  return value;
 }
 
 function formatScheduleLabel(value: string) {
@@ -585,11 +648,13 @@ function deriveSourceFromLink(value: unknown) {
       return hostname || null;
     }
 
-    return primary
-      .split("-")
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ");
+    return formatSourceName(
+      primary
+        .split("-")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" "),
+    );
   } catch {
     return null;
   }
@@ -630,104 +695,71 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+    <div className="h-full rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3.5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+      <p className="mt-1.5 text-xl font-semibold text-slate-900">{value}</p>
       {helperText ? (
-        <p className="mt-2 text-sm leading-6 text-slate-500">{helperText}</p>
+        <p className="mt-1.5 text-sm leading-5 text-slate-500">{helperText}</p>
       ) : null}
     </div>
   );
 }
 
-function BarChart({ data }: { data: Array<Record<string, unknown>> }) {
-  const values = data.map((row) => Number(row.sent ?? row.total ?? 0));
-  const maxValue = Math.max(1, ...values);
-
+function HeroStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
-        {data.map((row, index) => {
-          const label = formatChartDate(row.day ?? row.date);
-          const value = Number(row.sent ?? row.total ?? 0);
-          const percent = Math.round((value / maxValue) * 100);
-
-          return (
-            <div key={`${label}-${index}`} className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>{label}</span>
-                <span className="font-semibold text-slate-700">
-                  {formatNumber(value)}
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-200">
-                <div
-                  className="h-2 rounded-full bg-slate-900"
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+    <div className="rounded-[1.1rem] border border-slate-200 bg-white px-3.5 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1.5 text-xl font-semibold text-slate-950">{value}</p>
     </div>
   );
 }
 
-function DualBarChart({ data }: { data: Array<Record<string, unknown>> }) {
-  const openValues = data.map((row) => Number(row.opens ?? row.open_count ?? 0));
-  const clickValues = data.map((row) =>
-    Number(row.clicks ?? row.click_count ?? 0),
-  );
-  const maxValue = Math.max(1, ...openValues, ...clickValues);
+function HistoryList({ data }: { data: Array<Record<string, unknown>> }) {
+  const sortedRows = [...data]
+    .sort((a, b) =>
+      String(b.day ?? b.date ?? "").localeCompare(String(a.day ?? a.date ?? "")),
+    )
+    .slice(0, 10);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
-        {data.map((row, index) => {
+    <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3.5">
+      <div className="space-y-2.5">
+        {sortedRows.map((row, index) => {
           const label = formatChartDate(row.day ?? row.date);
-          const opens = Number(row.opens ?? row.open_count ?? 0);
-          const clicks = Number(row.clicks ?? row.click_count ?? 0);
-          const openPercent = Math.round((opens / maxValue) * 100);
-          const clickPercent = Math.round((clicks / maxValue) * 100);
+          const sent = Number(row.sent ?? 0);
+          const skipped = Number(row.skipped ?? 0);
+          const failed = Number(row.failed ?? 0);
+          const total = Number(row.total ?? sent + skipped + failed);
 
           return (
-            <div key={`${label}-${index}`} className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>{label}</span>
-                <span className="font-semibold text-slate-700">
-                  {formatNumber(opens)} opens / {formatNumber(clicks)} clicks
-                </span>
+            <div
+              key={`${label}-${index}`}
+              className="flex flex-col gap-2.5 rounded-[1rem] border border-slate-200 bg-white px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{label}</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {formatNumber(total)} total send{total === 1 ? "" : "s"}
+                </p>
               </div>
-              <div className="space-y-1">
-                <div className="h-2 rounded-full bg-slate-200">
-                  <div
-                    className="h-2 rounded-full bg-emerald-500"
-                    style={{ width: `${openPercent}%` }}
-                  />
-                </div>
-                <div className="h-2 rounded-full bg-slate-200">
-                  <div
-                    className="h-2 rounded-full bg-slate-900"
-                    style={{ width: `${clickPercent}%` }}
-                  />
-                </div>
+              <div className="flex flex-wrap gap-2 text-xs font-medium">
+                <MiniCount label="Sent" tone="slate" value={formatNumber(sent)} />
+                <MiniCount label="Skipped" tone="amber" value={formatNumber(skipped)} />
+                <MiniCount label="Failed" tone="rose" value={formatNumber(failed)} />
               </div>
             </div>
           );
         })}
-      </div>
-      <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          Opens
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-slate-900" />
-          Clicks
-        </span>
       </div>
     </div>
   );
@@ -739,48 +771,95 @@ function TableCard({
   rows,
   columns,
   emptyState,
+  maxBodyHeightClassName,
+  contentAlignment = "left",
 }: {
   title: string;
   description: string;
   rows: Array<Record<string, unknown>>;
   columns: ColumnDefinition[];
   emptyState: string;
+  maxBodyHeightClassName?: string;
+  contentAlignment?: "center" | "left";
 }) {
+  const alignmentClassName =
+    contentAlignment === "center" ? "text-center" : "text-left";
+
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-xl font-semibold tracking-tight text-slate-900">
-        {title}
-      </h3>
-      <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+    <section className="flex h-full flex-col rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
+      <div>
+        <h3 className="text-lg font-semibold tracking-tight text-slate-900">
+          {title}
+        </h3>
+        <p className="mt-1.5 text-sm leading-6 text-slate-500">{description}</p>
+      </div>
 
       {rows.length > 0 ? (
-        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-          <table className="min-w-full border-collapse text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
-              <tr>
-                {columns.map((column) => (
-                  <th key={column.label} className="px-4 py-3">
-                    {column.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {rows.map((row, index) => (
-                <tr key={`${title}-${index}`}>
+        <div className="mt-4 overflow-hidden rounded-[1.1rem] border border-slate-200">
+          <div className={`overflow-auto ${maxBodyHeightClassName ?? ""}`}>
+            <table className="min-w-full border-collapse text-sm">
+              <thead
+                className={`bg-slate-50 text-xs uppercase tracking-[0.16em] text-slate-500 ${alignmentClassName}`}
+              >
+                <tr>
                   {columns.map((column) => (
-                    <td key={column.label} className="px-4 py-3 text-slate-700">
-                      {column.render(row)}
-                    </td>
+                    <th key={column.label} className="px-4 py-3">
+                      {column.label}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {rows.map((row, index) => (
+                  <tr key={`${title}-${index}`}>
+                    {columns.map((column) => (
+                      <td
+                        key={column.label}
+                        className={`max-w-0 break-words px-4 py-3 align-top leading-6 text-slate-700 ${alignmentClassName}`}
+                      >
+                        {column.render(row)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <p className="mt-4 text-sm text-slate-500">{emptyState}</p>
       )}
     </section>
+  );
+}
+
+function EmptyStateCard({ message }: { message: string }) {
+  return (
+    <div className="rounded-[1.1rem] border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-500">
+      {message}
+    </div>
+  );
+}
+
+function MiniCount({
+  label,
+  tone,
+  value,
+}: {
+  label: string;
+  tone: "amber" | "rose" | "slate";
+  value: string;
+}) {
+  const toneClasses =
+    tone === "amber"
+      ? "bg-amber-50 text-amber-700"
+      : tone === "rose"
+        ? "bg-rose-50 text-rose-700"
+        : "bg-slate-100 text-slate-700";
+
+  return (
+    <span className={`inline-flex rounded-full px-3 py-1 ${toneClasses}`}>
+      {label}: {value}
+    </span>
   );
 }

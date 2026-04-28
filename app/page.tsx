@@ -1,9 +1,5 @@
 import { AuthPanel } from "@/components/AuthPanel";
-import { NewArticlesPrompt } from "@/components/NewArticlesPrompt";
-import { NewsFeed } from "@/components/NewsFeed";
-import { NewsletterSignup } from "@/components/NewsletterSignup";
-import { RefreshButton } from "@/components/RefreshButton";
-import { UserMenu } from "@/components/UserMenu";
+import { DashboardView } from "@/components/DashboardView";
 import { fromAlertKeywordRows } from "@/lib/custom-alerts";
 import { getAllNewsItems } from "@/lib/rss";
 import { fromSavedArticleRows } from "@/lib/saved-articles";
@@ -21,27 +17,40 @@ export default async function Home() {
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-1 items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
-        <section className="flex w-full max-w-xl flex-col items-center text-center">
-          <div className="w-full">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">
-              Breaking News Dashboard
-            </p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-              Latest headlines from trusted RSS feeds
-            </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-              Sign in to access your live news feed, saved articles, custom alerts,
-              smart alerts, and the rest of your personalized dashboard.
-            </p>
-          </div>
+      <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-1 items-center px-4 py-6 sm:px-6 lg:px-8">
+        <section className="w-full rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)] sm:p-6 lg:p-7">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,390px)] lg:items-center">
+            <div className="text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-800">
+                Kicker News
+              </div>
+              <h1 className="mt-3.5 max-w-3xl text-balance text-[2.4rem] font-semibold tracking-tight text-slate-950 sm:text-[2.7rem] lg:text-[2.95rem]">
+                Latest headlines from trusted RSS feeds
+              </h1>
+              <p className="mt-3 max-w-2xl text-[15px] leading-6 text-slate-600 sm:text-base">
+                Follow breaking stories in one clean dashboard with saved articles,
+                smart alerts, personalized newsletter tools, and fast refreshes.
+              </p>
 
-          <div className="mt-8 flex w-full justify-center">
-            <AuthPanel />
-          </div>
+              <div className="mt-5 grid gap-2.5 text-left sm:grid-cols-3">
+                <FeaturePill
+                  title="Live feed"
+                  description="Official RSS and Atom sources, deduped and sorted newest first."
+                />
+                <FeaturePill
+                  title="Smart alerts"
+                  description="Catch important matches from your keywords without extra noise."
+                />
+                <FeaturePill
+                  title="Newsletter"
+                  description="Track engagement and unlock more relevant digests over time."
+                />
+              </div>
+            </div>
 
-          <div className="mt-6 w-full">
-            <NewsletterSignup />
+            <div className="grid gap-3 lg:justify-items-end">
+              <AuthPanel />
+            </div>
           </div>
         </section>
       </main>
@@ -61,7 +70,6 @@ export default async function Home() {
     .select("keyword")
     .order("created_at", { ascending: true });
   const articles = await getAllNewsItems({ fresh: true });
-  const articleLinks = articles.map((article) => article.link);
   const initialPreferences = normalizeUserPreferences(
     userPreferencesRow
       ? {
@@ -75,64 +83,30 @@ export default async function Home() {
   const initialAlertKeywords = fromAlertKeywordRows(alertKeywordRows);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-10 sm:px-6 lg:px-8">
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_27rem] lg:items-start">
-          <div className="max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">
-              Breaking News Dashboard
-            </p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-              Latest headlines from trusted RSS feeds
-            </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-              This homepage fetches official RSS feeds, turns the XML into typed
-              article data, removes duplicate links, and sorts everything by
-              newest first.
-            </p>
-          </div>
-
-          <div className="flex w-full flex-col gap-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex">
-                <RefreshButton currentLinks={articleLinks} />
-              </div>
-              <Link
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-white"
-                href="/account"
-              >
-                Account settings
-              </Link>
-            </div>
-
-            <UserMenu email={user.email ?? null} />
-          </div>
-        </div>
-      </section>
-
-      <NewArticlesPrompt
-        key={articleLinks.join("|")}
-        initialLinks={articleLinks}
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
+      <DashboardView
+        articles={articles}
+        initialAlertKeywords={initialAlertKeywords}
+        initialPreferences={initialPreferences}
+        initialSavedArticles={initialSavedArticles}
+        userEmail={user.email ?? null}
+        userId={user.id}
       />
-
-      <section className="mt-8">
-        <NewsFeed
-          articles={articles}
-          initialAlertKeywords={initialAlertKeywords}
-          initialPreferences={initialPreferences}
-          initialSavedArticles={initialSavedArticles}
-          userId={user.id}
-        />
-      </section>
-
-      <section className="mt-8">
-        <NewsletterSignup
-          initialEmail={user.email ?? null}
-          title="Newsletter sign-up"
-          description="Save your email and preferred delivery cadence now, and actual sending can be added later."
-        />
-      </section>
     </main>
   );
 }
-import Link from "next/link";
+
+function FeaturePill({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+      <p className="text-sm font-semibold text-slate-900">{title}</p>
+      <p className="mt-1 text-sm leading-5 text-slate-600">{description}</p>
+    </div>
+  );
+}
