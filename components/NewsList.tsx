@@ -14,6 +14,7 @@ type NewsListProps = {
   newArticleLinks?: string[];
   onToggleSavedArticle?: (article: NewsItem) => void;
   savedArticleLinks?: string[];
+  saveButtonLabel?: string;
   showInFeedSponsor?: boolean;
   viewMode?: "standard" | "compact";
 };
@@ -27,6 +28,7 @@ export function NewsList({
   newArticleLinks = [],
   onToggleSavedArticle,
   savedArticleLinks = [],
+  saveButtonLabel = "Save article",
   showInFeedSponsor = false,
   viewMode = "standard",
 }: NewsListProps) {
@@ -59,6 +61,7 @@ export function NewsList({
         isNew={newArticleLinkSet.has(article.link)}
         isSaved={savedArticleLinkSet.has(article.link)}
         onToggleSaved={onToggleSavedArticle}
+        saveButtonLabel={saveButtonLabel}
         viewMode={viewMode}
       />,
     ];

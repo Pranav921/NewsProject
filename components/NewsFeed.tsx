@@ -27,12 +27,15 @@ import { useEffect, useMemo, useState } from "react";
 
 type NewsFeedProps = {
   articles: NewsItem[];
+  authCtaHref?: string;
+  authSignupHref?: string;
   feedErrorMessage?: string | null;
   initialAlertKeywords?: string[];
   initialPreferences?: UserPreferences | null;
   initialSavedArticles?: SavedArticle[];
   onSavedArticlesCountChange?: (count: number) => void;
   userId?: string | null;
+  viewerMode?: "authenticated" | "public";
 };
 
 type ViewMode = "standard" | "compact";
@@ -66,15 +69,22 @@ const TIME_FILTER_WINDOWS_MS: Record<Exclude<TimeFilter, "all">, number> = {
   "1w": 7 * 24 * 60 * 60 * 1000,
 };
 
+const EMPTY_ALERT_KEYWORDS: string[] = [];
+const EMPTY_SAVED_ARTICLES: SavedArticle[] = [];
+
 export function NewsFeed({
   articles,
+  authCtaHref = "#public-auth-panel",
+  authSignupHref = "#public-auth-panel",
   feedErrorMessage = null,
-  initialAlertKeywords = [],
+  initialAlertKeywords = EMPTY_ALERT_KEYWORDS,
   initialPreferences = null,
-  initialSavedArticles = [],
+  initialSavedArticles = EMPTY_SAVED_ARTICLES,
   onSavedArticlesCountChange,
   userId = null,
+  viewerMode = "authenticated",
 }: NewsFeedProps) {
+  const isPublicViewer = viewerMode === "public";
   const normalizedInitialPreferences = normalizeUserPreferences(initialPreferences);
   const [supabase] = useState(() => createSupabaseBrowserClient());
   const [searchQuery, setSearchQuery] = useState("");
@@ -95,6 +105,10 @@ export function NewsFeed({
   const [isSavingArticle, setIsSavingArticle] = useState(false);
   const [hasLoadedAlertKeywords, setHasLoadedAlertKeywords] = useState(false);
   const [hasMountedPreferences, setHasMountedPreferences] = useState(false);
+  const [protectedActionMessage, setProtectedActionMessage] = useState<{
+    description: string;
+    title: string;
+  } | null>(null);
   const currentLinks = useMemo(
     () => articles.map((article) => article.link),
     [articles],
@@ -104,7 +118,8 @@ export function NewsFeed({
     () => savedArticles.map((article) => article.link),
     [savedArticles],
   );
-  const baseArticles = feedMode === "saved" ? savedArticles : articles;
+  const effectiveFeedMode = isPublicViewer ? "all" : feedMode;
+  const baseArticles = effectiveFeedMode === "saved" ? savedArticles : articles;
   const sourceOptions = useMemo(
     () => [
       "All Sources",
@@ -255,6 +270,14 @@ export function NewsFeed({
     alertMatchView !== "off";
   const hasFeedError = Boolean(feedErrorMessage) && articles.length === 0;
 
+  function promptProtectedAction(feature: string) {
+    setProtectedActionMessage({
+      description:
+        "Create a free account to save stories, set alerts, and personalize your newsletter.",
+      title: `Sign in to ${feature}.`,
+    });
+  }
+
   function resetFilters() {
     setSearchQuery("");
     setSelectedSource(DEFAULT_SOURCE_FILTER);
@@ -282,13 +305,13 @@ export function NewsFeed({
       };
     }
 
-    if (feedMode === "saved" && savedArticles.length === 0) {
+    if (effectiveFeedMode === "saved" && savedArticles.length === 0) {
       return {
         action: (
           <button
             className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             type="button"
-            onClick={() => setFeedMode("all")}
+          onClick={() => setFeedMode("all")}
           >
             Browse all articles
           </button>
@@ -351,6 +374,14 @@ export function NewsFeed({
   const emptyState = getEmptyState();
 
   useEffect(() => {
+    if (isPublicViewer) {
+      setAlertKeywords((currentKeywords) =>
+        currentKeywords.length === 0 ? currentKeywords : [],
+      );
+      setHasLoadedAlertKeywords(true);
+      return;
+    }
+
     if (userId) {
       setAlertKeywords(initialAlertKeywords);
       setHasLoadedAlertKeywords(true);
@@ -361,11 +392,17 @@ export function NewsFeed({
       parseAlertKeywords(localStorage.getItem(CUSTOM_ALERT_KEYWORDS_STORAGE_KEY)),
     );
     setHasLoadedAlertKeywords(true);
-  }, [initialAlertKeywords, userId]);
+  }, [initialAlertKeywords, isPublicViewer, userId]);
 
   useEffect(() => {
     setSavedArticles(initialSavedArticles);
   }, [initialSavedArticles]);
+
+  useEffect(() => {
+    if (isPublicViewer && feedMode !== "all") {
+      setFeedMode("all");
+    }
+  }, [feedMode, isPublicViewer]);
 
   useEffect(() => {
     onSavedArticlesCountChange?.(savedArticles.length);
@@ -376,7 +413,7 @@ export function NewsFeed({
   }, []);
 
   useEffect(() => {
-    if (!hasLoadedAlertKeywords || userId) {
+    if (isPublicViewer || !hasLoadedAlertKeywords || userId) {
       return;
     }
 
@@ -384,7 +421,7 @@ export function NewsFeed({
       CUSTOM_ALERT_KEYWORDS_STORAGE_KEY,
       JSON.stringify(alertKeywords),
     );
-  }, [alertKeywords, hasLoadedAlertKeywords, userId]);
+  }, [alertKeywords, hasLoadedAlertKeywords, isPublicViewer, userId]);
 
   useEffect(() => {
     if (!userId || !hasMountedPreferences) {
@@ -470,6 +507,11 @@ export function NewsFeed({
   }, [selectedSource, sourceOptions]);
 
   async function handleToggleSavedArticle(article: NewsItem) {
+    if (isPublicViewer) {
+      promptProtectedAction("save articles");
+      return;
+    }
+
     if (!userId || isSavingArticle) {
       return;
     }
@@ -587,25 +629,32 @@ export function NewsFeed({
               <div className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1">
                 <button
                   className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
-                    feedMode === "all"
+                    effectiveFeedMode === "all"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
                   }`}
                   type="button"
                   onClick={() => setFeedMode("all")}
-                  aria-pressed={feedMode === "all"}
+                  aria-pressed={effectiveFeedMode === "all"}
                 >
                   All articles
                 </button>
                 <button
                   className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
-                    feedMode === "saved"
+                    effectiveFeedMode === "saved"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
                   }`}
                   type="button"
-                  onClick={() => setFeedMode("saved")}
-                  aria-pressed={feedMode === "saved"}
+                  onClick={() => {
+                    if (isPublicViewer) {
+                      promptProtectedAction("use saved articles");
+                      return;
+                    }
+
+                    setFeedMode("saved");
+                  }}
+                  aria-pressed={effectiveFeedMode === "saved"}
                 >
                   Saved articles
                 </button>
@@ -662,30 +711,71 @@ export function NewsFeed({
                       : "text-slate-600 hover:bg-white"
                   }`}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    if (isPublicViewer) {
+                      promptProtectedAction("use alert matches");
+                      return;
+                    }
+
                     setAlertMatchView(
                       newAlertMatchLinks.length > 0 ? "all" : "off",
-                    )
-                  }
+                    );
+                  }}
                   aria-pressed={alertMatchView !== "off"}
-                  disabled={newAlertMatchLinks.length === 0}
                 >
                   Alert matches
                 </button>
               </div>
 
-              <a
-                className="inline-flex w-fit items-center justify-center self-center px-1 py-0.5 text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-900 sm:ml-1 sm:min-h-10 sm:w-auto sm:rounded-full sm:border sm:border-slate-300 sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-sm sm:text-slate-700 sm:hover:bg-slate-100 xl:ml-2"
-                href="/account#alerts"
-              >
-                Manage alerts
-              </a>
+              {isPublicViewer ? (
+                <button
+                  className="inline-flex w-fit items-center justify-center self-center px-1 py-0.5 text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-900 sm:ml-1 sm:min-h-10 sm:w-auto sm:rounded-full sm:border sm:border-slate-300 sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-sm sm:text-slate-700 sm:hover:bg-slate-100 xl:ml-2"
+                  type="button"
+                  onClick={() => promptProtectedAction("manage alerts")}
+                >
+                  Manage alerts
+                </button>
+              ) : (
+                <a
+                  className="inline-flex w-fit items-center justify-center self-center px-1 py-0.5 text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-900 sm:ml-1 sm:min-h-10 sm:w-auto sm:rounded-full sm:border sm:border-slate-300 sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-sm sm:text-slate-700 sm:hover:bg-slate-100 xl:ml-2"
+                  href="/account#alerts"
+                >
+                  Manage alerts
+                </a>
+              )}
             </div>
 
             <div className="text-center text-xs text-slate-500 sm:text-sm xl:text-left">
-              {filteredStoryCount} stories | {filteredSourceCount} sources | {savedArticles.length} saved
+              {filteredStoryCount} stories | {filteredSourceCount} sources
+              {isPublicViewer ? "" : ` | ${savedArticles.length} saved`}
             </div>
           </div>
+
+          {protectedActionMessage ? (
+            <div className="rounded-[1.1rem] border border-sky-200 bg-sky-50 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-900">
+                {protectedActionMessage.title}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                {protectedActionMessage.description}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2.5">
+                <a
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                  href={authCtaHref}
+                  style={{ color: "#ffffff" }}
+                >
+                  Log in
+                </a>
+                <a
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  href={authSignupHref}
+                >
+                  Create account
+                </a>
+              </div>
+            </div>
+          ) : null}
 
           {newArticleLinks.length > 0 || hasActiveFilters ? (
             <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
@@ -734,7 +824,8 @@ export function NewsFeed({
         newArticleLinks={newArticleLinks}
         onToggleSavedArticle={handleToggleSavedArticle}
         savedArticleLinks={savedArticleLinks}
-        showInFeedSponsor={feedMode === "all" && !hasFeedError}
+        saveButtonLabel={isPublicViewer ? "Sign in to save" : "Save article"}
+        showInFeedSponsor={effectiveFeedMode === "all" && !hasFeedError}
         viewMode={viewMode}
         emptyStateTitle={emptyState.title}
         emptyStateMessage={emptyState.message}

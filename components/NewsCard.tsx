@@ -10,6 +10,7 @@ type NewsCardProps = {
   isNew?: boolean;
   isSaved?: boolean;
   onToggleSaved?: (article: NewsItem) => void;
+  saveButtonLabel?: string;
   viewMode?: "standard" | "compact";
 };
 
@@ -30,6 +31,7 @@ export function NewsCard({
   isNew = false,
   isSaved = false,
   onToggleSaved,
+  saveButtonLabel = "Save article",
   viewMode = "standard",
 }: NewsCardProps) {
   const isCompact = viewMode === "compact";
@@ -129,7 +131,7 @@ export function NewsCard({
           onClick={() => onToggleSaved?.(article)}
           aria-pressed={isSaved}
         >
-          {isSaved ? "Saved" : "Save article"}
+          {isSaved ? "Saved" : saveButtonLabel}
         </button>
 
         <a

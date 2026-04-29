@@ -1,5 +1,7 @@
 import { headers } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -42,6 +44,15 @@ const RANGE_OPTIONS: Array<{ label: string; value: RangeKey }> = [
 export default async function EmailAnalyticsPage({
   searchParams,
 }: EmailAnalyticsPageProps) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/");
+  }
+
   const resolvedSearchParams = await searchParams;
   const selectedRange = normalizeRange(resolvedSearchParams.range);
   const analytics = await fetchAnalytics(selectedRange);

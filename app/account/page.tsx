@@ -25,10 +25,12 @@ export default async function AccountPage() {
   const { data: userPreferencesRow } = await supabase
     .from("user_preferences")
     .select("default_source_filter, default_time_filter, default_view_mode")
+    .eq("user_id", user.id)
     .maybeSingle();
   const { data: alertKeywordRows } = await supabase
     .from("user_alert_keywords")
     .select("keyword")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: true });
   const { data: newsletterRow } = await supabase
     .from("newsletter_subscriptions")

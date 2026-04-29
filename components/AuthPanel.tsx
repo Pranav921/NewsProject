@@ -3,11 +3,15 @@
 import { trackEvent } from "@/lib/analytics";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type AuthMode = "login" | "signup";
 
-export function AuthPanel() {
+type AuthPanelProps = {
+  syncWithHash?: boolean;
+};
+
+export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
   const router = useRouter();
   const [supabase] = useState(() => createSupabaseBrowserClient());
   const [authMode, setAuthMode] = useState<AuthMode>("login");
@@ -15,6 +19,32 @@ export function AuthPanel() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!syncWithHash) {
+      return;
+    }
+
+    function updateModeFromHash() {
+      if (window.location.hash === "#public-auth-panel-signup") {
+        setAuthMode("signup");
+        setMessage(null);
+        return;
+      }
+
+      if (window.location.hash === "#public-auth-panel-login") {
+        setAuthMode("login");
+        setMessage(null);
+      }
+    }
+
+    updateModeFromHash();
+    window.addEventListener("hashchange", updateModeFromHash);
+
+    return () => {
+      window.removeEventListener("hashchange", updateModeFromHash);
+    };
+  }, [syncWithHash]);
 
   async function handleSignUp() {
     if (!email.trim() || !password) {

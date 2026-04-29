@@ -194,7 +194,7 @@ export function DashboardView({
 
       <section id="newsletter-signup" className="mt-4 scroll-mt-24">
         <NewsletterSignup
-          backToTopHref="#dashboard-top"
+          browseHeadlinesHref="#dashboard-top"
           initialCustomFrequency={initialNewsletterCustomFrequency}
           initialEmail={userEmail}
           initialFrequency={initialNewsletterFrequency ?? "daily"}
