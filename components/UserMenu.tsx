@@ -6,7 +6,7 @@ import { useState } from "react";
 
 type UserMenuProps = {
   email: string | null;
-  variant?: "card" | "inline";
+  variant?: "card" | "inline" | "menu";
 };
 
 export function UserMenu({ email, variant = "card" }: UserMenuProps) {
@@ -29,6 +29,34 @@ export function UserMenu({ email, variant = "card" }: UserMenuProps) {
 
     router.replace("/");
     router.refresh();
+  }
+
+  if (variant === "menu") {
+    return (
+      <div className="space-y-2">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Signed in
+          </p>
+          <p className="mt-1 break-all text-sm font-medium text-slate-900">
+            {email ?? "Account"}
+          </p>
+        </div>
+        <button
+          className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
+          type="button"
+          onClick={handleSignOut}
+          disabled={isPending}
+        >
+          {isPending ? "Logging out..." : "Log out"}
+        </button>
+        {message ? (
+          <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            {message}
+          </p>
+        ) : null}
+      </div>
+    );
   }
 
   if (variant === "inline") {

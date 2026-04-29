@@ -1,3 +1,6 @@
+"use client";
+
+import { trackEvent } from "@/lib/analytics";
 import type { NewsItem } from "@/lib/types";
 import type { SmartAlertImportance } from "@/lib/smart-alerts";
 
@@ -53,7 +56,7 @@ export function NewsCard({
         isCompact ? "min-h-[15rem] p-3.5" : "min-h-[19rem] p-4 sm:p-4.5"
       }`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2.5">
+      <div className="flex flex-wrap items-start gap-x-2.5 gap-y-1.5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-700">
             {article.source}
@@ -80,7 +83,7 @@ export function NewsCard({
           ) : null}
         </div>
         <time
-          className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400"
+          className="w-full text-left text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400 min-[420px]:ml-auto min-[420px]:w-auto min-[420px]:text-right"
           dateTime={article.publishedAt ?? undefined}
         >
           {formatPublishedDate(article.publishedAt)}
@@ -90,8 +93,8 @@ export function NewsCard({
       <h2
         className={`mt-3 text-balance font-semibold text-slate-950 ${
           isCompact
-            ? "min-h-[4rem] text-base leading-6"
-            : "min-h-[4.8rem] text-[1.05rem] leading-6"
+            ? "min-h-[4rem] text-[1.05rem] leading-6 sm:text-base"
+            : "text-[1.12rem] leading-7 sm:min-h-[4.8rem] sm:text-[1.05rem] sm:leading-6"
         }`}
       >
         {article.title}
@@ -99,14 +102,14 @@ export function NewsCard({
 
       {!isCompact ? (
         <div
-          className={`mt-3 flex-1 rounded-[1rem] border p-3 ${summaryToneClasses}`}
+          className={`mt-3.5 flex-1 rounded-[1rem] border p-3.5 sm:mt-3 sm:p-3 ${summaryToneClasses}`}
         >
-          <p className="line-clamp-5 text-sm leading-5 text-slate-600">
+          <p className="line-clamp-5 text-sm leading-6 text-slate-600 sm:leading-5">
             {article.summary ?? "No summary available."}
           </p>
         </div>
       ) : (
-        <p className="mt-2.5 line-clamp-3 text-sm leading-5 text-slate-600">
+        <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600 sm:mt-2.5 sm:leading-5">
           {article.summary ?? "No summary available."}
         </p>
       )}
@@ -135,6 +138,13 @@ export function NewsCard({
           target="_blank"
           rel="noreferrer noopener"
           style={{ color: "#ffffff" }}
+          onClick={() =>
+            trackEvent("article_original_click", {
+              article_link: article.link,
+              article_source: article.source,
+              article_title: article.title,
+            })
+          }
         >
           Read original article
         </a>

@@ -3,7 +3,12 @@ import type {
   NewsletterArticleMode,
   NewsletterEmailFormat,
   NewsletterFrequency,
+  SponsorConfig,
 } from "./types.ts";
+import {
+  getNewsletterMidSponsor,
+  getNewsletterTopSponsor,
+} from "./sponsors.ts";
 
 const NEWSLETTER_TIME_ZONE = "America/New_York";
 export const NEWSLETTER_ARTICLE_LIMIT = 20;
@@ -168,17 +173,26 @@ export function buildNewsletterEmailHtml(
     | { sendLogId: string; subscriptionId: number; email: string }
     | null = null,
 ): string {
+  const topSponsor = getNewsletterTopSponsor();
+  const midSponsor = getNewsletterMidSponsor();
+
   if (emailFormat === "compact") {
     return buildCompactNewsletterEmailHtml(
       articles,
       now,
       unsubscribeUrl,
       tracking,
+      topSponsor,
+      midSponsor,
     );
   }
 
+  const midpointIndex =
+    midSponsor && articles.length > 3
+      ? Math.min(Math.max(Math.ceil(articles.length / 2), 1), articles.length - 1)
+      : -1;
   const articleMarkup = articles
-    .map((article) => {
+    .map((article, index) => {
       const publishedLabel = formatPublishedTime(article.publishedAt);
       const summary = article.summary
         ? `<p style="margin:12px 0 0;color:#475569;font-size:14px;line-height:1.7;">${escapeHtml(article.summary)}</p>`
@@ -193,7 +207,7 @@ export function buildNewsletterEmailHtml(
         article.source,
       );
 
-      return `
+      const articleBlock = `
         <article style="padding:24px 0;border-top:1px solid #e2e8f0;">
           <p style="margin:0;color:#0369a1;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(article.source)}</p>
           <h2 style="margin:10px 0 0;font-size:22px;line-height:1.3;color:#0f172a;">${escapeHtml(article.title)}</h2>
@@ -204,6 +218,12 @@ export function buildNewsletterEmailHtml(
           </p>
         </article>
       `;
+
+      if (midSponsor && index === midpointIndex - 1) {
+        return `${articleBlock}${buildSponsorBlockHtml(midSponsor)}`;
+      }
+
+      return articleBlock;
     })
     .join("");
 
@@ -218,6 +238,7 @@ export function buildNewsletterEmailHtml(
         <p style="margin:14px 0 0;">
           <a href="${escapeAttribute(unsubscribeUrl)}" style="display:inline-block;border-radius:9999px;border:1px solid #cbd5e1;color:#475569;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;">Unsubscribe</a>
         </p>
+        ${topSponsor ? buildSponsorBlockHtml(topSponsor) : ""}
         <h1 style="margin:14px 0 0;color:#0f172a;font-size:34px;line-height:1.1;">Latest headlines from the last 24 hours</h1>
         <p style="margin:14px 0 0;color:#475569;font-size:15px;line-height:1.7;">
           Your daily roundup for ${escapeHtml(
@@ -247,21 +268,29 @@ export function buildNewsletterEmailText(
   unsubscribeUrl: string,
   emailFormat: "standard" | "compact" = "standard",
 ): string {
+  const topSponsor = getNewsletterTopSponsor();
+  const midSponsor = getNewsletterMidSponsor();
+
   if (emailFormat === "compact") {
-    return buildCompactNewsletterEmailText(articles, unsubscribeUrl);
+    return buildCompactNewsletterEmailText(
+      articles,
+      unsubscribeUrl,
+      topSponsor,
+      midSponsor,
+    );
   }
 
   return [
     "Kicker News",
     "",
     `Unsubscribe: ${unsubscribeUrl}`,
+    ...(topSponsor ? ["", ...buildSponsorBlockText(topSponsor), ""] : []),
     "",
     "Latest headlines from the last 24 hours",
     "",
-    ...articles.flatMap((article) => {
+    ...articles.flatMap((article, index) => {
       const publishedLabel = formatPublishedTime(article.publishedAt);
-
-      return [
+      const lines = [
         `${article.title}`,
         `Source: ${article.source}`,
         publishedLabel ? `Published: ${publishedLabel}` : null,
@@ -269,6 +298,16 @@ export function buildNewsletterEmailText(
         `Read more: ${article.link}`,
         "",
       ].filter((line): line is string => Boolean(line));
+
+      if (
+        midSponsor &&
+        articles.length > 3 &&
+        index === Math.min(Math.max(Math.ceil(articles.length / 2), 1), articles.length - 1) - 1
+      ) {
+        return [...lines, ...buildSponsorBlockText(midSponsor), ""];
+      }
+
+      return lines;
     }),
     "Unsubscribe:",
     unsubscribeUrl,
@@ -282,9 +321,15 @@ function buildCompactNewsletterEmailHtml(
   tracking:
     | { sendLogId: string; subscriptionId: number; email: string }
     | null,
+  topSponsor: SponsorConfig | null,
+  midSponsor: SponsorConfig | null,
 ): string {
+  const midpointIndex =
+    midSponsor && articles.length > 3
+      ? Math.min(Math.max(Math.ceil(articles.length / 2), 1), articles.length - 1)
+      : -1;
   const articleMarkup = articles
-    .map((article) => {
+    .map((article, index) => {
       const trackedLink = buildTrackedUrl(
         article.link,
         tracking,
@@ -292,7 +337,7 @@ function buildCompactNewsletterEmailHtml(
         article.source,
       );
 
-      return `
+      const articleBlock = `
         <article style="padding:16px 0;border-top:1px solid #e2e8f0;">
           <p style="margin:0;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(article.source)}</p>
           <p style="margin:8px 0 0;font-size:16px;line-height:1.4;color:#0f172a;font-weight:600;">
@@ -300,6 +345,12 @@ function buildCompactNewsletterEmailHtml(
           </p>
         </article>
       `;
+
+      if (midSponsor && index === midpointIndex - 1) {
+        return `${articleBlock}${buildSponsorBlockHtml(midSponsor)}`;
+      }
+
+      return articleBlock;
     })
     .join("");
 
@@ -314,6 +365,7 @@ function buildCompactNewsletterEmailHtml(
           <p style="margin:0;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Kicker News</p>
           <a href="${escapeAttribute(unsubscribeUrl)}" style="display:inline-block;border-radius:9999px;border:1px solid #cbd5e1;color:#475569;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;">Unsubscribe</a>
         </div>
+        ${topSponsor ? buildSponsorBlockHtml(topSponsor) : ""}
         <h1 style="margin:14px 0 0;color:#0f172a;font-size:24px;line-height:1.2;">Latest headlines</h1>
         <p style="margin:8px 0 0;color:#64748b;font-size:13px;line-height:1.6;">
           ${escapeHtml(
@@ -341,22 +393,56 @@ function buildCompactNewsletterEmailHtml(
 function buildCompactNewsletterEmailText(
   articles: NewsItem[],
   unsubscribeUrl: string,
+  topSponsor: SponsorConfig | null,
+  midSponsor: SponsorConfig | null,
 ): string {
+  const midpointIndex =
+    midSponsor && articles.length > 3
+      ? Math.min(Math.max(Math.ceil(articles.length / 2), 1), articles.length - 1)
+      : -1;
+
   return [
     "Kicker News",
     "",
     `Unsubscribe: ${unsubscribeUrl}`,
+    ...(topSponsor ? ["", ...buildSponsorBlockText(topSponsor), ""] : []),
     "",
     "Latest headlines (compact)",
     "",
-    ...articles.flatMap((article) => [
-      `${article.title} (${article.source})`,
-      article.link,
-      "",
-    ]),
+    ...articles.flatMap((article, index) => {
+      const lines = [`${article.title} (${article.source})`, article.link, ""];
+
+      if (midSponsor && index === midpointIndex - 1) {
+        return [...lines, ...buildSponsorBlockText(midSponsor), ""];
+      }
+
+      return lines;
+    }),
     "Unsubscribe:",
     unsubscribeUrl,
   ].filter((line): line is string => Boolean(line)).join("\n");
+}
+
+function buildSponsorBlockHtml(sponsor: SponsorConfig): string {
+  return `
+    <section style="margin-top:18px;border:1px solid #dbeafe;background:#f8fbff;border-radius:20px;padding:18px;">
+      <p style="margin:0;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;">${escapeHtml(sponsor.label)}</p>
+      <h2 style="margin:10px 0 0;font-size:20px;line-height:1.3;color:#0f172a;">${escapeHtml(sponsor.title)}</h2>
+      <p style="margin:10px 0 0;color:#475569;font-size:14px;line-height:1.7;">${escapeHtml(sponsor.description)}</p>
+      <p style="margin:14px 0 0;">
+        <a href="${escapeAttribute(sponsor.ctaUrl)}" style="display:inline-block;border-radius:9999px;background:#0f172a;color:#ffffff;padding:10px 18px;font-size:14px;font-weight:600;text-decoration:none;">${escapeHtml(sponsor.ctaText)}</a>
+      </p>
+    </section>
+  `;
+}
+
+function buildSponsorBlockText(sponsor: SponsorConfig): string[] {
+  return [
+    sponsor.label,
+    sponsor.title,
+    sponsor.description,
+    `${sponsor.ctaText}: ${sponsor.ctaUrl}`,
+  ];
 }
 
 export function buildNewsletterUnsubscribeUrl(token: string): string {

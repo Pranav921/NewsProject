@@ -11,6 +11,10 @@ import { useState } from "react";
 
 type DashboardViewProps = {
   articles: NewsItem[];
+  feedErrorMessage?: string | null;
+  initialNewsletterCustomFrequency?: string | null;
+  initialNewsletterFrequency?: "hourly" | "daily" | "weekly" | "custom" | null;
+  initialNewsletterSubscriptionStatus?: "active" | "inactive" | "none";
   initialAlertKeywords: string[];
   initialPreferences: UserPreferences | null;
   initialSavedArticles: SavedArticle[];
@@ -20,6 +24,10 @@ type DashboardViewProps = {
 
 export function DashboardView({
   articles,
+  feedErrorMessage = null,
+  initialNewsletterCustomFrequency = null,
+  initialNewsletterFrequency = null,
+  initialNewsletterSubscriptionStatus = "none",
   initialAlertKeywords,
   initialPreferences,
   initialSavedArticles,
@@ -30,39 +38,106 @@ export function DashboardView({
   const [savedArticleCount, setSavedArticleCount] = useState(
     initialSavedArticles.length,
   );
+  const [isMobileActionsOpen, setIsMobileActionsOpen] = useState(false);
+  const sourceCount = new Set(articles.map((article) => article.source)).size;
+  const storyCount = articles.length;
 
   return (
     <>
-      <section className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
-        <div className="grid gap-4 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 sm:p-4.5 xl:grid-cols-[minmax(0,1.18fr)_19rem] xl:items-center">
-          <div className="space-y-3.5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-800">
-              Kicker News Dashboard
+      <section
+        id="dashboard-top"
+        className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.07)]"
+      >
+        <div className="bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 sm:hidden">
+          <div className="space-y-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <button
+                aria-expanded={isMobileActionsOpen}
+                aria-label="Open dashboard actions"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                type="button"
+                onClick={() => setIsMobileActionsOpen((currentValue) => !currentValue)}
+              >
+                <span className="sr-only">Open dashboard actions</span>
+                <span className="flex flex-col gap-1">
+                  <span className="block h-0.5 w-4 rounded-full bg-current" />
+                  <span className="block h-0.5 w-4 rounded-full bg-current" />
+                  <span className="block h-0.5 w-4 rounded-full bg-current" />
+                </span>
+              </button>
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-800">
+                Kicker News Dashboard
+              </div>
             </div>
-            <h1 className="max-w-3xl text-balance text-[1.8rem] font-semibold tracking-tight text-slate-950 sm:text-[2.15rem]">
-              Latest headlines from trusted RSS feeds
+            {isMobileActionsOpen ? (
+              <div className="rounded-[1.25rem] border border-slate-200 bg-white p-3.5 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
+                <div className="grid gap-2.5">
+                  <a
+                    className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                    href="#newsletter-signup"
+                    style={{ color: "#ffffff" }}
+                    onClick={() => setIsMobileActionsOpen(false)}
+                  >
+                    Newsletter signup
+                  </a>
+                  <RefreshButton
+                    currentLinks={articleLinks}
+                    className="min-h-10 rounded-xl px-4 py-2"
+                    onRefresh={() => setIsMobileActionsOpen(false)}
+                  />
+                  <Link
+                    className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                    href="/account"
+                    onClick={() => setIsMobileActionsOpen(false)}
+                  >
+                    Account settings
+                  </Link>
+                  <UserMenu email={userEmail} variant="menu" />
+                </div>
+              </div>
+            ) : null}
+            <h1 className="text-[1.35rem] leading-tight font-semibold tracking-tight text-slate-950">
+              Your fast, clutter-free dashboard for today&apos;s top headlines.
             </h1>
-            <p className="max-w-2xl text-[15px] leading-6 text-slate-600 sm:text-base">
-              Follow live coverage from trusted publishers, surface what is new,
-              and keep your alerts, saved stories, and newsletter preferences in
-              one fast workspace.
+            <p className="text-sm leading-5 text-slate-600">
+              Follow live coverage, save stories, and track alerts in one fast workspace.
+            </p>
+          </div>
+        </div>
+
+        <div className="hidden gap-4 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 sm:grid xl:grid-cols-[minmax(0,1.18fr)_18rem] xl:items-start">
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-800">
+                Kicker News Dashboard
+              </div>
+              <div className="hidden lg:block">
+                <UserMenu email={userEmail} variant="inline" />
+              </div>
+            </div>
+            <h1 className="max-w-3xl text-balance text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+              Your fast, clutter-free dashboard for today&apos;s top headlines.
+            </h1>
+            <p className="max-w-2xl text-[15px] leading-6 text-slate-600 sm:text-[15px]">
+              Follow top coverage, save stories, surface alert matches, and keep
+              your newsletter preferences close to the live feed.
             </p>
 
             <div className="grid gap-2 sm:grid-cols-3">
               <DashboardStat
                 label="Sources"
-                value={String(new Set(articles.map((article) => article.source)).size)}
+                value={String(sourceCount)}
               />
               <DashboardStat
                 label="Stories loaded"
-                value={String(articles.length)}
+                value={String(storyCount)}
               />
               <DashboardStat label="Saved stories" value={String(savedArticleCount)} />
             </div>
           </div>
 
-          <div className="space-y-3">
-            <section className="rounded-[1.2rem] border border-slate-200 bg-slate-50/90 p-3">
+          <div className="space-y-2.5">
+            <section className="rounded-[1.2rem] border border-slate-200 bg-white/90 p-2.5 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
               <div className="flex flex-col gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -93,7 +168,9 @@ export function DashboardView({
                 </div>
               </div>
             </section>
-            <UserMenu email={userEmail} />
+            <div className="lg:hidden">
+              <UserMenu email={userEmail} />
+            </div>
           </div>
         </div>
       </section>
@@ -106,6 +183,7 @@ export function DashboardView({
       <section className="mt-3">
         <NewsFeed
           articles={articles}
+          feedErrorMessage={feedErrorMessage}
           initialAlertKeywords={initialAlertKeywords}
           initialPreferences={initialPreferences}
           initialSavedArticles={initialSavedArticles}
@@ -116,7 +194,11 @@ export function DashboardView({
 
       <section id="newsletter-signup" className="mt-4 scroll-mt-24">
         <NewsletterSignup
+          backToTopHref="#dashboard-top"
+          initialCustomFrequency={initialNewsletterCustomFrequency}
           initialEmail={userEmail}
+          initialFrequency={initialNewsletterFrequency ?? "daily"}
+          initialSubscriptionStatus={initialNewsletterSubscriptionStatus}
           title="Newsletter preferences"
           description="Keep your delivery settings close to the feed so you can tune your cadence without leaving the dashboard."
         />

@@ -11,11 +11,13 @@ import { useTransition } from "react";
 type RefreshButtonProps = {
   className?: string;
   currentLinks?: string[];
+  onRefresh?: () => void;
 };
 
 export function RefreshButton({
   className,
   currentLinks = [],
+  onRefresh,
 }: RefreshButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -29,6 +31,7 @@ export function RefreshButton({
     );
     sessionStorage.removeItem(HANDLED_NEW_ARTICLE_LINKS_KEY);
     sessionStorage.removeItem(PENDING_NEW_ARTICLE_LINKS_KEY);
+    onRefresh?.();
 
     // router.refresh() asks Next.js to refetch the current route on the server.
     // That lets us refresh the feed data without restarting the dev server.

@@ -1,12 +1,8 @@
 "use client";
 
 import { NewsList } from "@/components/NewsList";
-import {
-  addAlertKeyword,
-  CUSTOM_ALERT_KEYWORDS_STORAGE_KEY,
-  parseAlertKeywords,
-  removeAlertKeyword,
-} from "@/lib/custom-alerts";
+import { trackEvent } from "@/lib/analytics";
+import { CUSTOM_ALERT_KEYWORDS_STORAGE_KEY, parseAlertKeywords } from "@/lib/custom-alerts";
 import {
   getNewArticleLinks,
   PENDING_NEW_ARTICLE_LINKS_KEY,
@@ -26,11 +22,12 @@ import {
   DEFAULT_VIEW_MODE,
   normalizeUserPreferences,
 } from "@/lib/user-preferences";
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 type NewsFeedProps = {
   articles: NewsItem[];
+  feedErrorMessage?: string | null;
   initialAlertKeywords?: string[];
   initialPreferences?: UserPreferences | null;
   initialSavedArticles?: SavedArticle[];
@@ -71,6 +68,7 @@ const TIME_FILTER_WINDOWS_MS: Record<Exclude<TimeFilter, "all">, number> = {
 
 export function NewsFeed({
   articles,
+  feedErrorMessage = null,
   initialAlertKeywords = [],
   initialPreferences = null,
   initialSavedArticles = [],
@@ -92,11 +90,9 @@ export function NewsFeed({
   const [feedMode, setFeedMode] = useState<FeedMode>("all");
   const [showOnlyNew, setShowOnlyNew] = useState(false);
   const [alertMatchView, setAlertMatchView] = useState<AlertMatchView>("off");
-  const [alertKeywordInput, setAlertKeywordInput] = useState("");
   const [alertKeywords, setAlertKeywords] = useState<string[]>(initialAlertKeywords);
   const [savedArticles, setSavedArticles] = useState<SavedArticle[]>(initialSavedArticles);
   const [isSavingArticle, setIsSavingArticle] = useState(false);
-  const [isSavingAlertKeyword, setIsSavingAlertKeyword] = useState(false);
   const [hasLoadedAlertKeywords, setHasLoadedAlertKeywords] = useState(false);
   const [hasMountedPreferences, setHasMountedPreferences] = useState(false);
   const currentLinks = useMemo(
@@ -257,6 +253,102 @@ export function NewsFeed({
     timeFilter !== "all" ||
     showOnlyNew ||
     alertMatchView !== "off";
+  const hasFeedError = Boolean(feedErrorMessage) && articles.length === 0;
+
+  function resetFilters() {
+    setSearchQuery("");
+    setSelectedSource(DEFAULT_SOURCE_FILTER);
+    setTimeFilter(DEFAULT_TIME_FILTER as TimeFilter);
+    setShowOnlyNew(false);
+    setAlertMatchView("off");
+  }
+
+  function getEmptyState() {
+    if (hasFeedError) {
+      return {
+        action: (
+          <button
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+            type="button"
+            onClick={() => window.location.reload()}
+          >
+            Retry feed
+          </button>
+        ),
+        message:
+          feedErrorMessage ??
+          "We couldn't load the live feed right now. Please refresh and try again in a moment.",
+        title: "Live feed temporarily unavailable",
+      };
+    }
+
+    if (feedMode === "saved" && savedArticles.length === 0) {
+      return {
+        action: (
+          <button
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            type="button"
+            onClick={() => setFeedMode("all")}
+          >
+            Browse all articles
+          </button>
+        ),
+        message: "Save stories from the main feed and they will appear here for quick access.",
+        title: "No saved articles yet",
+      };
+    }
+
+    if (alertMatchView !== "off" && displayedArticles.length === 0) {
+      return {
+        action: (
+          <button
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            type="button"
+            onClick={() => setAlertMatchView("off")}
+          >
+            Show all articles
+          </button>
+        ),
+        message:
+          "New articles matching your saved keywords will appear here as they are highlighted.",
+        title: "No alert matches right now",
+      };
+    }
+
+    if (hasActiveFilters || normalizedSearchQuery.length > 0) {
+      return {
+        action: (
+          <button
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            type="button"
+            onClick={resetFilters}
+          >
+            Clear filters
+          </button>
+        ),
+        message:
+          "Try clearing the search, broadening the source or time window, or switching back to all articles.",
+        title: "No articles match these filters",
+      };
+    }
+
+    return {
+      action: (
+        <button
+          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          type="button"
+          onClick={() => window.location.reload()}
+        >
+          Refresh feed
+        </button>
+      ),
+      message:
+        "The live feed is temporarily empty. Please refresh in a moment to check again.",
+      title: "No articles available right now",
+    };
+  }
+
+  const emptyState = getEmptyState();
 
   useEffect(() => {
     if (userId) {
@@ -385,6 +477,12 @@ export function NewsFeed({
     const isAlreadySaved = savedArticles.some(
       (savedArticle) => savedArticle.link === article.link,
     );
+    trackEvent("saved_article_click", {
+      action: isAlreadySaved ? "unsave" : "save",
+      article_link: article.link,
+      article_source: article.source,
+      article_title: article.title,
+    });
 
     setIsSavingArticle(true);
 
@@ -438,90 +536,14 @@ export function NewsFeed({
     setIsSavingArticle(false);
   }
 
-  async function handleAddAlertKeyword(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const nextAlertKeywords = addAlertKeyword(alertKeywords, alertKeywordInput);
-
-    if (nextAlertKeywords === alertKeywords) {
-      setAlertKeywordInput("");
-      return;
-    }
-
-    if (!userId) {
-      setAlertKeywords(nextAlertKeywords);
-      setAlertKeywordInput("");
-      return;
-    }
-
-    if (isSavingAlertKeyword) {
-      return;
-    }
-
-    const keywordToSave = nextAlertKeywords[nextAlertKeywords.length - 1];
-    const previousAlertKeywords = alertKeywords;
-
-    setIsSavingAlertKeyword(true);
-    setAlertKeywords(nextAlertKeywords);
-    setAlertKeywordInput("");
-
-    const { error } = await supabase.from("user_alert_keywords").upsert(
-      {
-        keyword: keywordToSave,
-        user_id: userId,
-      },
-      {
-        onConflict: "user_id,keyword",
-      },
-    );
-
-    if (error) {
-      setAlertKeywords(previousAlertKeywords);
-    }
-
-    setIsSavingAlertKeyword(false);
-  }
-
-  async function handleRemoveAlertKeyword(keywordToRemove: string) {
-    if (!userId) {
-      setAlertKeywords((currentAlertKeywords) =>
-        removeAlertKeyword(currentAlertKeywords, keywordToRemove),
-      );
-      return;
-    }
-
-    if (isSavingAlertKeyword) {
-      return;
-    }
-
-    const previousAlertKeywords = alertKeywords;
-
-    setIsSavingAlertKeyword(true);
-    setAlertKeywords((currentAlertKeywords) =>
-      removeAlertKeyword(currentAlertKeywords, keywordToRemove),
-    );
-
-    const { error } = await supabase
-      .from("user_alert_keywords")
-      .delete()
-      .eq("user_id", userId)
-      .eq("keyword", keywordToRemove);
-
-    if (error) {
-      setAlertKeywords(previousAlertKeywords);
-    }
-
-    setIsSavingAlertKeyword(false);
-  }
-
   return (
     <div className="space-y-4">
-      <section className="rounded-[1.4rem] border border-slate-200 bg-white px-4 py-3.5 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
+      <section className="rounded-[1.4rem] border border-slate-200 bg-white px-3 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.05)] sm:px-4 sm:py-3.5">
         <div className="flex flex-col gap-3">
           <div className="grid gap-3.5 xl:grid-cols-[minmax(0,1.5fr)_220px_220px]">
             <input
               id="article-search"
-              className="min-h-10 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 sm:min-h-10 sm:px-3.5"
               type="search"
               placeholder="Search headlines, sources, or summaries"
               value={searchQuery}
@@ -530,9 +552,14 @@ export function NewsFeed({
 
             <select
               id="source-filter"
-              className="min-h-10 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 sm:min-h-10 sm:px-3.5"
               value={activeSource}
-              onChange={(event) => setSelectedSource(event.target.value)}
+              onChange={(event) => {
+                setSelectedSource(event.target.value);
+                trackEvent("source_filter_change", {
+                  source: event.target.value,
+                });
+              }}
             >
               {sourceOptions.map((source) => (
                 <option key={source} value={source}>
@@ -543,7 +570,7 @@ export function NewsFeed({
 
             <select
               id="time-filter"
-              className="min-h-10 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 sm:min-h-10 sm:px-3.5"
               value={timeFilter}
               onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
             >
@@ -555,11 +582,11 @@ export function NewsFeed({
             </select>
           </div>
 
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap items-center gap-3 xl:gap-5">
-              <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
+          <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-3 xl:justify-start xl:gap-5">
+              <div className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1">
                 <button
-                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     feedMode === "all"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -571,7 +598,7 @@ export function NewsFeed({
                   All articles
                 </button>
                 <button
-                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     feedMode === "saved"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -585,12 +612,12 @@ export function NewsFeed({
               </div>
 
               <div
-                className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1"
+                className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1"
                 role="group"
                 aria-label="Article view mode"
               >
                 <button
-                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     viewMode === "standard"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -602,7 +629,7 @@ export function NewsFeed({
                   Standard
                 </button>
                 <button
-                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     viewMode === "compact"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -615,9 +642,9 @@ export function NewsFeed({
                 </button>
               </div>
 
-              <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
+              <div className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1">
                 <button
-                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     alertMatchView === "off"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -629,7 +656,7 @@ export function NewsFeed({
                   Alerts off
                 </button>
                 <button
-                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     alertMatchView !== "off"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -648,20 +675,20 @@ export function NewsFeed({
               </div>
 
               <a
-                className="ml-1 inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 xl:ml-2"
-                href="#dashboard-alerts"
+                className="inline-flex w-fit items-center justify-center self-center px-1 py-0.5 text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-900 sm:ml-1 sm:min-h-10 sm:w-auto sm:rounded-full sm:border sm:border-slate-300 sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-sm sm:text-slate-700 sm:hover:bg-slate-100 xl:ml-2"
+                href="/account#alerts"
               >
                 Manage alerts
               </a>
             </div>
 
-            <div className="text-sm text-slate-500">
+            <div className="text-center text-xs text-slate-500 sm:text-sm xl:text-left">
               {filteredStoryCount} stories | {filteredSourceCount} sources | {savedArticles.length} saved
             </div>
           </div>
 
           {newArticleLinks.length > 0 || hasActiveFilters ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               {newArticleLinks.length > 0 ? (
                 <button
                   className={`inline-flex rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
@@ -703,96 +730,15 @@ export function NewsFeed({
       <NewsList
         alertImportanceByLink={alertImportanceByLink}
         articles={displayedArticles}
+        emptyStateAction={emptyState.action}
         newArticleLinks={newArticleLinks}
         onToggleSavedArticle={handleToggleSavedArticle}
         savedArticleLinks={savedArticleLinks}
+        showInFeedSponsor={feedMode === "all" && !hasFeedError}
         viewMode={viewMode}
-        emptyStateTitle="No matching articles"
-        emptyStateMessage="No articles match the current search, source filter, time filter, selected article view, new-articles filter, or smart-alert filter. Try clearing the search box or choosing broader filters."
+        emptyStateTitle={emptyState.title}
+        emptyStateMessage={emptyState.message}
       />
-
-      <section
-        id="dashboard-alerts"
-        className="rounded-[1.55rem] border border-slate-200 bg-white p-4.5 shadow-[0_14px_36px_rgba(15,23,42,0.05)] scroll-mt-24 sm:p-5"
-      >
-        <div className="flex flex-col gap-3.5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
-              Custom alerts
-            </p>
-            <h3 className="mt-1.5 text-lg font-semibold text-slate-900">
-              Track the topics that matter most
-            </h3>
-            <p className="mt-1.5 text-sm text-slate-500">
-              Save keywords to flag matching newly highlighted articles.
-            </p>
-            <p className="mt-1.5 text-sm text-slate-500">
-              Title matches or urgent language are marked important.
-            </p>
-          </div>
-
-          <form
-            className="flex w-full flex-col gap-2.5 sm:flex-row lg:max-w-xl"
-            onSubmit={handleAddAlertKeyword}
-          >
-            <input
-              id="alert-keyword-input"
-              className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
-              type="text"
-              placeholder="Add alert keyword"
-              value={alertKeywordInput}
-              onChange={(event) => setAlertKeywordInput(event.target.value)}
-            />
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
-              type="submit"
-            >
-              Add keyword
-            </button>
-          </form>
-        </div>
-
-        {alertKeywords.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {alertKeywords.map((keyword) => (
-              <span
-                key={keyword}
-                className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm text-sky-700"
-              >
-                {keyword}
-                <button
-                  className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800"
-                  type="button"
-                  onClick={() => handleRemoveAlertKeyword(keyword)}
-                  disabled={isSavingAlertKeyword}
-                  aria-label={`Remove alert keyword ${keyword}`}
-                >
-                  Remove
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-slate-500">
-            No alert keywords saved yet.
-          </p>
-        )}
-
-        <div className="mt-4 rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3.5">
-          <p className="text-sm text-slate-500">
-            Smart alerts only use the currently highlighted new articles.
-          </p>
-          <p className="mt-2 text-sm text-slate-500">
-            Normal alert matches are keyword matches found in the article summary and
-            appear with a deeper yellow highlight.
-          </p>
-          <p className="mt-1.5 text-sm text-slate-500">
-            Important alert matches happen when the keyword appears in the title or
-            the headline uses urgent language, and those articles appear with a light
-            red highlight.
-          </p>
-        </div>
-      </section>
     </div>
   );
 }

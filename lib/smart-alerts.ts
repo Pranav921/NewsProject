@@ -14,7 +14,15 @@ export function getSmartAlertMatch(
   article: NewsItem,
   alertKeywords: string[],
 ): SmartAlertMatchResult {
-  if (alertKeywords.length === 0) {
+  const normalizedKeywords = Array.from(
+    new Set(
+      alertKeywords
+        .map((keyword) => keyword.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+
+  if (normalizedKeywords.length === 0) {
     return {
       matchedKeywords: [],
       status: "none",
@@ -24,7 +32,7 @@ export function getSmartAlertMatch(
 
   const normalizedTitle = article.title.toLowerCase();
   const normalizedSummary = (article.summary ?? "").toLowerCase();
-  const matchedKeywords = alertKeywords.filter(
+  const matchedKeywords = normalizedKeywords.filter(
     (keyword) =>
       normalizedTitle.includes(keyword) || normalizedSummary.includes(keyword),
   );
@@ -47,6 +55,8 @@ export function getSmartAlertMatch(
   return {
     matchedKeywords,
     status: "match",
+    // Saved keywords are always the gate. Urgent language can only upgrade
+    // an existing keyword match; it can never create a smart alert by itself.
     importance: hasTitleKeyword || hasUrgentTitle ? "important" : "normal",
   };
 }

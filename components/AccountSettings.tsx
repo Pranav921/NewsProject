@@ -4,6 +4,7 @@ import {
   addAlertKeyword,
   removeAlertKeyword,
 } from "@/lib/custom-alerts";
+import { RSS_FEEDS } from "@/lib/feeds";
 import { PERSONALIZATION_MIN_UNIQUE_CLICKS } from "@/lib/personalization";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type {
@@ -41,6 +42,14 @@ const TIME_FILTER_OPTIONS: Array<{ label: string; value: TimeFilter }> = [
   { label: "Last 12 Hours", value: "12h" },
   { label: "Last 24 Hours", value: "24h" },
   { label: "Last Week", value: "1w" },
+];
+
+const DEFAULT_SOURCE_OPTIONS = [
+  { label: "All Sources", value: "" },
+  ...RSS_FEEDS.map((feed) => ({
+    label: feed.name,
+    value: feed.name,
+  })),
 ];
 
 const NEWSLETTER_FREQUENCY_OPTIONS: Array<{
@@ -306,13 +315,18 @@ export function AccountSettings({
             >
               Default source filter
             </label>
-            <input
+            <select
               id="default-source-filter"
               className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
-              type="text"
               value={defaultSourceFilter}
               onChange={(event) => setDefaultSourceFilter(event.target.value)}
-            />
+            >
+              {DEFAULT_SOURCE_OPTIONS.map((option) => (
+                <option key={option.value || "all"} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -373,13 +387,27 @@ export function AccountSettings({
         ) : null}
       </section>
 
-      <section className="rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
+      <section
+        id="alerts"
+        className="scroll-mt-24 rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6"
+      >
         <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
           Saved alerts
         </h2>
         <p className="mt-2 text-sm leading-6 text-slate-500">
           Manage the keywords used by your custom alerts and smart alerts.
         </p>
+        <div className="mt-4 rounded-[1.05rem] border border-slate-200 bg-slate-50 p-3.5 text-sm leading-6 text-slate-600">
+          <p>
+            Important alerts require one of your saved keywords to appear in the
+            article title.
+          </p>
+          <p className="mt-2">
+            Normal alerts happen when a saved keyword appears only in the
+            summary, so you still catch related coverage without treating it as
+            urgent.
+          </p>
+        </div>
 
         <form className="mt-5 flex flex-col gap-2.5 sm:flex-row" onSubmit={handleAddAlertKeyword}>
           <input
@@ -428,7 +456,10 @@ export function AccountSettings({
         ) : null}
       </section>
 
-      <section className="rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
+      <section
+        id="newsletter"
+        className="scroll-mt-24 rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6"
+      >
         <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
           Newsletter
         </h2>

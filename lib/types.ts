@@ -3,6 +3,14 @@ export type FeedDefinition = {
   url: string;
 };
 
+export type SponsorConfig = {
+  ctaText: string;
+  ctaUrl: string;
+  description: string;
+  label: string;
+  title: string;
+};
+
 export type NewsItem = {
   title: string;
   link: string;

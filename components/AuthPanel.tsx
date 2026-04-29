@@ -1,5 +1,6 @@
 "use client";
 
+import { trackEvent } from "@/lib/analytics";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -21,6 +22,11 @@ export function AuthPanel() {
       return;
     }
 
+    trackEvent("account_signup_attempt", {
+      auth_mode: "signup",
+      method: "password",
+    });
+
     setIsSubmitting(true);
     setMessage(null);
 
@@ -32,8 +38,16 @@ export function AuthPanel() {
     if (error) {
       setMessage(error.message);
     } else if (data.user && !data.session) {
+      trackEvent("account_signup_success", {
+        auth_mode: "signup",
+        confirmation_required: true,
+      });
       setMessage("Sign-up successful. Check your email to confirm your account.");
     } else {
+      trackEvent("account_signup_success", {
+        auth_mode: "signup",
+        confirmation_required: false,
+      });
       router.replace("/");
       router.refresh();
       return;
@@ -48,6 +62,11 @@ export function AuthPanel() {
       return;
     }
 
+    trackEvent("account_login_attempt", {
+      auth_mode: "login",
+      method: "password",
+    });
+
     setIsSubmitting(true);
     setMessage(null);
 
@@ -59,6 +78,9 @@ export function AuthPanel() {
     if (error) {
       setMessage(error.message);
     } else {
+      trackEvent("account_login_success", {
+        auth_mode: "login",
+      });
       router.replace("/");
       router.refresh();
       return;
