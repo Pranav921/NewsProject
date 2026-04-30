@@ -1,7 +1,10 @@
 export type FeedDefinition = {
+  coverage: "national" | "international" | "both";
   name: string;
   url: string;
 };
+
+export type CoverageFilter = "all" | "national" | "international";
 
 export type SponsorConfig = {
   ctaText: string;

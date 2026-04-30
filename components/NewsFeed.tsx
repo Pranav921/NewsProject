@@ -3,6 +3,7 @@
 import { NewsList } from "@/components/NewsList";
 import { trackEvent } from "@/lib/analytics";
 import { CUSTOM_ALERT_KEYWORDS_STORAGE_KEY, parseAlertKeywords } from "@/lib/custom-alerts";
+import { filterArticlesByCoverage } from "@/lib/feeds";
 import {
   getNewArticleLinks,
   PENDING_NEW_ARTICLE_LINKS_KEY,
@@ -15,7 +16,12 @@ import {
   getSmartAlertMatch,
   type SmartAlertImportance,
 } from "@/lib/smart-alerts";
-import type { NewsItem, SavedArticle, UserPreferences } from "@/lib/types";
+import type {
+  CoverageFilter,
+  NewsItem,
+  SavedArticle,
+  UserPreferences,
+} from "@/lib/types";
 import {
   DEFAULT_SOURCE_FILTER,
   DEFAULT_TIME_FILTER,
@@ -41,6 +47,14 @@ type NewsFeedProps = {
 type ViewMode = "standard" | "compact";
 type FeedMode = "all" | "saved";
 type AlertMatchView = "off" | "all" | "important" | "normal";
+const COVERAGE_FILTER_OPTIONS: Array<{
+  label: string;
+  value: CoverageFilter;
+}> = [
+  { label: "All News", value: "all" },
+  { label: "U.S. News", value: "national" },
+  { label: "World News", value: "international" },
+];
 type TimeFilter =
   | "all"
   | "1h"
@@ -88,6 +102,7 @@ export function NewsFeed({
   const normalizedInitialPreferences = normalizeUserPreferences(initialPreferences);
   const [supabase] = useState(() => createSupabaseBrowserClient());
   const [searchQuery, setSearchQuery] = useState("");
+  const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
   const [selectedSource, setSelectedSource] = useState(
     normalizedInitialPreferences.defaultSourceFilter,
   );
@@ -120,19 +135,25 @@ export function NewsFeed({
   );
   const effectiveFeedMode = isPublicViewer ? "all" : feedMode;
   const baseArticles = effectiveFeedMode === "saved" ? savedArticles : articles;
+  const coverageFilteredArticles = useMemo(
+    () => filterArticlesByCoverage(baseArticles, coverageFilter),
+    [baseArticles, coverageFilter],
+  );
   const sourceOptions = useMemo(
     () => [
       "All Sources",
-      ...Array.from(new Set(baseArticles.map((article) => article.source))).sort(),
+      ...Array.from(
+        new Set(coverageFilteredArticles.map((article) => article.source)),
+      ).sort(),
     ],
-    [baseArticles],
+    [coverageFilteredArticles],
   );
   const activeSource = sourceOptions.includes(selectedSource)
     ? selectedSource
     : "All Sources";
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const searchedAndSourceFilteredArticles = useMemo(() => {
-    return baseArticles.filter((article) => {
+    return coverageFilteredArticles.filter((article) => {
       const matchesSource =
         activeSource === "All Sources" || article.source === activeSource;
 
@@ -154,7 +175,7 @@ export function NewsFeed({
 
       return searchableText.includes(normalizedSearchQuery);
     });
-  }, [activeSource, baseArticles, normalizedSearchQuery]);
+  }, [activeSource, coverageFilteredArticles, normalizedSearchQuery]);
   const timeFilteredArticles = useMemo(() => {
     if (timeFilter === "all") {
       return searchedAndSourceFilteredArticles;
@@ -264,6 +285,7 @@ export function NewsFeed({
   );
   const hasActiveFilters =
     normalizedSearchQuery.length > 0 ||
+    coverageFilter !== "all" ||
     activeSource !== "All Sources" ||
     timeFilter !== "all" ||
     showOnlyNew ||
@@ -280,6 +302,7 @@ export function NewsFeed({
 
   function resetFilters() {
     setSearchQuery("");
+    setCoverageFilter("all");
     setSelectedSource(DEFAULT_SOURCE_FILTER);
     setTimeFilter(DEFAULT_TIME_FILTER as TimeFilter);
     setShowOnlyNew(false);
@@ -311,7 +334,7 @@ export function NewsFeed({
           <button
             className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             type="button"
-          onClick={() => setFeedMode("all")}
+            onClick={() => setFeedMode("all")}
           >
             Browse all articles
           </button>
@@ -582,7 +605,7 @@ export function NewsFeed({
     <div className="space-y-4">
       <section className="rounded-[1.4rem] border border-slate-200 bg-white px-3 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.05)] sm:px-4 sm:py-3.5">
         <div className="flex flex-col gap-3">
-          <div className="grid gap-3.5 xl:grid-cols-[minmax(0,1.5fr)_220px_220px]">
+          <div className="grid gap-3.5 xl:grid-cols-[minmax(0,1.35fr)_180px_200px_200px]">
             <input
               id="article-search"
               className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 sm:min-h-10 sm:px-3.5"
@@ -591,6 +614,21 @@ export function NewsFeed({
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
             />
+
+            <select
+              id="coverage-filter"
+              className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 sm:min-h-10 sm:px-3.5"
+              value={coverageFilter}
+              onChange={(event) =>
+                setCoverageFilter(event.target.value as CoverageFilter)
+              }
+            >
+              {COVERAGE_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
 
             <select
               id="source-filter"
