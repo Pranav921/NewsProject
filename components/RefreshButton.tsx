@@ -42,7 +42,8 @@ export function RefreshButton({
 
   return (
     <button
-      className={`inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
+      aria-label="Refresh headlines"
+      className={`inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
       type="button"
       onClick={handleRefresh}
       disabled={isPending}

@@ -123,7 +123,7 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
     <div className="w-full max-w-md rounded-[1.4rem] border border-slate-200 bg-white p-4.5 shadow-[0_14px_32px_rgba(15,23,42,0.07)]">
       <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
         <button
-          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
             authMode === "login"
               ? "bg-slate-900 text-white"
               : "text-slate-600 hover:bg-white"
@@ -138,7 +138,7 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
           Log in
         </button>
         <button
-          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
             authMode === "signup"
               ? "bg-slate-900 text-white"
               : "text-slate-600 hover:bg-white"
@@ -164,8 +164,12 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
       </p>
 
       <div className="mt-3.5 space-y-2.5">
+        <label className="sr-only" htmlFor="auth-email">
+          Email address
+        </label>
         <input
-          className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+          id="auth-email"
+          className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
           type="email"
           placeholder="Email address"
           value={email}
@@ -173,8 +177,12 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
           autoComplete="email"
         />
 
+        <label className="sr-only" htmlFor="auth-password">
+          Password
+        </label>
         <input
-          className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+          id="auth-password"
+          className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
           type="password"
           placeholder="Password"
           value={password}
@@ -184,7 +192,7 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
       </div>
 
       <button
-        className="mt-3.5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+        className="mt-3.5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
         type="button"
         onClick={authMode === "login" ? handleSignIn : handleSignUp}
         disabled={isSubmitting}
@@ -197,7 +205,10 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
       </button>
 
       {message ? (
-        <p className="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-600">
+        <p
+          className="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-600"
+          aria-live="polite"
+        >
           {message}
         </p>
       ) : null}

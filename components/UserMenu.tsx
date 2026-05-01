@@ -43,7 +43,7 @@ export function UserMenu({ email, variant = "card" }: UserMenuProps) {
           </p>
         </div>
         <button
-          className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
           type="button"
           onClick={handleSignOut}
           disabled={isPending}
@@ -51,7 +51,10 @@ export function UserMenu({ email, variant = "card" }: UserMenuProps) {
           {isPending ? "Logging out..." : "Log out"}
         </button>
         {message ? (
-          <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          <p
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
+            aria-live="polite"
+          >
             {message}
           </p>
         ) : null}
@@ -66,7 +69,7 @@ export function UserMenu({ email, variant = "card" }: UserMenuProps) {
           {email ?? "Account"}
         </span>
         <button
-          className="inline-flex min-h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex min-h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
           type="button"
           onClick={handleSignOut}
           disabled={isPending}
@@ -74,7 +77,10 @@ export function UserMenu({ email, variant = "card" }: UserMenuProps) {
           {isPending ? "Logging out..." : "Log out"}
         </button>
         {message ? (
-          <p className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          <p
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
+            aria-live="polite"
+          >
             {message}
           </p>
         ) : null}
@@ -96,7 +102,7 @@ export function UserMenu({ email, variant = "card" }: UserMenuProps) {
 
         <div className="flex sm:items-center sm:justify-end">
           <button
-            className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
             type="button"
             onClick={handleSignOut}
             disabled={isPending}
@@ -107,7 +113,10 @@ export function UserMenu({ email, variant = "card" }: UserMenuProps) {
       </div>
 
       {message ? (
-        <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+        <p
+          className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
+          aria-live="polite"
+        >
           {message}
         </p>
       ) : null}

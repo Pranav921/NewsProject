@@ -2,8 +2,10 @@
 
 import { AuthPanel } from "@/components/AuthPanel";
 import { BrandBadge, BrandLogo } from "@/components/BrandLogo";
+import { NewArticlesPrompt } from "@/components/NewArticlesPrompt";
 import { NewsFeed } from "@/components/NewsFeed";
 import { PublicFooter } from "@/components/PublicFooter";
+import { RefreshButton } from "@/components/RefreshButton";
 import type { NewsItem } from "@/lib/types";
 
 type PublicNewsViewProps = {
@@ -15,10 +17,13 @@ export function PublicNewsView({
   articles,
   feedErrorMessage = null,
 }: PublicNewsViewProps) {
+  const articleLinks = articles.map((article) => article.link);
+
   return (
     <div className="space-y-4">
       <section
         id="public-top"
+        aria-labelledby="public-hero-title"
         className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.07)]"
       >
         <div className="bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 sm:p-6 lg:px-8 lg:py-8">
@@ -33,7 +38,10 @@ export function PublicNewsView({
                 mobileHeightClassName="h-7"
                 priority
               />
-              <h1 className="mt-3 text-balance text-[1.72rem] font-semibold tracking-tight text-slate-950 sm:mt-3.5 sm:text-[2.2rem]">
+              <h1
+                id="public-hero-title"
+                className="mt-3 text-balance text-[1.72rem] font-semibold tracking-tight text-slate-950 sm:mt-3.5 sm:text-[2.2rem]"
+              >
                 Your fast, clutter-free feed for today&apos;s top headlines.
               </h1>
               <p className="mt-2 max-w-[40rem] text-sm leading-6 text-slate-600 sm:text-[15px]">
@@ -44,22 +52,31 @@ export function PublicNewsView({
 
             <div className="flex flex-col gap-2.5 sm:flex-row lg:w-full lg:max-w-[270px] lg:flex-col lg:self-center">
               <a
-                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                 href="#public-auth-panel-login"
                 style={{ color: "#ffffff" }}
               >
                 Sign in for alerts
               </a>
               <a
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                 href="#public-auth-panel-signup"
               >
                 Create free account
               </a>
+              <RefreshButton
+                className="min-h-11 rounded-xl px-4.5 py-2.5"
+                currentLinks={articleLinks}
+              />
             </div>
           </div>
         </div>
       </section>
+
+      <NewArticlesPrompt
+        key={articleLinks.join("|")}
+        initialLinks={articleLinks}
+      />
 
       <NewsFeed
         articles={articles}
@@ -71,6 +88,7 @@ export function PublicNewsView({
 
       <section
         id="public-auth-panel"
+        aria-labelledby="public-auth-title"
         className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-5"
       >
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] lg:items-start">
@@ -78,7 +96,10 @@ export function PublicNewsView({
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
               Personalize Kicker News
             </p>
-            <h2 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-slate-950">
+            <h2
+              id="public-auth-title"
+              className="mt-2 text-[1.45rem] font-semibold tracking-tight text-slate-950"
+            >
               Save stories, set alerts, and tune your newsletter.
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -104,7 +125,7 @@ export function PublicNewsView({
 
             <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
               <a
-                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                 href="#public-top"
                 style={{ color: "#ffffff" }}
               >

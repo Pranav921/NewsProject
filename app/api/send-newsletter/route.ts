@@ -1,4 +1,5 @@
 import { getAllNewsItems } from "@/lib/rss";
+import { logApiError, logApiInfo } from "@/lib/api-logging";
 import {
   buildNewsletterEmailHtml,
   buildNewsletterEmailSubject,
@@ -29,6 +30,7 @@ type SendResultSummary = {
 };
 
 export async function GET(request: Request) {
+  const startedAt = Date.now();
   const authorizationHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   const isDevelopment = process.env.NODE_ENV === "development";
@@ -58,7 +60,7 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: true });
 
   if (subscriptionsError) {
-    console.error("[send-newsletter][subscriptions]", subscriptionsError);
+    logApiError("[newsletter][send][subscriptions]", subscriptionsError);
 
     return NextResponse.json(
       {
@@ -249,7 +251,9 @@ export async function GET(request: Request) {
         .eq("id", subscription.id);
 
       if (updateError) {
-        console.error("[send-newsletter][update-success]", updateError);
+        logApiError("[newsletter][send][update-success]", updateError, {
+          subscriptionId: subscription.id,
+        });
       }
 
       continue;
@@ -277,9 +281,22 @@ export async function GET(request: Request) {
       .eq("id", subscription.id);
 
     if (updateError) {
-      console.error("[send-newsletter][update-failure]", updateError);
+      logApiError("[newsletter][send][update-failure]", updateError, {
+        subscriptionId: subscription.id,
+      });
     }
   }
+
+  logApiInfo("[newsletter][send]", {
+    attempted: summary.attempted,
+    durationMs: Date.now() - startedAt,
+    eligible: summary.eligible_users,
+    failed: summary.failed,
+    recentArticles: recentArticles.length,
+    sent: summary.sent,
+    skipped: summary.skipped,
+    subscriptionsConsidered: filteredSubscriptions.length,
+  });
 
   return NextResponse.json(summary);
 }
@@ -329,7 +346,7 @@ async function sendNewsletterEmail({
     });
 
     if (debug) {
-      console.log("[send-newsletter][debug] Resend HTTP response", {
+      logApiInfo("[newsletter][send][resend-debug]", {
         ok: response.ok,
         recipient: email,
         status: response.status,
@@ -341,7 +358,7 @@ async function sendNewsletterEmail({
       const errorBody = (await response.text()).slice(0, 1000);
 
       if (debug) {
-        console.error("[send-newsletter][debug] Resend error body", {
+        console.error("[newsletter][send][resend-debug-error]", {
           body: errorBody,
           recipient: email,
         });
@@ -356,7 +373,7 @@ async function sendNewsletterEmail({
     const responseBody = (await response.json()) as { id?: string };
 
     if (debug) {
-      console.log("[send-newsletter][debug] Resend success body", {
+      logApiInfo("[newsletter][send][resend-debug-success]", {
         id: responseBody.id ?? null,
         recipient: email,
       });
@@ -368,8 +385,8 @@ async function sendNewsletterEmail({
     };
   } catch (error) {
     if (debug) {
-      console.error("[send-newsletter][debug] caught send error", {
-        error: error instanceof Error ? (error.stack ?? error.message) : error,
+      console.error("[newsletter][send][resend-debug-catch]", {
+        error: error instanceof Error ? (error.stack ?? error.message) : String(error),
         recipient: email,
       });
     }
@@ -452,23 +469,38 @@ async function getPersonalizationMaps(
     ]);
 
   if (preferencesResult.error) {
-    console.error("[send-newsletter][personalization-preferences]", preferencesResult.error);
+    logApiError(
+      "[newsletter][send][personalization-preferences]",
+      preferencesResult.error,
+    );
   }
 
   if (alertKeywordsResult.error) {
-    console.error("[send-newsletter][personalization-alert-keywords]", alertKeywordsResult.error);
+    logApiError(
+      "[newsletter][send][personalization-alert-keywords]",
+      alertKeywordsResult.error,
+    );
   }
 
   if (clicksBySubscriptionResult.error) {
-    console.error("[send-newsletter][personalization-clicks-subscription]", clicksBySubscriptionResult.error);
+    logApiError(
+      "[newsletter][send][personalization-clicks-subscription]",
+      clicksBySubscriptionResult.error,
+    );
   }
 
   if (clicksByEmailResult.error) {
-    console.error("[send-newsletter][personalization-clicks-email]", clicksByEmailResult.error);
+    logApiError(
+      "[newsletter][send][personalization-clicks-email]",
+      clicksByEmailResult.error,
+    );
   }
 
   if (clicksByUserIdResult.error) {
-    console.error("[send-newsletter][personalization-clicks-user-id]", clicksByUserIdResult.error);
+    logApiError(
+      "[newsletter][send][personalization-clicks-user-id]",
+      clicksByUserIdResult.error,
+    );
   }
 
   const preferredSourceByUserId = new Map<string, string | null>();
@@ -588,7 +620,9 @@ async function ensureUnsubscribeToken(
     .is("unsubscribe_token", null);
 
   if (error) {
-    console.error("[send-newsletter][unsubscribe-token]", error);
+    logApiError("[newsletter][send][unsubscribe-token]", error, {
+      subscriptionId: subscription.id,
+    });
     return null;
   }
 
@@ -670,7 +704,9 @@ async function insertEmailSendLog(
     .single();
 
   if (insertError) {
-    console.error("[send-newsletter][email-send-log]", insertError);
+    logApiError("[newsletter][send][email-send-log]", insertError, {
+      subscriptionId,
+    });
     return null;
   }
 
@@ -688,7 +724,9 @@ async function insertEmailSendLog(
     .maybeSingle();
 
   if (fallbackError) {
-    console.error("[send-newsletter][email-send-log-fallback]", fallbackError);
+    logApiError("[newsletter][send][email-send-log-fallback]", fallbackError, {
+      subscriptionId,
+    });
     return null;
   }
 
@@ -705,7 +743,9 @@ async function getSentArticleLinksForSubscription(
     .eq("subscription_id", subscriptionId);
 
   if (error) {
-    console.error("[send-newsletter][sent-articles]", error);
+    logApiError("[newsletter][send][sent-articles]", error, {
+      subscriptionId,
+    });
     return new Set<string>();
   }
 
@@ -746,6 +786,9 @@ async function insertSentArticles(
     .insert(payload);
 
   if (error) {
-    console.error("[send-newsletter][sent-articles-insert]", error);
+    logApiError("[newsletter][send][sent-articles-insert]", error, {
+      subscriptionId,
+      articleCount: articles.length,
+    });
   }
 }

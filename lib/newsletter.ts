@@ -12,6 +12,8 @@ import {
 
 const NEWSLETTER_TIME_ZONE = "America/New_York";
 export const NEWSLETTER_ARTICLE_LIMIT = 20;
+export const NEWSLETTER_PREHEADER_TEXT =
+  "Top headlines from trusted sources in under 5 minutes.";
 
 export type NewsletterSubscriptionRow = {
   article_mode?: NewsletterArticleMode | null;
@@ -230,10 +232,14 @@ export function buildNewsletterEmailHtml(
   const trackingPixel = tracking
     ? `<img src="${escapeAttribute(buildOpenTrackingUrl(tracking))}" alt="" width="1" height="1" style="display:block;border:0;outline:none;opacity:0;" />`
     : "";
+  const hiddenPreheaderMarkup = buildHiddenPreheaderHtml(
+    NEWSLETTER_PREHEADER_TEXT,
+  );
 
   return `
     <div style="margin:0;padding:32px 16px;background:#f8fafc;font-family:Arial,sans-serif;">
       <div style="margin:0 auto;max-width:720px;background:#ffffff;border:1px solid #e2e8f0;border-radius:24px;padding:32px;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
+        ${hiddenPreheaderMarkup}
         <p style="margin:0;color:#0369a1;font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Kicker News</p>
         <p style="margin:14px 0 0;">
           <a href="${escapeAttribute(unsubscribeUrl)}" style="display:inline-block;border-radius:9999px;border:1px solid #cbd5e1;color:#475569;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;">Unsubscribe</a>
@@ -357,10 +363,14 @@ function buildCompactNewsletterEmailHtml(
   const trackingPixel = tracking
     ? `<img src="${escapeAttribute(buildOpenTrackingUrl(tracking))}" alt="" width="1" height="1" style="display:block;border:0;outline:none;opacity:0;" />`
     : "";
+  const hiddenPreheaderMarkup = buildHiddenPreheaderHtml(
+    NEWSLETTER_PREHEADER_TEXT,
+  );
 
   return `
     <div style="margin:0;padding:24px 12px;background:#f8fafc;font-family:Arial,sans-serif;">
       <div style="margin:0 auto;max-width:640px;background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;padding:24px;box-shadow:0 10px 26px rgba(15,23,42,0.08);">
+        ${hiddenPreheaderMarkup}
         <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;">
           <p style="margin:0;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;">Kicker News</p>
           <a href="${escapeAttribute(unsubscribeUrl)}" style="display:inline-block;border-radius:9999px;border:1px solid #cbd5e1;color:#475569;padding:6px 12px;font-size:12px;font-weight:600;text-decoration:none;">Unsubscribe</a>
@@ -433,6 +443,17 @@ function buildSponsorBlockHtml(sponsor: SponsorConfig): string {
         <a href="${escapeAttribute(sponsor.ctaUrl)}" style="display:inline-block;border-radius:9999px;background:#0f172a;color:#ffffff;padding:10px 18px;font-size:14px;font-weight:600;text-decoration:none;">${escapeHtml(sponsor.ctaText)}</a>
       </p>
     </section>
+  `;
+}
+
+function buildHiddenPreheaderHtml(preheaderText: string): string {
+  return `
+    <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#ffffff;">
+      ${escapeHtml(preheaderText)}
+    </div>
+    <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#ffffff;">
+      &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+    </div>
   `;
 }
 

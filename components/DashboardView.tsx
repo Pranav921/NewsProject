@@ -47,15 +47,17 @@ export function DashboardView({
     <>
       <section
         id="dashboard-top"
+        aria-labelledby="dashboard-hero-title"
         className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.07)]"
       >
         <div className="bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 sm:hidden">
           <div className="space-y-2.5">
             <div className="flex items-center gap-3">
               <button
+                aria-controls="dashboard-mobile-actions"
                 aria-expanded={isMobileActionsOpen}
                 aria-label="Open dashboard actions"
-                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                 type="button"
                 onClick={() => setIsMobileActionsOpen((currentValue) => !currentValue)}
               >
@@ -69,10 +71,13 @@ export function DashboardView({
               <BrandBadge className="min-h-8 px-2.5 py-1 text-[10px] tracking-[0.2em]" />
             </div>
             {isMobileActionsOpen ? (
-              <div className="rounded-[1.25rem] border border-slate-200 bg-white p-3.5 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
+              <div
+                id="dashboard-mobile-actions"
+                className="rounded-[1.25rem] border border-slate-200 bg-white p-3.5 shadow-[0_12px_28px_rgba(15,23,42,0.05)]"
+              >
                 <div className="grid gap-2.5">
                   <a
-                    className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                    className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                     href="#newsletter-signup"
                     style={{ color: "#ffffff" }}
                     onClick={() => setIsMobileActionsOpen(false)}
@@ -85,7 +90,7 @@ export function DashboardView({
                     onRefresh={() => setIsMobileActionsOpen(false)}
                   />
                   <Link
-                    className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                    className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                     href="/account"
                     onClick={() => setIsMobileActionsOpen(false)}
                   >
@@ -95,7 +100,10 @@ export function DashboardView({
                 </div>
               </div>
             ) : null}
-            <h1 className="text-[1.35rem] leading-tight font-semibold tracking-tight text-slate-950">
+            <h1
+              id="dashboard-hero-title"
+              className="text-[1.35rem] leading-tight font-semibold tracking-tight text-slate-950"
+            >
               Your fast, clutter-free dashboard for today&apos;s top headlines.
             </h1>
             <p className="text-sm leading-5 text-slate-600">
@@ -153,7 +161,7 @@ export function DashboardView({
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
                   <a
-                    className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                     href="#newsletter-signup"
                     style={{ color: "#ffffff" }}
                   >
@@ -164,7 +172,7 @@ export function DashboardView({
                     className="min-h-10 rounded-xl px-4 py-2"
                   />
                   <Link
-                    className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                    className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                     href="/account"
                   >
                     Account settings

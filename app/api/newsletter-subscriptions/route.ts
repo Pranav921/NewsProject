@@ -2,6 +2,7 @@ import {
   getValidatedNewsletterSettings,
   type NewsletterSubscriptionRequest,
 } from "@/lib/newsletter-subscription-settings";
+import { logApiError, logApiInfo } from "@/lib/api-logging";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   NewsletterArticleMode,
@@ -45,7 +46,8 @@ export async function POST(request: Request) {
       userEmail: user.email,
       userId: user.id,
     });
-  } catch {
+  } catch (error) {
+    logApiError("[newsletter-subscriptions][post][error]", error);
     return NextResponse.json(
       { message: "Unable to process this request." },
       { status: 400 },
@@ -88,7 +90,8 @@ export async function PUT(request: Request) {
       userEmail: user.email,
       userId: user.id,
     });
-  } catch {
+  } catch (error) {
+    logApiError("[newsletter-subscriptions][put][error]", error);
     return NextResponse.json(
       { message: "Unable to process this request." },
       { status: 400 },
@@ -120,9 +123,9 @@ export async function DELETE() {
       .eq("email", user.email.toLowerCase());
 
     if (error) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("[newsletter-subscriptions][DELETE]", error);
-      }
+      logApiError("[newsletter-subscriptions][delete][update]", error, {
+        userId: user.id,
+      });
 
       return NextResponse.json(
         {
@@ -132,10 +135,15 @@ export async function DELETE() {
       );
     }
 
+    logApiInfo("[newsletter-subscriptions][delete]", {
+      userId: user.id,
+    });
+
     return NextResponse.json({
       message: "You have been unsubscribed from newsletter emails.",
     });
-  } catch {
+  } catch (error) {
+    logApiError("[newsletter-subscriptions][delete][error]", error);
     return NextResponse.json(
       { message: "Unable to process this request." },
       { status: 400 },
@@ -172,9 +180,11 @@ async function upsertNewsletterSubscription({
     .maybeSingle();
 
   if (lookupError) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error(`[newsletter-subscriptions][${actionLabel}][LOOKUP]`, lookupError);
-    }
+    logApiError(
+      `[newsletter-subscriptions][${actionLabel.toLowerCase()}][lookup]`,
+      lookupError,
+      { userId },
+    );
 
     return NextResponse.json(
       {
@@ -202,12 +212,11 @@ async function upsertNewsletterSubscription({
         .eq("id", existingSubscription.id);
 
       if (updateError) {
-        if (process.env.NODE_ENV !== "production") {
-          console.error(
-            `[newsletter-subscriptions][${actionLabel}][UPDATE]`,
-            updateError,
-          );
-        }
+        logApiError(
+          `[newsletter-subscriptions][${actionLabel.toLowerCase()}][update]`,
+          updateError,
+          { userId },
+        );
 
         return NextResponse.json(
           {
@@ -218,6 +227,14 @@ async function upsertNewsletterSubscription({
           { status: 500 },
         );
       }
+
+      logApiInfo(`[newsletter-subscriptions][${actionLabel.toLowerCase()}]`, {
+        action: "update",
+        articleMode,
+        emailFormat,
+        frequency,
+        userId,
+      });
 
       return NextResponse.json({
         message: successMessage,
@@ -245,12 +262,11 @@ async function upsertNewsletterSubscription({
       .eq("id", existingSubscription.id);
 
     if (reactivateError) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error(
-          `[newsletter-subscriptions][${actionLabel}][REACTIVATE]`,
-          reactivateError,
-        );
-      }
+      logApiError(
+        `[newsletter-subscriptions][${actionLabel.toLowerCase()}][reactivate]`,
+        reactivateError,
+        { userId },
+      );
 
       return NextResponse.json(
         {
@@ -261,6 +277,14 @@ async function upsertNewsletterSubscription({
         { status: 500 },
       );
     }
+
+    logApiInfo(`[newsletter-subscriptions][${actionLabel.toLowerCase()}]`, {
+      action: "reactivate",
+      articleMode,
+      emailFormat,
+      frequency,
+      userId,
+    });
 
     return NextResponse.json({
       message: actionLabel === "POST" ? "You have been resubscribed." : successMessage,
@@ -278,9 +302,11 @@ async function upsertNewsletterSubscription({
   });
 
   if (insertError) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error(`[newsletter-subscriptions][${actionLabel}][INSERT]`, insertError);
-    }
+    logApiError(
+      `[newsletter-subscriptions][${actionLabel.toLowerCase()}][insert]`,
+      insertError,
+      { userId },
+    );
 
     return NextResponse.json(
       {
@@ -291,6 +317,14 @@ async function upsertNewsletterSubscription({
       { status: 500 },
     );
   }
+
+  logApiInfo(`[newsletter-subscriptions][${actionLabel.toLowerCase()}]`, {
+    action: "insert",
+    articleMode,
+    emailFormat,
+    frequency,
+    userId,
+  });
 
   return NextResponse.json({
     message: successMessage,

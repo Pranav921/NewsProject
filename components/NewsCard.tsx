@@ -122,7 +122,8 @@ export function NewsCard({
         }`}
       >
         <button
-          className={`inline-flex min-h-10 items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-medium transition-colors ${
+          aria-label={`${isSaved ? "Remove saved article" : saveButtonLabel}: ${article.title}`}
+          className={`inline-flex min-h-10 items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
             isSaved
               ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
               : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
@@ -135,7 +136,8 @@ export function NewsCard({
         </button>
 
         <a
-          className="inline-flex min-h-10 w-fit items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-800"
+          aria-label={`Read original article: ${article.title}`}
+          className="inline-flex min-h-10 w-fit items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
           href={article.link}
           target="_blank"
           rel="noreferrer noopener"

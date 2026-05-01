@@ -1,3 +1,4 @@
+import { logApiError, logApiInfo } from "@/lib/api-logging";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
@@ -22,6 +23,10 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (lookupError || !subscription) {
+    if (lookupError) {
+      logApiError("[unsubscribe][lookup]", lookupError);
+    }
+
     redirectUrl.searchParams.set("status", "invalid");
     return NextResponse.redirect(redirectUrl);
   }
@@ -35,9 +40,16 @@ export async function GET(request: Request) {
     .eq("id", subscription.id);
 
   if (updateError) {
+    logApiError("[unsubscribe][update]", updateError, {
+      subscriptionId: subscription.id,
+    });
     redirectUrl.searchParams.set("status", "error");
     return NextResponse.redirect(redirectUrl);
   }
+
+  logApiInfo("[unsubscribe][success]", {
+    subscriptionId: subscription.id,
+  });
 
   redirectUrl.searchParams.set("status", "success");
   return NextResponse.redirect(redirectUrl);

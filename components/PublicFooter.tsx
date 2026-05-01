@@ -33,11 +33,14 @@ export function PublicFooter() {
             Clean RSS-based news tracking, saved stories, alerts, and newsletters.
           </p>
         </div>
-        <nav className="grid w-full grid-cols-2 gap-x-5 gap-y-2 text-sm text-slate-600 sm:grid-cols-3 md:w-auto md:flex md:flex-wrap md:justify-end md:gap-x-4 md:gap-y-2">
+        <nav
+          className="grid w-full grid-cols-2 gap-x-5 gap-y-2 text-sm text-slate-600 sm:grid-cols-3 md:w-auto md:flex md:flex-wrap md:justify-end md:gap-x-4 md:gap-y-2"
+          aria-label="Public site links"
+        >
           {PUBLIC_LINKS.map((link) => (
             <Link
               key={link.href}
-              className="inline-flex w-fit items-center border-b border-transparent pb-0.5 transition-colors hover:border-current hover:text-slate-900"
+              className="inline-flex w-fit items-center border-b border-transparent pb-0.5 transition-colors hover:border-current hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
               href={link.href}
             >
               {link.label}

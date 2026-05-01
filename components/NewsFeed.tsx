@@ -605,68 +605,96 @@ export function NewsFeed({
     <div className="space-y-4">
       <section className="rounded-[1.4rem] border border-slate-200 bg-white px-3 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.05)] sm:px-4 sm:py-3.5">
         <div className="flex flex-col gap-3">
-          <div className="grid gap-3.5 xl:grid-cols-[minmax(0,1.35fr)_180px_200px_200px]">
-            <input
-              id="article-search"
-              className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 sm:min-h-10 sm:px-3.5"
-              type="search"
-              placeholder="Search headlines, sources, or summaries"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
+          <div
+            className="grid gap-3.5 xl:grid-cols-[minmax(0,1.35fr)_180px_200px_200px]"
+            role="search"
+            aria-label="News feed filters"
+          >
+            <div>
+              <label className="sr-only" htmlFor="article-search">
+                Search articles
+              </label>
+              <input
+                id="article-search"
+                className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:min-h-10 sm:px-3.5"
+                type="search"
+                placeholder="Search headlines, sources, or summaries"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
 
-            <select
-              id="coverage-filter"
-              className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 sm:min-h-10 sm:px-3.5"
-              value={coverageFilter}
-              onChange={(event) =>
-                setCoverageFilter(event.target.value as CoverageFilter)
-              }
-            >
-              {COVERAGE_FILTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="sr-only" htmlFor="coverage-filter">
+                Filter by coverage
+              </label>
+              <select
+                id="coverage-filter"
+                className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:min-h-10 sm:px-3.5"
+                value={coverageFilter}
+                onChange={(event) =>
+                  setCoverageFilter(event.target.value as CoverageFilter)
+                }
+              >
+                {COVERAGE_FILTER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <select
-              id="source-filter"
-              className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 sm:min-h-10 sm:px-3.5"
-              value={activeSource}
-              onChange={(event) => {
-                setSelectedSource(event.target.value);
-                trackEvent("source_filter_change", {
-                  source: event.target.value,
-                });
-              }}
-            >
-              {sourceOptions.map((source) => (
-                <option key={source} value={source}>
-                  {source}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="sr-only" htmlFor="source-filter">
+                Filter by source
+              </label>
+              <select
+                id="source-filter"
+                className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:min-h-10 sm:px-3.5"
+                value={activeSource}
+                onChange={(event) => {
+                  setSelectedSource(event.target.value);
+                  trackEvent("source_filter_change", {
+                    source: event.target.value,
+                  });
+                }}
+              >
+                {sourceOptions.map((source) => (
+                  <option key={source} value={source}>
+                    {source}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <select
-              id="time-filter"
-              className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 sm:min-h-10 sm:px-3.5"
-              value={timeFilter}
-              onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
-            >
-              {TIME_FILTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="sr-only" htmlFor="time-filter">
+                Filter by time
+              </label>
+              <select
+                id="time-filter"
+                className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:min-h-10 sm:px-3.5"
+                value={timeFilter}
+                onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
+              >
+                {TIME_FILTER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-3 xl:justify-start xl:gap-5">
-              <div className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1">
+              <div
+                className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1"
+                role="group"
+                aria-label="Article list scope"
+              >
                 <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     effectiveFeedMode === "all"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -678,7 +706,7 @@ export function NewsFeed({
                   All articles
                 </button>
                 <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     effectiveFeedMode === "saved"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -704,7 +732,7 @@ export function NewsFeed({
                 aria-label="Article view mode"
               >
                 <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     viewMode === "standard"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -716,7 +744,7 @@ export function NewsFeed({
                   Standard
                 </button>
                 <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     viewMode === "compact"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -729,9 +757,13 @@ export function NewsFeed({
                 </button>
               </div>
 
-              <div className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1">
+              <div
+                className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1"
+                role="group"
+                aria-label="Alert matches filter"
+              >
                 <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     alertMatchView === "off"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -743,7 +775,7 @@ export function NewsFeed({
                   Alerts off
                 </button>
                 <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
+                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
                     alertMatchView !== "off"
                       ? "bg-slate-900 text-white"
                       : "text-slate-600 hover:bg-white"
@@ -767,7 +799,7 @@ export function NewsFeed({
 
               {isPublicViewer ? (
                 <button
-                  className="inline-flex w-fit items-center justify-center self-center px-1 py-0.5 text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-900 sm:ml-1 sm:min-h-10 sm:w-auto sm:rounded-full sm:border sm:border-slate-300 sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-sm sm:text-slate-700 sm:hover:bg-slate-100 xl:ml-2"
+                  className="inline-flex w-fit items-center justify-center self-center px-1 py-0.5 text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:ml-1 sm:min-h-10 sm:w-auto sm:rounded-full sm:border sm:border-slate-300 sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-sm sm:text-slate-700 sm:hover:bg-slate-100 xl:ml-2"
                   type="button"
                   onClick={() => promptProtectedAction("manage alerts")}
                 >
@@ -775,7 +807,7 @@ export function NewsFeed({
                 </button>
               ) : (
                 <a
-                  className="inline-flex w-fit items-center justify-center self-center px-1 py-0.5 text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-900 sm:ml-1 sm:min-h-10 sm:w-auto sm:rounded-full sm:border sm:border-slate-300 sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-sm sm:text-slate-700 sm:hover:bg-slate-100 xl:ml-2"
+                  className="inline-flex w-fit items-center justify-center self-center px-1 py-0.5 text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:ml-1 sm:min-h-10 sm:w-auto sm:rounded-full sm:border sm:border-slate-300 sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-sm sm:text-slate-700 sm:hover:bg-slate-100 xl:ml-2"
                   href="/account#alerts"
                 >
                   Manage alerts
@@ -799,14 +831,14 @@ export function NewsFeed({
               </p>
               <div className="mt-3 flex flex-wrap gap-2.5">
                 <a
-                  className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                   href={authCtaHref}
                   style={{ color: "#ffffff" }}
                 >
                   Log in
                 </a>
                 <a
-                  className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                   href={authSignupHref}
                 >
                   Create account
@@ -819,7 +851,7 @@ export function NewsFeed({
             <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               {newArticleLinks.length > 0 ? (
                 <button
-                  className={`inline-flex rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`inline-flex rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
                     showOnlyNew
                       ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
                       : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"

@@ -26,16 +26,25 @@ export function getNewArticleLinks(
   latestLinks: string[],
 ): string[] {
   const previousLinkSet = new Set(previousLinks.map(normalizeArticleLink));
+  const seenNewNormalizedLinks = new Set<string>();
 
   // Compare the full previous list with the full latest list and keep every
-  // truly new link. Wrapping the result in a Set avoids accidental duplicates.
-  return [
-    ...new Set(
-      latestLinks.filter(
-        (link) => !previousLinkSet.has(normalizeArticleLink(link)),
-      ),
-    ),
-  ];
+  // truly new canonical link exactly once, even if feeds disagree about
+  // trailing slashes or other normalizable URL differences.
+  return latestLinks.filter((link) => {
+    const normalizedLink = normalizeArticleLink(link);
+
+    if (!normalizedLink || previousLinkSet.has(normalizedLink)) {
+      return false;
+    }
+
+    if (seenNewNormalizedLinks.has(normalizedLink)) {
+      return false;
+    }
+
+    seenNewNormalizedLinks.add(normalizedLink);
+    return true;
+  });
 }
 
 export function resolveCurrentLinks(

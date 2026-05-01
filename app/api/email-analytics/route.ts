@@ -1,3 +1,4 @@
+import { logApiError, logApiInfo } from "@/lib/api-logging";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
@@ -105,7 +106,15 @@ export async function GET(request: Request) {
   ].filter(Boolean);
 
   if (subscriptionErrors.length > 0) {
-    console.error("[email-analytics][subscriptions]", subscriptionErrors);
+    console.error(
+      "[email-analytics][subscriptions]",
+      subscriptionErrors.map((error) => ({
+        code: error?.code ?? null,
+        details: error?.details ?? null,
+        hint: error?.hint ?? null,
+        message: error?.message ?? "Unknown Supabase error.",
+      })),
+    );
 
     return NextResponse.json(
       {
@@ -177,7 +186,15 @@ export async function GET(request: Request) {
   ].filter(Boolean);
 
   if (dataErrors.length > 0) {
-    console.error("[email-analytics][scoped-data]", dataErrors);
+    console.error(
+      "[email-analytics][scoped-data]",
+      dataErrors.map((error) => ({
+        code: error?.code ?? null,
+        details: error?.details ?? null,
+        hint: error?.hint ?? null,
+        message: error?.message ?? "Unknown Supabase error.",
+      })),
+    );
 
     return NextResponse.json(
       {
@@ -273,6 +290,16 @@ export async function GET(request: Request) {
       },
     ],
   };
+
+  logApiInfo("[email-analytics][get]", {
+    clickCount: rangedClickEvents.length,
+    openCount: rangedOpenEvents.length,
+    range,
+    sendLogCount: rangedLogs.length,
+    sentArticleCount: rangedSentArticles.length,
+    subscriptionCount: subscriptions.length,
+    userId: user.id,
+  });
 
   return NextResponse.json(response);
 }
@@ -698,10 +725,5 @@ function logSupabaseQueryError(
     message?: string | null;
   },
 ) {
-  console.error(`[email-analytics][${label}]`, {
-    code: error.code ?? null,
-    details: error.details ?? null,
-    hint: error.hint ?? null,
-    message: error.message ?? "Unknown Supabase error.",
-  });
+  logApiError(`[email-analytics][${label}]`, error);
 }
