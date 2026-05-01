@@ -4,6 +4,14 @@ import { PublicFooter } from "@/components/PublicFooter";
 import { fromAlertKeywordRows } from "@/lib/custom-alerts";
 import { getAllNewsItems } from "@/lib/rss";
 import { fromSavedArticleRows } from "@/lib/saved-articles";
+import {
+  buildCanonicalUrl,
+  buildPageMetadata,
+  getOrganizationLogoUrl,
+  getSiteUrl,
+  serializeJsonLd,
+  SITE_NAME,
+} from "@/lib/seo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { NewsItem, NewsletterFrequency } from "@/lib/types";
 import { normalizeUserPreferences } from "@/lib/user-preferences";
@@ -11,11 +19,12 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-export const metadata: Metadata = {
-  title: "Kicker News | Today's Top Headlines in One Clean Feed",
+export const metadata: Metadata = buildPageMetadata({
   description:
-    "Browse trusted headlines in one clean feed. Sign in to save stories, set alerts, and personalize your newsletter.",
-};
+    "Browse trusted U.S. and world headlines in one clean feed. Sign in to save stories, set alerts, and personalize your newsletter.",
+  pathname: "/",
+  title: "Kicker News | Today's Top Headlines in One Clean Feed",
+});
 
 export default async function Home() {
   const supabase = await createSupabaseServerClient();
@@ -33,9 +42,58 @@ export default async function Home() {
       "We couldn't load the live feed right now. Please refresh and try again in a moment.";
   }
 
+  const homepageStructuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      logo: getOrganizationLogoUrl(),
+      name: SITE_NAME,
+      url: getSiteUrl(),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      description:
+        "Browse trusted U.S. and world headlines in one clean feed. Sign in to save stories, set alerts, and personalize your newsletter.",
+      name: SITE_NAME,
+      url: getSiteUrl(),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      itemListElement: articles.slice(0, 10).map((article, index) => ({
+        "@type": "ListItem",
+        item: {
+          "@type": "CreativeWork",
+          ...(article.publishedAt ? { datePublished: article.publishedAt } : {}),
+          ...(article.source
+            ? {
+                provider: {
+                  "@type": "Organization",
+                  name: article.source,
+                },
+              }
+            : {}),
+          name: article.title,
+          url: article.link,
+        },
+        position: index + 1,
+        url: article.link,
+      })),
+      name: "Kicker News public feed",
+      url: buildCanonicalUrl("/"),
+    },
+  ];
+
   if (!user) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-1 flex-col px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: serializeJsonLd(homepageStructuredData),
+          }}
+        />
         <PublicNewsView articles={articles} feedErrorMessage={feedErrorMessage} />
       </main>
     );
@@ -81,6 +139,12 @@ export default async function Home() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd(homepageStructuredData),
+        }}
+      />
       <DashboardView
         articles={articles}
         feedErrorMessage={feedErrorMessage}

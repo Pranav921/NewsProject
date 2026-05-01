@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandBadge, BrandLogo } from "@/components/BrandLogo";
 import { NewArticlesPrompt } from "@/components/NewArticlesPrompt";
 import { NewsFeed } from "@/components/NewsFeed";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
@@ -50,7 +51,7 @@ export function DashboardView({
       >
         <div className="bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 sm:hidden">
           <div className="space-y-2.5">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
               <button
                 aria-expanded={isMobileActionsOpen}
                 aria-label="Open dashboard actions"
@@ -65,9 +66,7 @@ export function DashboardView({
                   <span className="block h-0.5 w-4 rounded-full bg-current" />
                 </span>
               </button>
-              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-800">
-                Kicker News Dashboard
-              </div>
+              <BrandBadge className="min-h-8 px-2.5 py-1 text-[10px] tracking-[0.2em]" />
             </div>
             {isMobileActionsOpen ? (
               <div className="rounded-[1.25rem] border border-slate-200 bg-white p-3.5 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
@@ -108,8 +107,13 @@ export function DashboardView({
         <div className="hidden gap-4 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 sm:grid xl:grid-cols-[minmax(0,1.18fr)_18rem] xl:items-start">
           <div className="space-y-3">
             <div className="flex items-start justify-between gap-4">
-              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-800">
-                Kicker News Dashboard
+              <div className="flex items-center">
+                <BrandLogo
+                  className="shrink-0"
+                  desktopHeightClassName="sm:h-14 lg:h-16"
+                  mobileHeightClassName="h-8"
+                  priority
+                />
               </div>
               <div className="hidden lg:block">
                 <UserMenu email={userEmail} variant="inline" />

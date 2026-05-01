@@ -1,12 +1,14 @@
 import { AdvertiseContactForm } from "@/components/AdvertiseContactForm";
 import { PublicPageShell } from "@/components/PublicPageShell";
+import { buildPageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Advertise",
+export const metadata: Metadata = buildPageMetadata({
   description:
     "Explore newsletter sponsorship and advertising opportunities with Kicker News.",
-};
+  pathname: "/advertise",
+  title: "Advertise with Kicker News",
+});
 
 export default function AdvertisePage() {
   return (

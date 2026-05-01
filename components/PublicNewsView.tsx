@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthPanel } from "@/components/AuthPanel";
+import { BrandBadge, BrandLogo } from "@/components/BrandLogo";
 import { NewsFeed } from "@/components/NewsFeed";
 import { PublicFooter } from "@/components/PublicFooter";
 import type { NewsItem } from "@/lib/types";
@@ -20,22 +21,28 @@ export function PublicNewsView({
         id="public-top"
         className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.07)]"
       >
-        <div className="bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-800">
-                Kicker News
+        <div className="bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 sm:p-6 lg:px-8 lg:py-8">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,680px)_minmax(240px,280px)] lg:items-center lg:gap-7">
+            <div className="max-w-[680px]">
+              <div className="sm:hidden">
+                <BrandBadge className="min-h-8 px-2.5 py-1 text-[10px] tracking-[0.2em]" />
               </div>
-              <h1 className="mt-3 text-balance text-[1.75rem] font-semibold tracking-tight text-slate-950 sm:text-[2.35rem]">
+              <BrandLogo
+                className="hidden max-w-[180px] sm:block md:max-w-[200px] lg:max-w-[220px]"
+                desktopHeightClassName="sm:h-auto"
+                mobileHeightClassName="h-7"
+                priority
+              />
+              <h1 className="mt-3 text-balance text-[1.72rem] font-semibold tracking-tight text-slate-950 sm:mt-3.5 sm:text-[2.2rem]">
                 Your fast, clutter-free feed for today&apos;s top headlines.
               </h1>
-              <p className="mt-2.5 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              <p className="mt-2 max-w-[40rem] text-sm leading-6 text-slate-600 sm:text-[15px]">
                 Browse trusted sources in one clean feed. Sign in to save
                 stories, set alerts, and personalize your newsletter.
               </p>
             </div>
 
-            <div className="flex flex-col justify-center gap-2 sm:flex-row lg:flex-col lg:self-stretch">
+            <div className="flex flex-col gap-2.5 sm:flex-row lg:w-full lg:max-w-[270px] lg:flex-col lg:self-center">
               <a
                 className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
                 href="#public-auth-panel-login"

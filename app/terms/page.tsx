@@ -1,11 +1,13 @@
 import { PublicPageShell } from "@/components/PublicPageShell";
+import { buildPageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Terms",
+export const metadata: Metadata = buildPageMetadata({
   description:
     "Review the basic terms for using Kicker News, including account responsibility, third-party publisher links, and acceptable use.",
-};
+  pathname: "/terms",
+  title: "Kicker News Terms",
+});
 
 export default function TermsPage() {
   return (

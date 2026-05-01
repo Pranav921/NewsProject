@@ -1,11 +1,13 @@
 import { PublicPageShell } from "@/components/PublicPageShell";
+import { buildPageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Newsletter",
+export const metadata: Metadata = buildPageMetadata({
   description:
     "Learn how the Kicker News newsletter works, including top stories, no duplicate sends, evolving personalization, and unsubscribe-anytime controls.",
-};
+  pathname: "/newsletter",
+  title: "Kicker News Newsletter",
+});
 
 export default function NewsletterPage() {
   return (

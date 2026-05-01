@@ -1,11 +1,13 @@
 import { PublicPageShell } from "@/components/PublicPageShell";
+import { buildPageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Privacy",
+export const metadata: Metadata = buildPageMetadata({
   description:
     "Read the Kicker News privacy overview covering accounts, saved stories, newsletter subscriptions, email tracking, analytics, and unsubscribe behavior.",
-};
+  pathname: "/privacy",
+  title: "Kicker News Privacy",
+});
 
 export default function PrivacyPage() {
   return (
