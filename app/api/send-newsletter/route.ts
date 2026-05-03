@@ -190,6 +190,10 @@ export async function GET(request: Request) {
     }
 
     const unsubscribeUrl = buildNewsletterUnsubscribeUrl(unsubscribeToken);
+    const emailHeaders = {
+      "List-Unsubscribe": `<${unsubscribeUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    };
 
     const trackingContext = {
       sendLogId: crypto.randomUUID(),
@@ -208,6 +212,7 @@ export async function GET(request: Request) {
         trackingContext,
       ),
       idempotencyKey: crypto.randomUUID(),
+      headers: emailHeaders,
       subject: buildNewsletterEmailSubject(rankedArticles.length),
       text: buildNewsletterEmailText(
         rankedArticles,
@@ -315,6 +320,7 @@ type PersonalizationMaps = {
 async function sendNewsletterEmail({
   debug,
   email,
+  headers,
   html,
   idempotencyKey,
   subject,
@@ -322,6 +328,7 @@ async function sendNewsletterEmail({
 }: {
   debug: boolean;
   email: string;
+  headers: Record<string, string>;
   html: string;
   idempotencyKey: string;
   subject: string;
@@ -338,6 +345,7 @@ async function sendNewsletterEmail({
       },
       body: JSON.stringify({
         from: NEWSLETTER_FROM,
+        headers,
         html,
         subject,
         text,

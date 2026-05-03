@@ -68,10 +68,19 @@ Copy `.env.example` to `.env.local` and fill in the values you need.
 - `APP_BASE_URL`
 - `NEXT_PUBLIC_APP_BASE_URL`
 
+### Optional Observability
+
+- `SENTRY_DSN`
+- `NEXT_PUBLIC_SENTRY_DSN`
+- `SENTRY_AUTH_TOKEN`
+- `SENTRY_ORG`
+- `SENTRY_PROJECT`
+
 ### Cron and Newsletter
 
 - `CRON_SECRET`
 - `TEST_NEWSLETTER_EMAIL`
+- `NEWSLETTER_MAILING_ADDRESS`
 
 ### Optional Analytics
 
@@ -145,6 +154,14 @@ The send route is responsible for:
 - unsubscribe handling
 - open and click tracking integration
 
+Deliverability checklist:
+
+- configure SPF, DKIM, and DMARC on the sending domain
+- keep `List-Unsubscribe` and `List-Unsubscribe-Post` enabled
+- keep the hidden preheader text in place for inbox previews
+- verify the unsubscribe link works in both browser and one-click mail client flows
+- set `NEWSLETTER_MAILING_ADDRESS` in production so the footer includes your mailing address
+
 ## Supabase Overview
 
 Supabase handles:
@@ -166,6 +183,39 @@ Keep user-scoped queries scoped by `user_id` or the authenticated user session.
 - Configure `CRON_SECRET` for scheduled newsletter sends
 - Verify your Resend sender/domain setup before relying on production email delivery
 - Review legal pages and privacy copy before marketing the site
+
+## Monitoring and Health Checks
+
+### Sentry
+
+Sentry is configured through the official Next.js SDK pattern using:
+
+- `instrumentation.ts`
+- `instrumentation-client.ts`
+- `sentry.server.config.ts`
+- `sentry.edge.config.ts`
+- `next.config.ts`
+
+Required env vars for a real Sentry project:
+
+- `NEXT_PUBLIC_SENTRY_DSN`
+
+Optional build-time source map upload vars:
+
+- `SENTRY_AUTH_TOKEN`
+- `SENTRY_ORG`
+- `SENTRY_PROJECT`
+
+Source map upload stays optional and only activates when the auth token is configured.
+
+### UptimeRobot
+
+Use these public endpoints for uptime checks:
+
+- `/api/health`
+- `/api/health/newsletter`
+
+`/api/health` is the best default monitor target because it is fast, public, and does not touch private user data.
 
 ## Testing Checklist
 
@@ -193,3 +243,12 @@ Suggested manual checks:
 - Keep user data access scoped correctly
 - Treat `article.link` as canonical identity
 - Test before deploying changes that touch feeds, newsletters, or auth
+
+## Account Hygiene Roadmap
+
+The account settings page now includes a visible `Account & data` section with:
+
+- `Export my data` placeholder
+- `Delete my account` placeholder
+
+These are intentionally marked as coming soon. Destructive deletion is not enabled yet.

@@ -10,6 +10,7 @@
     "test": "node --experimental-strip-types --experimental-specifier-resolution=node --test --test-isolation=none tests/*.test.mjs"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.51.0",
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.1",
     "next": "16.2.0",

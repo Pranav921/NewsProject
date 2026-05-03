@@ -14,6 +14,7 @@ const NEWSLETTER_TIME_ZONE = "America/New_York";
 export const NEWSLETTER_ARTICLE_LIMIT = 20;
 export const NEWSLETTER_PREHEADER_TEXT =
   "Top headlines from trusted sources in under 5 minutes.";
+const NEWSLETTER_MAILING_ADDRESS = process.env.NEWSLETTER_MAILING_ADDRESS?.trim() ?? "";
 
 export type NewsletterSubscriptionRow = {
   article_mode?: NewsletterArticleMode | null;
@@ -235,6 +236,9 @@ export function buildNewsletterEmailHtml(
   const hiddenPreheaderMarkup = buildHiddenPreheaderHtml(
     NEWSLETTER_PREHEADER_TEXT,
   );
+  const mailingAddressMarkup = NEWSLETTER_MAILING_ADDRESS
+    ? `<p style="margin:16px 0 0;color:#64748b;font-size:13px;line-height:1.7;">${escapeHtml(NEWSLETTER_MAILING_ADDRESS)}</p>`
+    : "";
 
   return `
     <div style="margin:0;padding:32px 16px;background:#f8fafc;font-family:Arial,sans-serif;">
@@ -263,6 +267,7 @@ export function buildNewsletterEmailHtml(
           You are receiving this email because you subscribed to Kicker News updates.
           <a href="${escapeAttribute(unsubscribeUrl)}" style="color:#0369a1;">Unsubscribe instantly</a>.
         </p>
+        ${mailingAddressMarkup}
         ${trackingPixel}
       </div>
     </div>
@@ -315,6 +320,7 @@ export function buildNewsletterEmailText(
 
       return lines;
     }),
+    ...(NEWSLETTER_MAILING_ADDRESS ? ["", NEWSLETTER_MAILING_ADDRESS] : []),
     "Unsubscribe:",
     unsubscribeUrl,
   ].filter((line): line is string => Boolean(line)).join("\n");
@@ -366,6 +372,9 @@ function buildCompactNewsletterEmailHtml(
   const hiddenPreheaderMarkup = buildHiddenPreheaderHtml(
     NEWSLETTER_PREHEADER_TEXT,
   );
+  const mailingAddressMarkup = NEWSLETTER_MAILING_ADDRESS
+    ? `<p style="margin:14px 0 0;color:#64748b;font-size:12px;line-height:1.6;">${escapeHtml(NEWSLETTER_MAILING_ADDRESS)}</p>`
+    : "";
 
   return `
     <div style="margin:0;padding:24px 12px;background:#f8fafc;font-family:Arial,sans-serif;">
@@ -394,6 +403,7 @@ function buildCompactNewsletterEmailHtml(
           You are receiving this email because you subscribed to Kicker News updates.
           <a href="${escapeAttribute(unsubscribeUrl)}" style="color:#0369a1;">Unsubscribe instantly</a>.
         </p>
+        ${mailingAddressMarkup}
         ${trackingPixel}
       </div>
     </div>
@@ -428,6 +438,7 @@ function buildCompactNewsletterEmailText(
 
       return lines;
     }),
+    ...(NEWSLETTER_MAILING_ADDRESS ? ["", NEWSLETTER_MAILING_ADDRESS] : []),
     "Unsubscribe:",
     unsubscribeUrl,
   ].filter((line): line is string => Boolean(line)).join("\n");
