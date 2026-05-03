@@ -6,7 +6,9 @@ import { NewArticlesPrompt } from "@/components/NewArticlesPrompt";
 import { NewsFeed } from "@/components/NewsFeed";
 import { PublicFooter } from "@/components/PublicFooter";
 import { RefreshButton } from "@/components/RefreshButton";
+import { fetchLatestNews } from "@/lib/news-client";
 import type { NewsItem } from "@/lib/types";
+import { useEffect, useState } from "react";
 
 type PublicNewsViewProps = {
   articles: NewsItem[];
@@ -17,7 +19,17 @@ export function PublicNewsView({
   articles,
   feedErrorMessage = null,
 }: PublicNewsViewProps) {
-  const articleLinks = articles.map((article) => article.link);
+  const [currentArticles, setCurrentArticles] = useState(articles);
+  const articleLinks = currentArticles.map((article) => article.link);
+
+  useEffect(() => {
+    setCurrentArticles(articles);
+  }, [articles]);
+
+  async function refreshArticles() {
+    const latestArticles = await fetchLatestNews("refresh");
+    setCurrentArticles(latestArticles);
+  }
 
   return (
     <div className="space-y-4">
@@ -67,6 +79,7 @@ export function PublicNewsView({
               <RefreshButton
                 className="min-h-11 rounded-xl px-4.5 py-2.5"
                 currentLinks={articleLinks}
+                onRefresh={refreshArticles}
               />
             </div>
           </div>
@@ -76,10 +89,11 @@ export function PublicNewsView({
       <NewArticlesPrompt
         key={articleLinks.join("|")}
         initialLinks={articleLinks}
+        onRefresh={refreshArticles}
       />
 
       <NewsFeed
-        articles={articles}
+        articles={currentArticles}
         authCtaHref="#public-auth-panel-login"
         authSignupHref="#public-auth-panel-signup"
         feedErrorMessage={feedErrorMessage}

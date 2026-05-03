@@ -15,6 +15,7 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { NewsItem, NewsletterFrequency } from "@/lib/types";
 import { normalizeUserPreferences } from "@/lib/user-preferences";
+import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,14 @@ export const metadata: Metadata = buildPageMetadata({
   title: "Kicker News | Today's Top Headlines in One Clean Feed",
 });
 
+const getCachedHomepageNewsItems = unstable_cache(
+  async () => getAllNewsItems({ fresh: true }),
+  ["homepage-rss-articles"],
+  {
+    revalidate: 90,
+  },
+);
+
 export default async function Home() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -36,7 +45,7 @@ export default async function Home() {
   let feedErrorMessage: string | null = null;
 
   try {
-    articles = await getAllNewsItems({ fresh: true });
+    articles = await getCachedHomepageNewsItems();
   } catch {
     feedErrorMessage =
       "We couldn't load the live feed right now. Please refresh and try again in a moment.";

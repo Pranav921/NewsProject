@@ -6,9 +6,10 @@ import { NewsFeed } from "@/components/NewsFeed";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { RefreshButton } from "@/components/RefreshButton";
 import { UserMenu } from "@/components/UserMenu";
+import { fetchLatestNews } from "@/lib/news-client";
 import type { NewsItem, SavedArticle, UserPreferences } from "@/lib/types";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type DashboardViewProps = {
   articles: NewsItem[];
@@ -35,13 +36,23 @@ export function DashboardView({
   userEmail,
   userId,
 }: DashboardViewProps) {
-  const articleLinks = articles.map((article) => article.link);
+  const [currentArticles, setCurrentArticles] = useState(articles);
+  const articleLinks = currentArticles.map((article) => article.link);
   const [savedArticleCount, setSavedArticleCount] = useState(
     initialSavedArticles.length,
   );
   const [isMobileActionsOpen, setIsMobileActionsOpen] = useState(false);
-  const sourceCount = new Set(articles.map((article) => article.source)).size;
-  const storyCount = articles.length;
+  const sourceCount = new Set(currentArticles.map((article) => article.source)).size;
+  const storyCount = currentArticles.length;
+
+  useEffect(() => {
+    setCurrentArticles(articles);
+  }, [articles]);
+
+  async function refreshArticles() {
+    const latestArticles = await fetchLatestNews("refresh");
+    setCurrentArticles(latestArticles);
+  }
 
   return (
     <>
@@ -87,7 +98,10 @@ export function DashboardView({
                   <RefreshButton
                     currentLinks={articleLinks}
                     className="min-h-10 rounded-xl px-4 py-2"
-                    onRefresh={() => setIsMobileActionsOpen(false)}
+                    onRefresh={async () => {
+                      setIsMobileActionsOpen(false);
+                      await refreshArticles();
+                    }}
                   />
                   <Link
                     className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
@@ -170,6 +184,7 @@ export function DashboardView({
                   <RefreshButton
                     currentLinks={articleLinks}
                     className="min-h-10 rounded-xl px-4 py-2"
+                    onRefresh={refreshArticles}
                   />
                   <Link
                     className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
@@ -190,11 +205,12 @@ export function DashboardView({
       <NewArticlesPrompt
         key={articleLinks.join("|")}
         initialLinks={articleLinks}
+        onRefresh={refreshArticles}
       />
 
       <section className="mt-3">
         <NewsFeed
-          articles={articles}
+          articles={currentArticles}
           feedErrorMessage={feedErrorMessage}
           initialAlertKeywords={initialAlertKeywords}
           initialPreferences={initialPreferences}

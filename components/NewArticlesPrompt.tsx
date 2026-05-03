@@ -7,23 +7,21 @@ import {
   PENDING_NEW_ARTICLE_LINKS_KEY,
   PENDING_PREVIOUS_LINKS_KEY,
 } from "@/lib/news-updates";
-import type { NewsItem } from "@/lib/types";
+import { fetchLatestNews } from "@/lib/news-client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
 type NewArticlesPromptProps = {
   initialLinks: string[];
-};
-
-type NewsApiResponse = {
-  articles: NewsItem[];
+  onRefresh?: (newArticleLinks: string[]) => Promise<void> | void;
 };
 
 export function NewArticlesPrompt({
   initialLinks,
+  onRefresh,
 }: NewArticlesPromptProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [newArticleLinks, setNewArticleLinks] = useState<string[]>([]);
   const [dismissedSignature, setDismissedSignature] = useState<string | null>(null);
 
@@ -32,7 +30,7 @@ export function NewArticlesPrompt({
 
     async function checkForNewArticles() {
       try {
-        if (isPending) {
+        if (isRefreshing) {
           return;
         }
 
@@ -55,16 +53,8 @@ export function NewArticlesPrompt({
           sessionStorage.removeItem(HANDLED_NEW_ARTICLE_LINKS_KEY);
         }
 
-        const response = await fetch("/api/news", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          return;
-        }
-
-        const data: NewsApiResponse = await response.json();
-        const latestLinks = data.articles.map((article) => article.link);
+        const latestArticles = await fetchLatestNews("checkForUpdates");
+        const latestLinks = latestArticles.map((article) => article.link);
         const detectedNewLinks = getNewArticleLinks(initialLinks, latestLinks)
           .filter((link) => !handledNewLinkSet.has(normalizeArticleLink(link)));
         const detectedSignature = detectedNewLinks.join("|");
@@ -108,9 +98,9 @@ export function NewArticlesPrompt({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.clearInterval(pollInterval);
     };
-  }, [dismissedSignature, initialLinks, isPending]);
+  }, [dismissedSignature, initialLinks, isRefreshing]);
 
-  function handleRefresh() {
+  async function handleRefresh() {
     sessionStorage.setItem(
       PENDING_PREVIOUS_LINKS_KEY,
       JSON.stringify(initialLinks),
@@ -124,9 +114,19 @@ export function NewArticlesPrompt({
       JSON.stringify(newArticleLinks),
     );
 
-    startTransition(() => {
+    setIsRefreshing(true);
+
+    try {
+      if (onRefresh) {
+        await onRefresh(newArticleLinks);
+      } else {
+        router.refresh();
+      }
+    } catch {
       router.refresh();
-    });
+    } finally {
+      setIsRefreshing(false);
+    }
   }
 
   const newArticleCount = newArticleLinks.length;
@@ -160,9 +160,9 @@ export function NewArticlesPrompt({
             className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
             type="button"
             onClick={handleRefresh}
-            disabled={isPending}
+            disabled={isRefreshing}
           >
-            {isPending ? "Refreshing..." : "Refresh"}
+            {isRefreshing ? "Refreshing..." : "Refresh"}
           </button>
 
           <button

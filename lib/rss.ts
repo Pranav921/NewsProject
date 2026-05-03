@@ -1,62 +1,7 @@
 import { RSS_FEEDS } from "@/lib/feeds";
 import { normalizeArticleLink } from "@/lib/news-updates";
+import { cleanSummary, stripCdata, stripHtml } from "@/lib/rss-format";
 import type { FeedDefinition, NewsItem } from "@/lib/types";
-
-function stripCdata(value: string): string {
-  return value.replace(/^<!\[CDATA\[/, "").replace(/\]\]>$/, "");
-}
-
-function decodeEntities(value: string): string {
-  return value
-    .replace(/&amp;/g, "&")
-    // Some feeds use named entities like &apos; while others use numeric
-    // versions like &#39;, so we handle both here in one beginner-friendly
-    // place.
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ");
-}
-
-function decodeEntitiesDeep(value: string): string {
-  let decodedValue = value;
-
-  // Some feeds escape HTML more than once, so we decode a few times until the
-  // text stops changing.
-  for (let index = 0; index < 3; index += 1) {
-    const nextValue = decodeEntities(decodedValue);
-
-    if (nextValue === decodedValue) {
-      break;
-    }
-
-    decodedValue = nextValue;
-  }
-
-  return decodedValue;
-}
-
-function stripHtml(value: string): string {
-  return decodeEntitiesDeep(value)
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function cleanSummary(value: string): string {
-  return decodeEntitiesDeep(value)
-    // Remove any HTML tags after decoding, including escaped tags like
-    // &lt;p&gt; that become real tags during the decode step.
-    .replace(/<[^>]+>/g, " ")
-    // Feeds sometimes include raw URLs in summaries, especially inside links.
-    // Removing them keeps the text short and easier to read.
-    .replace(/https?:\/\/\S+/gi, " ")
-    // Collapse repeated spaces and line breaks into normal sentence spacing.
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 function truncateSummary(summary: string, maxLength = 220): string | null {
   const minimumSummaryLength = 50;
