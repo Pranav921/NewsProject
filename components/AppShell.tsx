@@ -101,7 +101,7 @@ export function AppShell({
               {pendingUpdateCount > 0 ? (
                 <button
                   aria-label={`Refresh to show ${updateLabel}`}
-                  className="badge-in hidden min-h-9 items-center gap-2 rounded-full bg-[var(--accent)] px-[14px] text-[11px] font-semibold text-white shadow-[0_2px_12px_rgba(255,107,0,0.27)] transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 md:inline-flex"
+                  className="badge-in hidden min-h-9 cursor-pointer items-center gap-2 rounded-full bg-[var(--accent)] px-[14px] text-[11px] font-semibold text-white shadow-[0_2px_12px_rgba(255,107,0,0.27)] transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 md:inline-flex"
                   type="button"
                   onClick={() => {
                     void handlePendingRefresh();
@@ -156,7 +156,7 @@ export function AppShell({
               <div className="flex justify-center pt-3">
                 <button
                   aria-label={`Refresh to show ${updateLabel}`}
-                  className="badge-in inline-flex min-h-9 items-center justify-center rounded-full bg-[var(--accent)] px-[18px] py-[7px] text-[13px] font-semibold text-white shadow-[0_2px_12px_rgba(255,107,0,0.27)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                  className="badge-in inline-flex min-h-9 cursor-pointer items-center justify-center rounded-full bg-[var(--accent)] px-[18px] py-[7px] text-[13px] font-semibold text-white shadow-[0_2px_12px_rgba(255,107,0,0.27)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
                   type="button"
                   onClick={() => {
                     void handlePendingRefresh();

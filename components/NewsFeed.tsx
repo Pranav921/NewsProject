@@ -2,7 +2,12 @@
 
 import { NewsList } from "@/components/NewsList";
 import { trackEvent } from "@/lib/analytics";
-import { CUSTOM_ALERT_KEYWORDS_STORAGE_KEY, parseAlertKeywords } from "@/lib/custom-alerts";
+import {
+  addAlertKeyword,
+  CUSTOM_ALERT_KEYWORDS_STORAGE_KEY,
+  parseAlertKeywords,
+  suggestAlertKeywordForArticle,
+} from "@/lib/custom-alerts";
 import { filterArticlesByCoverage } from "@/lib/feeds";
 import {
   getNewArticleLinks,
@@ -29,7 +34,7 @@ import {
   DEFAULT_VIEW_MODE,
   normalizeUserPreferences,
 } from "@/lib/user-preferences";
-import type { ReactNode } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 type NewsFeedProps = {
@@ -129,6 +134,13 @@ export function NewsFeed({
   const [protectedActionMessage, setProtectedActionMessage] = useState<{
     description: string;
     title: string;
+  } | null>(null);
+  const [alertDialogArticle, setAlertDialogArticle] = useState<NewsItem | null>(null);
+  const [alertDraftKeyword, setAlertDraftKeyword] = useState("");
+  const [isSavingAlertKeyword, setIsSavingAlertKeyword] = useState(false);
+  const [alertDialogMessage, setAlertDialogMessage] = useState<{
+    text: string;
+    tone: "error" | "success";
   } | null>(null);
   const hasAlertKeywords = alertKeywords.length > 0;
   const alertsEnabledByDefault = !isPublicViewer && hasAlertKeywords;
@@ -338,6 +350,12 @@ export function NewsFeed({
 
   function openAlertManagement() {
     window.location.assign("/account#alerts");
+  }
+
+  function closeAlertDialog() {
+    setAlertDialogArticle(null);
+    setAlertDialogMessage(null);
+    setAlertDraftKeyword("");
   }
 
   function handleAlertsToggle() {
@@ -746,6 +764,10 @@ export function NewsFeed({
 
   useEffect(() => {
     if (isPublicViewer || !hasAlertKeywords) {
+      if (alertsEnabledOverride !== null) {
+        setAlertsEnabledOverride(null);
+      }
+
       if (alertMatchView !== "off") {
         setAlertMatchView("off");
       }
@@ -753,6 +775,7 @@ export function NewsFeed({
     }
   }, [
     alertMatchView,
+    alertsEnabledOverride,
     hasAlertKeywords,
     isPublicViewer,
   ]);
@@ -835,13 +858,82 @@ export function NewsFeed({
     setIsSavingArticle(false);
   }
 
-  function handleAlertAction() {
+  function handleAlertAction(article: NewsItem) {
+    if (isPublicViewer) {
+      setAlertDialogArticle(article);
+      setAlertDraftKeyword(suggestAlertKeywordForArticle(article));
+      setAlertDialogMessage(null);
+      return;
+    }
+
+    setAlertDialogArticle(article);
+    setAlertDraftKeyword(suggestAlertKeywordForArticle(article));
+    setAlertDialogMessage(null);
+  }
+
+  async function handleSaveSuggestedAlert(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     if (isPublicViewer) {
       promptProtectedAction("set alerts");
       return;
     }
 
-    window.location.assign("/account#alerts");
+    if (!userId || isSavingAlertKeyword) {
+      return;
+    }
+
+    const nextAlertKeywords = addAlertKeyword(alertKeywords, alertDraftKeyword);
+    const normalizedKeyword = alertDraftKeyword.trim().toLowerCase();
+
+    if (!normalizedKeyword) {
+      setAlertDialogMessage({
+        text: "Enter a keyword or topic for this alert.",
+        tone: "error",
+      });
+      return;
+    }
+
+    if (nextAlertKeywords === alertKeywords) {
+      setAlertDialogMessage({
+        text: "That alert keyword is already saved.",
+        tone: "success",
+      });
+      return;
+    }
+
+    const previousAlertKeywords = alertKeywords;
+
+    setIsSavingAlertKeyword(true);
+    setAlertDialogMessage(null);
+    setAlertKeywords(nextAlertKeywords);
+
+    const { error } = await supabase.from("user_alert_keywords").upsert(
+      {
+        user_id: userId,
+        keyword: normalizedKeyword,
+      },
+      {
+        onConflict: "user_id,keyword",
+      },
+    );
+
+    if (error) {
+      setAlertKeywords(previousAlertKeywords);
+      setAlertDialogMessage({
+        text: "Unable to save alert keyword right now.",
+        tone: "error",
+      });
+      setIsSavingAlertKeyword(false);
+      return;
+    }
+
+    setAlertDialogMessage({
+      text: `Saved alert keyword: ${normalizedKeyword}`,
+      tone: "success",
+    });
+    setAlertsEnabledOverride(true);
+    setIsSavingAlertKeyword(false);
   }
 
   return (
@@ -1136,6 +1228,106 @@ export function NewsFeed({
           }
         />
       )}
+
+      {alertDialogArticle ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(26,24,20,0.5)] px-4 backdrop-blur-[8px]">
+          <div className="w-full max-w-[380px] rounded-[16px] bg-white p-6 shadow-[0_16px_64px_rgba(0,0,0,0.2)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="mono-meta text-[9px] uppercase tracking-[0.12em] text-[var(--accent)]">
+                  Set alert
+                </p>
+                <h2 className="mt-2 text-xl font-semibold leading-[1.4] text-[var(--foreground)]">
+                  {alertDialogArticle.title}
+                </h2>
+              </div>
+              <button
+                aria-label="Close alert dialog"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full text-[32px] leading-none text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                type="button"
+                onClick={closeAlertDialog}
+              >
+                ×
+              </button>
+            </div>
+
+            <form className="mt-6 space-y-4" onSubmit={handleSaveSuggestedAlert}>
+              <div>
+                <label
+                  className="mono-meta text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]"
+                  htmlFor="suggested-alert-keyword"
+                >
+                  Keyword or topic
+                </label>
+                <input
+                  id="suggested-alert-keyword"
+                  className="mt-2 min-h-12 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-4 py-3 text-base text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                  type="text"
+                  value={alertDraftKeyword}
+                  onChange={(event) => setAlertDraftKeyword(event.target.value)}
+                />
+              </div>
+
+              {isPublicViewer ? (
+                <div className="space-y-2.5">
+                  <p className="text-sm leading-6 text-[var(--text-sub)]">
+                    Sign in to save this alert and track matching stories in your feed.
+                  </p>
+                  <div className="flex flex-col gap-2.5 sm:flex-row">
+                    <a
+                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[10px] bg-[var(--navy)] px-4 py-3 text-sm font-semibold text-white transition-colors hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                      href={authCtaHref}
+                      style={{ color: "#ffffff" }}
+                    >
+                      Sign in
+                    </a>
+                    <a
+                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[10px] border border-[var(--border)] bg-white px-4 py-3 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                      href={authSignupHref}
+                    >
+                      Create account
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm leading-6 text-[var(--text-sub)]">
+                    We suggested a keyword based on this story. You can edit it before saving.
+                  </p>
+                  <div className="flex flex-col gap-2.5 sm:flex-row">
+                    <button
+                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[10px] bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition-colors hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+                      type="submit"
+                      disabled={isSavingAlertKeyword}
+                    >
+                      {isSavingAlertKeyword ? "Saving..." : "Save alert keyword"}
+                    </button>
+                    <a
+                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[10px] border border-[var(--border)] bg-white px-4 py-3 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                      href="/account#alerts"
+                    >
+                      Manage alerts
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {alertDialogMessage ? (
+                <p
+                  className={`rounded-[10px] border px-3.5 py-2.5 text-sm ${
+                    alertDialogMessage.tone === "error"
+                      ? "border-rose-200 bg-rose-50 text-rose-700"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  }`}
+                  aria-live="polite"
+                >
+                  {alertDialogMessage.text}
+                </p>
+              ) : null}
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

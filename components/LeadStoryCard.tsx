@@ -118,6 +118,22 @@ export function LeadStoryCard({
             >
               {isSaved ? "Saved" : saveButtonLabel}
             </button>
+            <a
+              aria-label={`Read original article: ${article.title}`}
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-4.5 py-2 text-sm font-semibold text-[var(--navy)] transition-colors hover:bg-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)]"
+              href={article.link}
+              rel="noopener noreferrer"
+              target="_blank"
+              onClick={() =>
+                trackEvent("article_original_click", {
+                  article_link: article.link,
+                  article_source: article.source,
+                  article_title: article.title,
+                })
+              }
+            >
+              Read article <span aria-hidden="true" className="ml-1">↗</span>
+            </a>
           </div>
         </div>
 
