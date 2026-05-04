@@ -285,39 +285,41 @@ export function AccountSettings({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
-        <h1 className="text-[1.8rem] font-semibold tracking-tight text-slate-900">
+      <section className="editorial-page-card rounded-[1rem] p-5 sm:p-6">
+        <p className="editorial-section-label">Account</p>
+        <h1 className="mt-2 text-[1.8rem] font-semibold tracking-tight text-[var(--foreground)]">
           Account settings
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-[var(--text-sub)]">
           Manage your preferences, alert keywords, and newsletter subscription.
         </p>
 
-        <div className="mt-5 rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3.5">
-          <p className="text-sm font-medium text-slate-700">Signed in as</p>
-          <p className="mt-1 break-all text-sm text-slate-600">{email}</p>
+        <div className="editorial-page-subcard mt-5 p-3.5">
+          <p className="editorial-section-label">Signed in as</p>
+          <p className="mt-1 break-all text-sm text-[var(--text-sub)]">{email}</p>
         </div>
       </section>
 
-      <section className="rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
-        <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
+      <section className="editorial-page-card rounded-[1rem] p-5 sm:p-6">
+        <p className="editorial-section-label">Preferences</p>
+        <h2 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-[var(--foreground)]">
           Saved preferences
         </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-[var(--text-sub)]">
           Choose the defaults to apply when you open the app.
         </p>
 
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           <div>
             <label
-              className="text-sm font-medium text-slate-700"
+              className="text-sm font-medium text-[var(--text-sub)]"
               htmlFor="default-source-filter"
             >
               Default source filter
             </label>
             <select
               id="default-source-filter"
-              className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              className="editorial-input mt-2 min-h-11 w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)]"
               value={defaultSourceFilter}
               onChange={(event) => setDefaultSourceFilter(event.target.value)}
             >
@@ -331,14 +333,14 @@ export function AccountSettings({
 
           <div>
             <label
-              className="text-sm font-medium text-slate-700"
+              className="text-sm font-medium text-[var(--text-sub)]"
               htmlFor="default-time-filter"
             >
               Default time filter
             </label>
             <select
               id="default-time-filter"
-              className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              className="editorial-input mt-2 min-h-11 w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)]"
               value={defaultTimeFilter}
               onChange={(event) =>
                 setDefaultTimeFilter(event.target.value as TimeFilter)
@@ -354,14 +356,14 @@ export function AccountSettings({
 
           <div>
             <label
-              className="text-sm font-medium text-slate-700"
+              className="text-sm font-medium text-[var(--text-sub)]"
               htmlFor="default-view-mode"
             >
               Default view mode
             </label>
             <select
               id="default-view-mode"
-              className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              className="editorial-input mt-2 min-h-11 w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)]"
               value={defaultViewMode}
               onChange={(event) =>
                 setDefaultViewMode(event.target.value as ViewMode)
@@ -374,7 +376,7 @@ export function AccountSettings({
         </div>
 
         <button
-          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+          className="editorial-primary-button mt-5 inline-flex min-h-11 items-center justify-center px-4.5 py-2.5 text-sm font-medium transition-colors hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
           type="button"
           onClick={handleSavePreferences}
           disabled={isSavingPreferences}
@@ -383,18 +385,19 @@ export function AccountSettings({
         </button>
 
         {preferencesMessage ? (
-          <p className="mt-3 text-sm text-slate-600" aria-live="polite">{preferencesMessage}</p>
+          <p className="mt-3 text-sm text-[var(--text-sub)]" aria-live="polite">{preferencesMessage}</p>
         ) : null}
       </section>
 
       <section
         id="alerts"
-        className="scroll-mt-24 rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6"
+        className="editorial-page-card scroll-mt-24 rounded-[1rem] p-5 sm:p-6"
       >
-        <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
+        <p className="editorial-section-label">Alerts</p>
+        <h2 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-[var(--foreground)]">
           Saved alerts
         </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-[var(--text-sub)]">
           Manage the keywords used by your custom alerts and smart alerts.
         </p>
         <div className="mt-4 rounded-[1.05rem] border border-slate-200 bg-slate-50 p-3.5 text-sm leading-6 text-slate-600">
@@ -463,12 +466,13 @@ export function AccountSettings({
 
       <section
         id="newsletter"
-        className="scroll-mt-24 rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6"
+        className="editorial-page-card scroll-mt-24 rounded-[1rem] p-5 sm:p-6"
       >
-        <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
+        <p className="editorial-section-label">Newsletter</p>
+        <h2 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-[var(--foreground)]">
           Newsletter
         </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-[var(--text-sub)]">
           Update your preferred newsletter frequency or unsubscribe at any time.
         </p>
 
@@ -625,11 +629,12 @@ export function AccountSettings({
         ) : null}
       </section>
 
-      <section className="rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
-        <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
+      <section className="editorial-page-card rounded-[1rem] p-5 sm:p-6">
+        <p className="editorial-section-label">History</p>
+        <h2 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-[var(--foreground)]">
           Email send history
         </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-[var(--text-sub)]">
           Review your recent newsletter delivery activity.
         </p>
 
@@ -680,11 +685,12 @@ export function AccountSettings({
         )}
       </section>
 
-      <section className="rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
-        <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
+      <section className="editorial-page-card rounded-[1rem] p-5 sm:p-6">
+        <p className="editorial-section-label">Account &amp; data</p>
+        <h2 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-[var(--foreground)]">
           Account &amp; data
         </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-[var(--text-sub)]">
           Export and account deletion controls are planned, but not available yet.
           This section is here so users know the roadmap is intentional.
         </p>

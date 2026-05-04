@@ -1,6 +1,6 @@
+import { LeadStoryCard } from "@/components/LeadStoryCard";
 import { NewsCard } from "@/components/NewsCard";
-import { InFeedSponsorCard } from "@/components/InFeedSponsorCard";
-import { getInFeedSponsor } from "@/lib/sponsors";
+import { isBreakingStory } from "@/lib/news-presentation";
 import type { SmartAlertImportance } from "@/lib/smart-alerts";
 import type { NewsItem } from "@/lib/types";
 import type { ReactNode } from "react";
@@ -12,10 +12,10 @@ type NewsListProps = {
   emptyStateMessage?: string;
   emptyStateTitle?: string;
   newArticleLinks?: string[];
+  onAlertAction?: (article: NewsItem) => void;
   onToggleSavedArticle?: (article: NewsItem) => void;
   savedArticleLinks?: string[];
   saveButtonLabel?: string;
-  showInFeedSponsor?: boolean;
   viewMode?: "standard" | "compact";
 };
 
@@ -26,21 +26,27 @@ export function NewsList({
   emptyStateMessage = "The RSS parser is ready, but no articles were returned right now. This can happen if a feed is temporarily unavailable while developing locally.",
   emptyStateTitle = "No news yet",
   newArticleLinks = [],
+  onAlertAction,
   onToggleSavedArticle,
   savedArticleLinks = [],
   saveButtonLabel = "Save article",
-  showInFeedSponsor = false,
   viewMode = "standard",
 }: NewsListProps) {
   const newArticleLinkSet = new Set(newArticleLinks);
   const savedArticleLinkSet = new Set(savedArticleLinks);
-  const sponsor = getInFeedSponsor();
-  const shouldShowSponsor =
-    showInFeedSponsor && sponsor !== null && articles.length >= 7;
+  const leadArticle = getLeadArticle(articles);
+  const shouldShowMobileHero = Boolean(leadArticle && isBreakingStory(leadArticle));
+  const desktopArticles = leadArticle
+    ? articles.filter((article) => article.link !== leadArticle.link)
+    : articles;
+  const mobileArticles =
+    shouldShowMobileHero && leadArticle
+      ? articles.filter((article) => article.link !== leadArticle.link)
+      : articles;
 
   if (articles.length === 0) {
     return (
-      <div className="rounded-[1.8rem] border border-dashed border-slate-300 bg-white p-10 text-center shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
+      <div className="rounded-[1.8rem] border border-dashed border-[var(--border-strong)] bg-white p-10 text-center shadow-[0_10px_28px_rgba(26,24,20,0.04)]">
         <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
           {emptyStateTitle}
         </h2>
@@ -52,35 +58,87 @@ export function NewsList({
     );
   }
 
-  const cards = articles.flatMap((article, index) => {
-    const items = [
+  const cards = desktopArticles.map((article) => (
       <NewsCard
         alertImportance={alertImportanceByLink[article.link] ?? null}
         key={article.link}
         article={article}
         isNew={newArticleLinkSet.has(article.link)}
         isSaved={savedArticleLinkSet.has(article.link)}
+        onAlertAction={onAlertAction}
         onToggleSaved={onToggleSavedArticle}
         saveButtonLabel={saveButtonLabel}
         viewMode={viewMode}
-      />,
-    ];
+      />
+    ));
 
-    if (shouldShowSponsor && sponsor && index === 5) {
-      items.push(
-        <InFeedSponsorCard
-          key={`sponsor-${sponsor.label}-${index}`}
-          sponsor={sponsor}
-        />,
-      );
-    }
-
-    return items;
-  });
+  const mobileCards = mobileArticles.map((article) => (
+    <NewsCard
+      alertImportance={alertImportanceByLink[article.link] ?? null}
+      key={`mobile-${article.link}`}
+      article={article}
+      isNew={newArticleLinkSet.has(article.link)}
+      isSaved={savedArticleLinkSet.has(article.link)}
+      onAlertAction={onAlertAction}
+      onToggleSaved={onToggleSavedArticle}
+      saveButtonLabel={saveButtonLabel}
+      viewMode={viewMode}
+    />
+  ));
+  const desktopGridClassName =
+    viewMode === "compact"
+      ? "grid gap-[10px] md:grid-cols-2 xl:grid-cols-4"
+      : "grid gap-[10px] md:grid-cols-2 xl:grid-cols-3";
 
   return (
-    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-      {cards}
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 md:hidden">
+        {shouldShowMobileHero && leadArticle ? (
+          <LeadStoryCard
+            alertImportance={alertImportanceByLink[leadArticle.link] ?? null}
+            article={leadArticle}
+            isNew={newArticleLinkSet.has(leadArticle.link)}
+            isSaved={savedArticleLinkSet.has(leadArticle.link)}
+            onAlertAction={onAlertAction}
+            onToggleSaved={onToggleSavedArticle}
+            saveButtonLabel={saveButtonLabel}
+          />
+        ) : null}
+        {mobileCards}
+      </div>
+
+      <div className="hidden space-y-4 md:block">
+        {leadArticle ? (
+          <LeadStoryCard
+            alertImportance={alertImportanceByLink[leadArticle.link] ?? null}
+            article={leadArticle}
+            isNew={newArticleLinkSet.has(leadArticle.link)}
+            isSaved={savedArticleLinkSet.has(leadArticle.link)}
+            onAlertAction={onAlertAction}
+            onToggleSaved={onToggleSavedArticle}
+            saveButtonLabel={saveButtonLabel}
+          />
+        ) : null}
+
+        <div className={desktopGridClassName}>
+          {cards}
+        </div>
+      </div>
     </div>
   );
+}
+
+function getLeadArticle(articles: NewsItem[]): NewsItem | null {
+  if (articles.length === 0) {
+    return null;
+  }
+
+  const sortedArticles = [...articles].sort((left, right) => {
+    const leftTime = left.publishedAt ? Date.parse(left.publishedAt) : 0;
+    const rightTime = right.publishedAt ? Date.parse(right.publishedAt) : 0;
+
+    return rightTime - leftTime;
+  });
+
+  return sortedArticles.find((article) => isBreakingStory(article)) ?? sortedArticles[0] ?? null;
 }

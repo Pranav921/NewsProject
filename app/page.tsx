@@ -13,7 +13,7 @@ import {
   SITE_NAME,
 } from "@/lib/seo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { NewsItem, NewsletterFrequency } from "@/lib/types";
+import type { NewsItem } from "@/lib/types";
 import { normalizeUserPreferences } from "@/lib/user-preferences";
 import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
@@ -96,7 +96,7 @@ export default async function Home() {
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-1 flex-col px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <main className="mx-auto flex min-h-screen w-full flex-1 flex-col px-3 py-4 sm:px-6 sm:py-6 lg:px-7 xl:px-7 2xl:px-8">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -107,12 +107,6 @@ export default async function Home() {
       </main>
     );
   }
-
-  const { data: newsletterRow } = await supabase
-    .from("newsletter_subscriptions")
-    .select("custom_frequency, frequency, is_active")
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   const { data: userPreferencesRow } = await supabase
     .from("user_preferences")
@@ -140,14 +134,9 @@ export default async function Home() {
   );
   const initialSavedArticles = fromSavedArticleRows(savedArticleRows);
   const initialAlertKeywords = fromAlertKeywordRows(alertKeywordRows);
-  const initialNewsletterSubscriptionStatus = newsletterRow
-    ? newsletterRow.is_active
-      ? "active"
-      : "inactive"
-    : "none";
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
+    <main className="mx-auto flex w-full flex-1 flex-col px-3 py-4 sm:px-6 lg:px-7 lg:py-5 xl:px-7 2xl:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -157,11 +146,6 @@ export default async function Home() {
       <DashboardView
         articles={articles}
         feedErrorMessage={feedErrorMessage}
-        initialNewsletterCustomFrequency={newsletterRow?.custom_frequency ?? null}
-        initialNewsletterFrequency={
-          (newsletterRow?.frequency as NewsletterFrequency | null) ?? null
-        }
-        initialNewsletterSubscriptionStatus={initialNewsletterSubscriptionStatus}
         initialAlertKeywords={initialAlertKeywords}
         initialPreferences={initialPreferences}
         initialSavedArticles={initialSavedArticles}

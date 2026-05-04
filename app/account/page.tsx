@@ -93,41 +93,42 @@ export default async function AccountPage() {
     newsletterClickedArticleCount >= PERSONALIZATION_MIN_UNIQUE_CLICKS;
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col bg-[var(--background)] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <div className="mb-5">
         <Link
-          className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          className="editorial-outline-button inline-flex min-h-11 items-center justify-center px-5 py-2 text-sm font-medium transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)]"
           href="/"
         >
           Back to dashboard
         </Link>
       </div>
 
-      <section className="mb-5 overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+      <section className="editorial-page-card mb-5 overflow-hidden rounded-[1rem]">
         <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-center">
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
-            <p className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sky-800">
+          <div className="editorial-page-subcard rounded-[1rem] p-4 sm:p-5">
+            <p className="editorial-section-label inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2">
               Account
             </p>
-            <h1 className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950 sm:text-[2.3rem]">
+            <h1 className="mt-3 text-[2rem] font-semibold tracking-tight text-[var(--foreground)] sm:text-[2.3rem]">
               Settings and newsletter controls
             </h1>
-            <p className="mt-2.5 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+            <p className="mt-2.5 max-w-2xl text-sm leading-6 text-[var(--text-sub)] sm:text-base">
               Manage your feed defaults, alert keywords, newsletter preferences,
               and delivery history from one place.
             </p>
           </div>
 
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+          <div className="editorial-page-subcard rounded-[1rem] p-4">
+            <p className="editorial-section-label">Analytics</p>
+            <h2 className="mt-2 text-lg font-semibold tracking-tight text-[var(--foreground)]">
               Email analytics
             </h2>
-            <p className="mt-1.5 text-sm leading-6 text-slate-500">
+            <p className="mt-1.5 text-sm leading-6 text-[var(--text-sub)]">
               Review send performance, engagement, and top content trends.
             </p>
             <div className="mt-3.5">
               <Link
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                className="editorial-outline-button inline-flex min-h-11 w-full items-center justify-center px-4 py-2.5 text-sm font-medium transition-colors hover:bg-white hover:text-[var(--foreground)]"
                 href="/email-analytics"
               >
                 View email analytics

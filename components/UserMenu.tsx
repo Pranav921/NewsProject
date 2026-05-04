@@ -33,17 +33,17 @@ export function UserMenu({ email, variant = "card" }: UserMenuProps) {
 
   if (variant === "menu") {
     return (
-      <div className="space-y-2">
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+      <div className="space-y-2 font-sans">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-sub)]">
             Signed in
           </p>
-          <p className="mt-1 break-all text-sm font-medium text-slate-900">
+          <p className="mt-1 break-all text-sm font-medium tracking-normal text-[var(--text-sub)]">
             {email ?? "Account"}
           </p>
         </div>
         <button
-          className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 font-sans text-sm font-medium tracking-normal text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--text-sub)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
           type="button"
           onClick={handleSignOut}
           disabled={isPending}

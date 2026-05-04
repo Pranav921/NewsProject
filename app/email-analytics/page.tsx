@@ -59,24 +59,24 @@ export default async function EmailAnalyticsPage({
 
   if ("error" in analytics) {
     return (
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col bg-[var(--background)] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="editorial-outline-button inline-flex min-h-11 items-center justify-center px-5 py-2 text-sm font-medium transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)]"
             href="/"
           >
             Back to dashboard
           </Link>
           <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="editorial-outline-button inline-flex min-h-11 items-center justify-center px-5 py-2 text-sm font-medium transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)]"
             href="/account"
           >
             Back to account settings
           </Link>
         </div>
 
-        <section className="rounded-[1.9rem] border border-rose-200 bg-rose-50 p-8 text-rose-700 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
-          <h1 className="text-2xl font-semibold">Newsletter performance</h1>
+        <section className="editorial-page-card rounded-[1rem] border-rose-200 bg-rose-50 p-8 text-rose-700">
+          <h1 className="text-2xl font-semibold text-[var(--foreground)]">Newsletter performance</h1>
           <p className="mt-2 text-sm">{analytics.error}</p>
         </section>
       </main>
@@ -119,32 +119,32 @@ export default async function EmailAnalyticsPage({
     analytics.skipReasons.length > 0;
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col bg-[var(--background)] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <Link
-          className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          className="editorial-outline-button inline-flex min-h-11 items-center justify-center px-5 py-2 text-sm font-medium transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)]"
           href="/"
         >
           Back to dashboard
         </Link>
         <Link
-          className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          className="editorial-outline-button inline-flex min-h-11 items-center justify-center px-5 py-2 text-sm font-medium transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)]"
           href="/account"
         >
           Back to account settings
         </Link>
       </div>
 
-      <section className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+      <section className="editorial-page-card overflow-hidden rounded-[1rem]">
         <div className="grid gap-4 p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_17rem]">
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
-            <p className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sky-800">
+          <div className="editorial-page-subcard rounded-[1rem] p-4 sm:p-5">
+            <p className="editorial-section-label inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2">
               Kicker News analytics
             </p>
-            <h1 className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950 sm:text-[2.35rem]">
+            <h1 className="mt-3 text-[2rem] font-semibold tracking-tight text-[var(--foreground)] sm:text-[2.35rem]">
               Your newsletter performance
             </h1>
-            <p className="mt-2.5 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+            <p className="mt-2.5 max-w-2xl text-sm leading-6 text-[var(--text-sub)] sm:text-base">
               See what reached your inbox, what you engaged with, and how your
               newsletter habits are building over time.
             </p>
@@ -156,8 +156,8 @@ export default async function EmailAnalyticsPage({
             </div>
           </div>
 
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <div className="editorial-page-subcard rounded-[1rem] p-4">
+            <p className="editorial-section-label">
               Time range
             </p>
             <div className="mt-3.5 flex flex-wrap gap-2">
@@ -166,8 +166,8 @@ export default async function EmailAnalyticsPage({
                   key={option.value}
                   className={`inline-flex min-h-10 items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-colors ${
                     selectedRange === option.value
-                      ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      ? "border-[var(--navy)] bg-[var(--navy)] text-white shadow-sm"
+                      : "border-[var(--border)] bg-white text-[var(--text-sub)] hover:bg-[var(--background)]"
                   }`}
                   style={selectedRange === option.value ? { color: "#ffffff" } : undefined}
                   href={`/email-analytics?range=${option.value}`}
@@ -177,13 +177,13 @@ export default async function EmailAnalyticsPage({
               ))}
             </div>
 
-            <p className="mt-3 text-sm leading-6 text-slate-500">
+            <p className="mt-3 text-sm leading-6 text-[var(--text-sub)]">
               Compare short-term engagement with your longer newsletter history.
             </p>
           </div>
         </div>
 
-        <div className="border-t border-slate-200 p-4 sm:p-5">
+        <div className="border-t border-[var(--border)] p-4 sm:p-5">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <MetricCard
               label="Articles delivered"
@@ -216,12 +216,12 @@ export default async function EmailAnalyticsPage({
         </div>
       </section>
 
-      <section className="mt-5 rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
+      <section className="editorial-page-card mt-5 rounded-[1rem] p-5 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
+          <h2 className="text-[1.45rem] font-semibold tracking-tight text-[var(--foreground)]">
             Your activity summary
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[var(--text-sub)]">
             A simple view of how your newsletters are being used.
           </p>
         </div>
@@ -249,12 +249,12 @@ export default async function EmailAnalyticsPage({
         </div>
       </section>
 
-      <section className="mt-5 rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
+      <section className="editorial-page-card mt-5 rounded-[1rem] p-5 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
+          <h2 className="text-[1.45rem] font-semibold tracking-tight text-[var(--foreground)]">
             Newsletter history
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[var(--text-sub)]">
             A compact timeline of your recorded deliveries.
           </p>
         </div>
@@ -375,12 +375,12 @@ export default async function EmailAnalyticsPage({
       </div>
 
       {hasAdvancedDetails ? (
-        <section className="mt-5 rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] sm:p-6">
+        <section className="editorial-page-card mt-5 rounded-[1rem] p-5 sm:p-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-900">
+            <h2 className="text-[1.45rem] font-semibold tracking-tight text-[var(--foreground)]">
               Delivery details
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-[var(--text-sub)]">
               Helpful context for gaps, skips, or delivery issues.
             </p>
           </div>
@@ -706,13 +706,13 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <div className="h-full rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3.5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+    <div className="editorial-page-subcard h-full p-3.5">
+      <p className="editorial-section-label">
         {label}
       </p>
-      <p className="mt-1.5 text-xl font-semibold text-slate-900">{value}</p>
+      <p className="mt-1.5 text-xl font-semibold text-[var(--foreground)]">{value}</p>
       {helperText ? (
-        <p className="mt-1.5 text-sm leading-5 text-slate-500">{helperText}</p>
+        <p className="mt-1.5 text-sm leading-5 text-[var(--text-sub)]">{helperText}</p>
       ) : null}
     </div>
   );
@@ -726,11 +726,11 @@ function HeroStat({
   value: string;
 }) {
   return (
-    <div className="rounded-[1.1rem] border border-slate-200 bg-white px-3.5 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+    <div className="rounded-[1.1rem] border border-[var(--border)] bg-white px-3.5 py-3">
+      <p className="editorial-section-label">
         {label}
       </p>
-      <p className="mt-1.5 text-xl font-semibold text-slate-950">{value}</p>
+      <p className="mt-1.5 text-xl font-semibold text-[var(--foreground)]">{value}</p>
     </div>
   );
 }
@@ -743,7 +743,7 @@ function HistoryList({ data }: { data: Array<Record<string, unknown>> }) {
     .slice(0, 10);
 
   return (
-    <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3.5">
+    <div className="editorial-page-subcard p-3.5">
       <div className="space-y-2.5">
         {sortedRows.map((row, index) => {
           const label = formatChartDate(row.day ?? row.date);
@@ -755,11 +755,11 @@ function HistoryList({ data }: { data: Array<Record<string, unknown>> }) {
           return (
             <div
               key={`${label}-${index}`}
-              className="flex flex-col gap-2.5 rounded-[1rem] border border-slate-200 bg-white px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2.5 rounded-[1rem] border border-[var(--border)] bg-white px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="text-sm font-semibold text-slate-900">{label}</p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="text-sm font-semibold text-[var(--foreground)]">{label}</p>
+                <p className="mt-1 text-sm text-[var(--text-sub)]">
                   {formatNumber(total)} total send{total === 1 ? "" : "s"}
                 </p>
               </div>
@@ -797,20 +797,20 @@ function TableCard({
     contentAlignment === "center" ? "text-center" : "text-left";
 
   return (
-    <section className="flex h-full flex-col rounded-[1.55rem] border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
+    <section className="editorial-page-card flex h-full flex-col rounded-[1rem] p-5">
       <div>
-        <h3 className="text-lg font-semibold tracking-tight text-slate-900">
+        <h3 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">
           {title}
         </h3>
-        <p className="mt-1.5 text-sm leading-6 text-slate-500">{description}</p>
+        <p className="mt-1.5 text-sm leading-6 text-[var(--text-sub)]">{description}</p>
       </div>
 
       {rows.length > 0 ? (
-        <div className="mt-4 overflow-hidden rounded-[1.1rem] border border-slate-200">
+        <div className="mt-4 overflow-hidden rounded-[1.1rem] border border-[var(--border)]">
           <div className={`overflow-auto ${maxBodyHeightClassName ?? ""}`}>
             <table className="min-w-full border-collapse text-sm">
               <thead
-                className={`bg-slate-50 text-xs uppercase tracking-[0.16em] text-slate-500 ${alignmentClassName}`}
+                className={`bg-[var(--background)] text-xs uppercase tracking-[0.16em] text-[var(--text-muted)] ${alignmentClassName}`}
               >
                 <tr>
                   {columns.map((column) => (
@@ -820,13 +820,13 @@ function TableCard({
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-[var(--border)]">
                 {rows.map((row, index) => (
                   <tr key={`${title}-${index}`}>
                     {columns.map((column) => (
                       <td
                         key={column.label}
-                        className={`max-w-0 break-words px-4 py-3 align-top leading-6 text-slate-700 ${alignmentClassName}`}
+                        className={`max-w-0 break-words px-4 py-3 align-top leading-6 text-[var(--text-sub)] ${alignmentClassName}`}
                       >
                         {column.render(row)}
                       </td>
@@ -838,7 +838,7 @@ function TableCard({
           </div>
         </div>
       ) : (
-        <p className="mt-4 text-sm text-slate-500">{emptyState}</p>
+        <p className="mt-4 text-sm text-[var(--text-sub)]">{emptyState}</p>
       )}
     </section>
   );
@@ -846,7 +846,7 @@ function TableCard({
 
 function EmptyStateCard({ message }: { message: string }) {
   return (
-    <div className="rounded-[1.1rem] border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-500">
+    <div className="rounded-[1.1rem] border border-dashed border-[var(--border-strong)] bg-[var(--background)] px-4 py-6 text-sm leading-6 text-[var(--text-sub)]">
       {message}
     </div>
   );
@@ -866,7 +866,7 @@ function MiniCount({
       ? "bg-amber-50 text-amber-700"
       : tone === "rose"
         ? "bg-rose-50 text-rose-700"
-        : "bg-slate-100 text-slate-700";
+        : "bg-[var(--background)] text-[var(--text-sub)]";
 
   return (
     <span className={`inline-flex rounded-full px-3 py-1 ${toneClasses}`}>

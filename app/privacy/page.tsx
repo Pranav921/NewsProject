@@ -37,7 +37,7 @@ export default function PrivacyPage() {
         You can unsubscribe from newsletters at any time using the unsubscribe
         link included in newsletter emails. If you need account-related help or
         want to ask a privacy question, contact{" "}
-        <a className="font-medium text-sky-700 hover:text-sky-800" href="mailto:latest@kicker.news">
+        <a className="font-medium text-[var(--accent)] hover:text-[var(--navy)]" href="mailto:latest@kicker.news">
           latest@kicker.news
         </a>
         .

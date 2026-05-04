@@ -2,6 +2,24 @@ export const PENDING_PREVIOUS_LINKS_KEY = "breaking-news-previous-links";
 export const PENDING_NEW_ARTICLE_LINKS_KEY = "breaking-news-pending-new-links";
 export const HANDLED_NEW_ARTICLE_LINKS_KEY = "breaking-news-handled-new-links";
 
+export function preparePendingNewArticleRefresh(
+  previousLinks: string[],
+  newArticleLinks: string[],
+) {
+  sessionStorage.setItem(
+    PENDING_PREVIOUS_LINKS_KEY,
+    JSON.stringify(previousLinks),
+  );
+  sessionStorage.setItem(
+    PENDING_NEW_ARTICLE_LINKS_KEY,
+    JSON.stringify(newArticleLinks),
+  );
+  sessionStorage.setItem(
+    HANDLED_NEW_ARTICLE_LINKS_KEY,
+    JSON.stringify(newArticleLinks),
+  );
+}
+
 export function normalizeArticleLink(link: string): string {
   const trimmedLink = link.trim();
 

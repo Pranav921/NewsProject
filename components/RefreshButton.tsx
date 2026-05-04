@@ -3,7 +3,7 @@
 import {
   HANDLED_NEW_ARTICLE_LINKS_KEY,
   PENDING_NEW_ARTICLE_LINKS_KEY,
-  PENDING_PREVIOUS_LINKS_KEY,
+  preparePendingNewArticleRefresh,
 } from "@/lib/news-updates";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -11,12 +11,14 @@ import { useState } from "react";
 type RefreshButtonProps = {
   className?: string;
   currentLinks?: string[];
+  label?: string;
   onRefresh?: () => Promise<void> | void;
 };
 
 export function RefreshButton({
   className,
   currentLinks = [],
+  label = "Refresh news",
   onRefresh,
 }: RefreshButtonProps) {
   const router = useRouter();
@@ -25,10 +27,7 @@ export function RefreshButton({
   async function handleRefresh() {
     // Save the full list of links before refreshing so the next render can
     // compare against it and highlight every newly added article.
-    sessionStorage.setItem(
-      PENDING_PREVIOUS_LINKS_KEY,
-      JSON.stringify(currentLinks),
-    );
+    preparePendingNewArticleRefresh(currentLinks, []);
     sessionStorage.removeItem(HANDLED_NEW_ARTICLE_LINKS_KEY);
     sessionStorage.removeItem(PENDING_NEW_ARTICLE_LINKS_KEY);
     setIsRefreshing(true);
@@ -51,12 +50,12 @@ export function RefreshButton({
   return (
     <button
       aria-label="Refresh headlines"
-      className={`inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
+      className={`inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 font-sans text-sm font-medium tracking-normal text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--text-sub)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
       type="button"
       onClick={handleRefresh}
       disabled={isRefreshing}
     >
-      {isRefreshing ? "Refreshing..." : "Refresh news"}
+      {isRefreshing ? "Refreshing..." : label}
     </button>
   );
 }

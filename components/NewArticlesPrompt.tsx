@@ -4,36 +4,28 @@ import {
   getNewArticleLinks,
   HANDLED_NEW_ARTICLE_LINKS_KEY,
   normalizeArticleLink,
-  PENDING_NEW_ARTICLE_LINKS_KEY,
-  PENDING_PREVIOUS_LINKS_KEY,
 } from "@/lib/news-updates";
 import { fetchLatestNews } from "@/lib/news-client";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type NewArticlesPromptProps = {
   initialLinks: string[];
-  onRefresh?: (newArticleLinks: string[]) => Promise<void> | void;
+  onPendingCountChange?: (count: number) => void;
+  onPendingLinksChange?: (links: string[]) => void;
 };
 
 export function NewArticlesPrompt({
   initialLinks,
-  onRefresh,
+  onPendingCountChange,
+  onPendingLinksChange,
 }: NewArticlesPromptProps) {
-  const router = useRouter();
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [newArticleLinks, setNewArticleLinks] = useState<string[]>([]);
-  const [dismissedSignature, setDismissedSignature] = useState<string | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
 
     async function checkForNewArticles() {
       try {
-        if (isRefreshing) {
-          return;
-        }
-
         const handledNewLinks = JSON.parse(
           sessionStorage.getItem(HANDLED_NEW_ARTICLE_LINKS_KEY) ?? "[]",
         ) as string[];
@@ -57,16 +49,9 @@ export function NewArticlesPrompt({
         const latestLinks = latestArticles.map((article) => article.link);
         const detectedNewLinks = getNewArticleLinks(initialLinks, latestLinks)
           .filter((link) => !handledNewLinkSet.has(normalizeArticleLink(link)));
-        const detectedSignature = detectedNewLinks.join("|");
 
         if (!isCancelled) {
           setNewArticleLinks(detectedNewLinks);
-
-          // If the set of new links changes, clear the previous dismissal so a
-          // brand new notification can be shown again.
-          if (detectedSignature !== dismissedSignature) {
-            setDismissedSignature(null);
-          }
         }
       } catch {
         // Ignore temporary network errors and try again on the next check.
@@ -98,82 +83,17 @@ export function NewArticlesPrompt({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.clearInterval(pollInterval);
     };
-  }, [dismissedSignature, initialLinks, isRefreshing]);
-
-  async function handleRefresh() {
-    sessionStorage.setItem(
-      PENDING_PREVIOUS_LINKS_KEY,
-      JSON.stringify(initialLinks),
-    );
-    sessionStorage.setItem(
-      PENDING_NEW_ARTICLE_LINKS_KEY,
-      JSON.stringify(newArticleLinks),
-    );
-    sessionStorage.setItem(
-      HANDLED_NEW_ARTICLE_LINKS_KEY,
-      JSON.stringify(newArticleLinks),
-    );
-
-    setIsRefreshing(true);
-
-    try {
-      if (onRefresh) {
-        await onRefresh(newArticleLinks);
-      } else {
-        router.refresh();
-      }
-    } catch {
-      router.refresh();
-    } finally {
-      setIsRefreshing(false);
-    }
-  }
+  }, [initialLinks]);
 
   const newArticleCount = newArticleLinks.length;
-  const notificationSignature = newArticleLinks.join("|");
-  const isDismissed = newArticleCount > 0 && dismissedSignature === notificationSignature;
-  const isShowingNotification = newArticleCount > 0 && !isDismissed;
 
-  if (!isShowingNotification) {
-    return null;
-  }
+  useEffect(() => {
+    onPendingCountChange?.(newArticleCount);
+  }, [newArticleCount, onPendingCountChange]);
 
-  return (
-    <div
-      className="mt-6 rounded-[1.5rem] border border-sky-200 bg-[linear-gradient(135deg,#eff6ff_0%,#f8fbff_100%)] p-4 shadow-[0_14px_30px_rgba(14,116,144,0.08)]"
-      role="status"
-      aria-live="polite"
-    >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
-            New stories ready
-          </p>
-          <p className="mt-1 text-sm leading-6 text-slate-700">
-          {newArticleCount} new {newArticleCount === 1 ? "article has" : "articles have"}{" "}
-          been added. Would you like to see {newArticleCount === 1 ? "it" : "them"}?
-          </p>
-        </div>
+  useEffect(() => {
+    onPendingLinksChange?.(newArticleLinks);
+  }, [newArticleLinks, onPendingLinksChange]);
 
-        <div className="flex items-center gap-3">
-          <button
-            className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-            type="button"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            {isRefreshing ? "Refreshing..." : "Refresh"}
-          </button>
-
-          <button
-            className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
-            type="button"
-            onClick={() => setDismissedSignature(notificationSignature)}
-          >
-            Dismiss
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }

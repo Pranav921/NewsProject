@@ -6,7 +6,6 @@ import { useState } from "react";
 type NewsletterSubscriptionStatus = "active" | "inactive" | "none";
 
 type NewsletterSignupProps = {
-  browseHeadlinesHref?: string;
   initialEmail?: string | null;
   initialFrequency?: FrequencyOption;
   initialCustomFrequency?: string | null;
@@ -25,7 +24,6 @@ const FREQUENCY_OPTIONS: Array<{ label: string; value: FrequencyOption }> = [
 ];
 
 export function NewsletterSignup({
-  browseHeadlinesHref,
   initialEmail = null,
   initialFrequency = "daily",
   initialCustomFrequency = null,
@@ -259,16 +257,6 @@ export function NewsletterSignup({
         </p>
       ) : null}
 
-      {browseHeadlinesHref ? (
-        <div className="mt-3.5">
-          <a
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 sm:w-auto"
-            href={browseHeadlinesHref}
-          >
-            Browse headlines
-          </a>
-        </div>
-      ) : null}
     </div>
   );
 }

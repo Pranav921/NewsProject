@@ -22,6 +22,7 @@ import type {
   SavedArticle,
   UserPreferences,
 } from "@/lib/types";
+import type { ShellTab } from "@/components/AppShell";
 import {
   DEFAULT_SOURCE_FILTER,
   DEFAULT_TIME_FILTER,
@@ -32,6 +33,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 type NewsFeedProps = {
+  activeShellTab?: ShellTab;
   articles: NewsItem[];
   authCtaHref?: string;
   authSignupHref?: string;
@@ -40,6 +42,7 @@ type NewsFeedProps = {
   initialPreferences?: UserPreferences | null;
   initialSavedArticles?: SavedArticle[];
   onSavedArticlesCountChange?: (count: number) => void;
+  onShellTabChange?: (tab: ShellTab) => void;
   userId?: string | null;
   viewerMode?: "authenticated" | "public";
 };
@@ -87,6 +90,7 @@ const EMPTY_ALERT_KEYWORDS: string[] = [];
 const EMPTY_SAVED_ARTICLES: SavedArticle[] = [];
 
 export function NewsFeed({
+  activeShellTab = "feed",
   articles,
   authCtaHref = "#public-auth-panel",
   authSignupHref = "#public-auth-panel",
@@ -95,6 +99,7 @@ export function NewsFeed({
   initialPreferences = null,
   initialSavedArticles = EMPTY_SAVED_ARTICLES,
   onSavedArticlesCountChange,
+  onShellTabChange,
   userId = null,
   viewerMode = "authenticated",
 }: NewsFeedProps) {
@@ -115,6 +120,7 @@ export function NewsFeed({
   const [feedMode, setFeedMode] = useState<FeedMode>("all");
   const [showOnlyNew, setShowOnlyNew] = useState(false);
   const [alertMatchView, setAlertMatchView] = useState<AlertMatchView>("off");
+  const [alertsEnabledOverride, setAlertsEnabledOverride] = useState<boolean | null>(null);
   const [alertKeywords, setAlertKeywords] = useState<string[]>(initialAlertKeywords);
   const [savedArticles, setSavedArticles] = useState<SavedArticle[]>(initialSavedArticles);
   const [isSavingArticle, setIsSavingArticle] = useState(false);
@@ -124,6 +130,10 @@ export function NewsFeed({
     description: string;
     title: string;
   } | null>(null);
+  const hasAlertKeywords = alertKeywords.length > 0;
+  const alertsEnabledByDefault = !isPublicViewer && hasAlertKeywords;
+  const alertsEnabled = alertsEnabledOverride ?? alertsEnabledByDefault;
+  const canEnableAlerts = !isPublicViewer && hasAlertKeywords;
   const currentLinks = useMemo(
     () => articles.map((article) => article.link),
     [articles],
@@ -203,6 +213,10 @@ export function NewsFeed({
     [newArticleLinks],
   );
   const smartAlertMatches = useMemo(() => {
+    if (!alertsEnabled) {
+      return [];
+    }
+
     return articles.flatMap((article) => {
       if (!newArticleLinkSet.has(article.link)) {
         return [];
@@ -223,16 +237,37 @@ export function NewsFeed({
         },
       ];
     });
-  }, [alertKeywords, articles, newArticleLinkSet]);
+  }, [alertKeywords, alertsEnabled, articles, newArticleLinkSet]);
   const importantAlertMatchCount = useMemo(
     () =>
-      smartAlertMatches.filter((match) => match.importance === "important").length,
+      new Set(
+        smartAlertMatches
+          .filter((match) => match.importance === "important")
+          .map((match) => match.link),
+      ).size,
+    [smartAlertMatches],
+  );
+  const importantAlertMatchLinkSet = useMemo(
+    () =>
+      new Set(
+        smartAlertMatches
+          .filter((match) => match.importance === "important")
+          .map((match) => match.link),
+      ),
     [smartAlertMatches],
   );
   const normalAlertMatchCount = useMemo(
     () =>
-      smartAlertMatches.filter((match) => match.importance === "normal").length,
-    [smartAlertMatches],
+      new Set(
+        smartAlertMatches
+          .filter(
+            (match) =>
+              match.importance === "normal" &&
+              !importantAlertMatchLinkSet.has(match.link),
+          )
+          .map((match) => match.link),
+      ).size,
+    [importantAlertMatchLinkSet, smartAlertMatches],
   );
   const newAlertMatchLinks = useMemo(
     () => smartAlertMatches.map((match) => match.link),
@@ -291,6 +326,7 @@ export function NewsFeed({
     showOnlyNew ||
     alertMatchView !== "off";
   const hasFeedError = Boolean(feedErrorMessage) && articles.length === 0;
+  const hasSavedArticles = savedArticles.length > 0;
 
   function promptProtectedAction(feature: string) {
     setProtectedActionMessage({
@@ -300,6 +336,56 @@ export function NewsFeed({
     });
   }
 
+  function openAlertManagement() {
+    window.location.assign("/account#alerts");
+  }
+
+  function handleAlertsToggle() {
+    if (isPublicViewer) {
+      promptProtectedAction("use alerts");
+      return;
+    }
+
+    if (!hasAlertKeywords) {
+      openAlertManagement();
+      return;
+    }
+
+    if (alertsEnabled) {
+      setAlertsEnabledOverride(false);
+      setAlertMatchView("off");
+      return;
+    }
+
+    setAlertsEnabledOverride(true);
+  }
+
+  function handleAlertMatchesChip() {
+    if (isPublicViewer) {
+      promptProtectedAction("use alert matching");
+      return;
+    }
+
+    if (!hasAlertKeywords) {
+      openAlertManagement();
+      return;
+    }
+
+    if (!alertsEnabled) {
+      setAlertsEnabledOverride(true);
+      return;
+    }
+
+    if (activeShellTab !== "feed" || alertMatchView === "off") {
+      onShellTabChange?.("feed");
+      setFeedMode("all");
+      setAlertMatchView("all");
+      return;
+    }
+
+    setAlertMatchView("off");
+  }
+
   function resetFilters() {
     setSearchQuery("");
     setCoverageFilter("all");
@@ -307,6 +393,111 @@ export function NewsFeed({
     setTimeFilter(DEFAULT_TIME_FILTER as TimeFilter);
     setShowOnlyNew(false);
     setAlertMatchView("off");
+  }
+
+  function renderSignedOutTabCta(feature: "saved" | "alerts") {
+    const title =
+      feature === "saved" ? "Sign in to view saved stories" : "Sign in to manage alerts";
+    const message =
+      feature === "saved"
+        ? "Create a free account to save articles and keep them in one place."
+        : "Create a free account to save alert keywords and track matching stories.";
+
+    return (
+      <div className="rounded-[1.45rem] border border-[var(--border)] bg-white p-8 text-center shadow-[0_8px_24px_rgba(26,24,20,0.04)]">
+        <p className="mono-meta text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+          {feature === "saved" ? "Saved" : "Alerts"}
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--foreground)]">
+          {title}
+        </h2>
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[var(--text-sub)]">
+          {message}
+        </p>
+        <div className="mt-5 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
+          <a
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--navy)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+            href={authCtaHref}
+            style={{ color: "#ffffff" }}
+          >
+            Sign in
+          </a>
+          <a
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+            href={authSignupHref}
+          >
+            Create account
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  function renderAlertsPanel() {
+    if (isPublicViewer) {
+      return renderSignedOutTabCta("alerts");
+    }
+
+    return (
+      <section className="rounded-[1.45rem] border border-[var(--border)] bg-white p-5 shadow-[0_8px_24px_rgba(26,24,20,0.04)] sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mono-meta text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+              ACTIVE ALERTS
+            </p>
+            <h2 className="mt-2 text-[1.4rem] font-semibold tracking-tight text-[var(--foreground)]">
+              Your alert keywords
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-sub)]">
+              Manage the topics you want Kicker News to watch for in new stories.
+            </p>
+          </div>
+
+          <a
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--accent)] transition-colors hover:bg-[var(--background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+            href="/account#alerts"
+          >
+            + New alert
+          </a>
+        </div>
+
+        {hasAlertKeywords ? (
+          <div className="mt-5 space-y-3">
+            {alertKeywords.map((keyword) => (
+              <div
+                key={keyword}
+                className="flex flex-col gap-3 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="text-lg font-semibold text-[var(--foreground)]">
+                    {keyword}
+                  </p>
+                  <p className="mono-meta mt-1 text-[11px] uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                    Keyword alert • Email
+                  </p>
+                </div>
+
+                <a
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                  href="/account#alerts"
+                >
+                  Edit / manage
+                </a>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5 rounded-[10px] border border-dashed border-[var(--border-strong)] bg-[var(--background)] px-6 py-10 text-center">
+            <p className="text-base font-medium text-[var(--foreground)]">
+              No active alerts yet.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-sub)]">
+              Add your first keyword alert to track stories that matter to you.
+            </p>
+          </div>
+        )}
+      </section>
+    );
   }
 
   function getEmptyState() {
@@ -397,6 +588,30 @@ export function NewsFeed({
   const emptyState = getEmptyState();
 
   useEffect(() => {
+    if (activeShellTab === "feed") {
+      setFeedMode("all");
+      return;
+    }
+
+    if (activeShellTab === "saved") {
+      if (isPublicViewer) {
+        setFeedMode("all");
+        return;
+      }
+
+      setFeedMode("saved");
+      return;
+    }
+
+    if (isPublicViewer) {
+      setFeedMode("all");
+      return;
+    }
+
+    setFeedMode("all");
+  }, [activeShellTab, isPublicViewer, onShellTabChange]);
+
+  useEffect(() => {
     if (isPublicViewer) {
       setAlertKeywords((currentKeywords) =>
         currentKeywords.length === 0 ? currentKeywords : [],
@@ -422,10 +637,10 @@ export function NewsFeed({
   }, [initialSavedArticles]);
 
   useEffect(() => {
-    if (isPublicViewer && feedMode !== "all") {
+    if (isPublicViewer && feedMode !== "all" && activeShellTab === "feed") {
       setFeedMode("all");
     }
-  }, [feedMode, isPublicViewer]);
+  }, [activeShellTab, feedMode, isPublicViewer]);
 
   useEffect(() => {
     onSavedArticlesCountChange?.(savedArticles.length);
@@ -524,6 +739,25 @@ export function NewsFeed({
   }, [alertMatchView, newAlertMatchLinks]);
 
   useEffect(() => {
+    if (!alertsEnabled && alertMatchView !== "off") {
+      setAlertMatchView("off");
+    }
+  }, [alertMatchView, alertsEnabled]);
+
+  useEffect(() => {
+    if (isPublicViewer || !hasAlertKeywords) {
+      if (alertMatchView !== "off") {
+        setAlertMatchView("off");
+      }
+      return;
+    }
+  }, [
+    alertMatchView,
+    hasAlertKeywords,
+    isPublicViewer,
+  ]);
+
+  useEffect(() => {
     if (!sourceOptions.includes(selectedSource)) {
       setSelectedSource(DEFAULT_SOURCE_FILTER);
     }
@@ -601,36 +835,53 @@ export function NewsFeed({
     setIsSavingArticle(false);
   }
 
+  function handleAlertAction() {
+    if (isPublicViewer) {
+      promptProtectedAction("set alerts");
+      return;
+    }
+
+    window.location.assign("/account#alerts");
+  }
+
   return (
-    <div className="space-y-4">
-      <section className="rounded-[1.4rem] border border-slate-200 bg-white px-3 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.05)] sm:px-4 sm:py-3.5">
-        <div className="flex flex-col gap-3">
-          <div
-            className="grid gap-3.5 xl:grid-cols-[minmax(0,1.35fr)_180px_200px_200px]"
-            role="search"
-            aria-label="News feed filters"
-          >
-            <div>
-              <label className="sr-only" htmlFor="article-search">
-                Search articles
-              </label>
+    <div className="space-y-5">
+      <section className="border-y border-[var(--border)] bg-white px-3 py-3 shadow-[0_8px_24px_rgba(26,24,20,0.03)] sm:px-4 sm:py-3.5 lg:-mx-7 lg:px-7 xl:-mx-7 xl:px-[28px] xl:py-[10px] 2xl:-mx-8 2xl:px-8">
+        <div
+          className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-[10px] xl:overflow-x-auto xl:overflow-y-hidden xl:whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="search"
+          aria-label="News feed filters"
+        >
+          <div className="xl:w-[260px] xl:flex-none">
+            <label className="sr-only" htmlFor="article-search">
+              Search articles
+            </label>
+            <div className="relative">
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute left-[10px] top-1/2 -translate-y-1/2 text-[13px] text-[var(--text-muted)]"
+              >
+                🔍
+              </span>
               <input
                 id="article-search"
-                className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:min-h-10 sm:px-3.5"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 pl-8 text-sm text-[var(--foreground)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
                 type="search"
-                placeholder="Search headlines, sources, or summaries"
+                placeholder="Search headlines, sources..."
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </div>
+          </div>
 
-            <div>
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-1 xl:flex-1 xl:overflow-visible xl:pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="w-[148px] shrink-0 xl:w-[132px]">
               <label className="sr-only" htmlFor="coverage-filter">
                 Filter by coverage
               </label>
               <select
                 id="coverage-filter"
-                className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:min-h-10 sm:px-3.5"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
                 value={coverageFilter}
                 onChange={(event) =>
                   setCoverageFilter(event.target.value as CoverageFilter)
@@ -644,13 +895,13 @@ export function NewsFeed({
               </select>
             </div>
 
-            <div>
+            <div className="w-[170px] shrink-0 xl:w-[150px]">
               <label className="sr-only" htmlFor="source-filter">
                 Filter by source
               </label>
               <select
                 id="source-filter"
-                className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:min-h-10 sm:px-3.5"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
                 value={activeSource}
                 onChange={(event) => {
                   setSelectedSource(event.target.value);
@@ -667,13 +918,13 @@ export function NewsFeed({
               </select>
             </div>
 
-            <div>
+            <div className="w-[148px] shrink-0 xl:w-[138px]">
               <label className="sr-only" htmlFor="time-filter">
                 Filter by time
               </label>
               <select
                 id="time-filter"
-                className="min-h-9 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:min-h-10 sm:px-3.5"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
                 value={timeFilter}
                 onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
               >
@@ -684,144 +935,113 @@ export function NewsFeed({
                 ))}
               </select>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-3 xl:justify-start xl:gap-5">
-              <div
-                className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1"
-                role="group"
-                aria-label="Article list scope"
+            <div aria-hidden="true" className="hidden h-5 w-px shrink-0 bg-[var(--border)] xl:block" />
+
+            <div
+              className="flex rounded-full border border-[var(--border)] bg-[var(--background)] p-0.5"
+              role="group"
+              aria-label="Article list scope"
+            >
+              <button
+                className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                  activeShellTab === "feed" && alertMatchView === "off"
+                    ? "bg-[var(--foreground)] text-white"
+                    : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
+                }`}
+                type="button"
+                onClick={() => {
+                  onShellTabChange?.("feed");
+                }}
+                aria-pressed={activeShellTab === "feed"}
               >
-                <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
-                    effectiveFeedMode === "all"
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-600 hover:bg-white"
-                  }`}
-                  type="button"
-                  onClick={() => setFeedMode("all")}
-                  aria-pressed={effectiveFeedMode === "all"}
-                >
-                  All articles
-                </button>
-                <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
-                    effectiveFeedMode === "saved"
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-600 hover:bg-white"
-                  }`}
-                  type="button"
-                  onClick={() => {
-                    if (isPublicViewer) {
-                      promptProtectedAction("use saved articles");
-                      return;
-                    }
-
-                    setFeedMode("saved");
-                  }}
-                  aria-pressed={effectiveFeedMode === "saved"}
-                >
-                  Saved articles
-                </button>
-              </div>
-
-              <div
-                className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1"
-                role="group"
-                aria-label="Article view mode"
+                All articles
+              </button>
+              <button
+                className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                  activeShellTab === "saved"
+                    ? "bg-[var(--foreground)] text-white"
+                    : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
+                }`}
+                type="button"
+                onClick={() => {
+                  onShellTabChange?.("saved");
+                }}
+                aria-pressed={activeShellTab === "saved"}
               >
-                <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
-                    viewMode === "standard"
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-600 hover:bg-white"
-                  }`}
-                  type="button"
-                  onClick={() => setViewMode("standard")}
-                  aria-pressed={viewMode === "standard"}
-                >
-                  Standard
-                </button>
-                <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
-                    viewMode === "compact"
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-600 hover:bg-white"
-                  }`}
-                  type="button"
-                  onClick={() => setViewMode("compact")}
-                  aria-pressed={viewMode === "compact"}
-                >
-                  Compact
-                </button>
-              </div>
-
-              <div
-                className="flex w-full rounded-full border border-slate-200 bg-slate-50 p-0.5 sm:inline-flex sm:w-auto sm:p-1"
-                role="group"
-                aria-label="Alert matches filter"
+                Saved
+              </button>
+              <button
+                className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                  alertsEnabled && alertMatchView !== "off"
+                    ? "bg-[var(--foreground)] text-white"
+                    : !canEnableAlerts
+                      ? "text-[var(--text-muted)] hover:bg-white hover:text-[var(--text-sub)]"
+                      : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
+                }`}
+                type="button"
+                onClick={handleAlertMatchesChip}
+                aria-pressed={alertsEnabled && alertMatchView !== "off"}
               >
-                <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
-                    alertMatchView === "off"
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-600 hover:bg-white"
-                  }`}
-                  type="button"
-                  onClick={() => setAlertMatchView("off")}
-                  aria-pressed={alertMatchView === "off"}
-                >
-                  Alerts off
-                </button>
-                <button
-                  className={`flex-1 rounded-full px-3 py-1 text-center text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-sm ${
-                    alertMatchView !== "off"
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-600 hover:bg-white"
-                  }`}
-                  type="button"
-                  onClick={() => {
-                    if (isPublicViewer) {
-                      promptProtectedAction("use alert matches");
-                      return;
-                    }
-
-                    setAlertMatchView(
-                      newAlertMatchLinks.length > 0 ? "all" : "off",
-                    );
-                  }}
-                  aria-pressed={alertMatchView !== "off"}
-                >
-                  Alert matches
-                </button>
-              </div>
-
-              {isPublicViewer ? (
-                <button
-                  className="inline-flex w-fit items-center justify-center self-center px-1 py-0.5 text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:ml-1 sm:min-h-10 sm:w-auto sm:rounded-full sm:border sm:border-slate-300 sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-sm sm:text-slate-700 sm:hover:bg-slate-100 xl:ml-2"
-                  type="button"
-                  onClick={() => promptProtectedAction("manage alerts")}
-                >
-                  Manage alerts
-                </button>
-              ) : (
-                <a
-                  className="inline-flex w-fit items-center justify-center self-center px-1 py-0.5 text-[13px] font-medium text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 sm:ml-1 sm:min-h-10 sm:w-auto sm:rounded-full sm:border sm:border-slate-300 sm:bg-white sm:px-3.5 sm:py-1.5 sm:text-sm sm:text-slate-700 sm:hover:bg-slate-100 xl:ml-2"
-                  href="/account#alerts"
-                >
-                  Manage alerts
-                </a>
-              )}
+                Alert matches
+              </button>
             </div>
 
-            <div className="text-center text-xs text-slate-500 sm:text-sm xl:text-left">
-              {filteredStoryCount} stories | {filteredSourceCount} sources
-              {isPublicViewer ? "" : ` | ${savedArticles.length} saved`}
+            <div aria-hidden="true" className="hidden h-5 w-px shrink-0 bg-[var(--border)] xl:block" />
+
+            <div
+              className="flex rounded-full border border-[var(--border)] bg-[var(--background)] p-0.5"
+              role="group"
+              aria-label="Article view mode"
+            >
+              <button
+                className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                  viewMode === "standard"
+                    ? "bg-[var(--foreground)] text-white"
+                    : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
+                }`}
+                type="button"
+                onClick={() => setViewMode("standard")}
+                aria-pressed={viewMode === "standard"}
+              >
+                Standard
+              </button>
+              <button
+                className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                  viewMode === "compact"
+                    ? "bg-[var(--foreground)] text-white"
+                    : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
+                }`}
+                type="button"
+                onClick={() => setViewMode("compact")}
+                aria-pressed={viewMode === "compact"}
+              >
+                Compact
+              </button>
+            </div>
+
+            <button
+              className={`min-h-9 shrink-0 rounded-full border px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                alertsEnabled
+                  ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,white)] text-[var(--accent)]"
+                  : "border-[var(--border)] bg-transparent text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
+              }`}
+              type="button"
+              onClick={handleAlertsToggle}
+              aria-pressed={alertsEnabled}
+            >
+              {alertsEnabled ? "Alerts on" : "Alerts off"}
+            </button>
+
+            <div className="mono-meta text-left text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)] xl:ml-auto xl:shrink-0 xl:text-right">
+              <span className="block">{filteredStoryCount} stories</span>
+              <span className="mt-1 block">{filteredSourceCount} sources</span>
             </div>
           </div>
+        </div>
 
-          {protectedActionMessage ? (
+        <div className="mt-3 flex flex-col gap-3">
+          {protectedActionMessage && activeShellTab === "feed" ? (
             <div className="rounded-[1.1rem] border border-sky-200 bg-sky-50 px-4 py-3">
               <p className="text-sm font-semibold text-slate-900">
                 {protectedActionMessage.title}
@@ -857,7 +1077,9 @@ export function NewsFeed({
                       : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                   }`}
                   type="button"
-                  onClick={() => setShowOnlyNew((currentValue) => !currentValue)}
+                  onClick={() => {
+                    setShowOnlyNew((currentValue) => !currentValue);
+                  }}
                   aria-pressed={showOnlyNew}
                 >
                   {showOnlyNew ? "Showing only new" : "Only new"}
@@ -887,19 +1109,33 @@ export function NewsFeed({
         </div>
       </section>
 
-      <NewsList
-        alertImportanceByLink={alertImportanceByLink}
-        articles={displayedArticles}
-        emptyStateAction={emptyState.action}
-        newArticleLinks={newArticleLinks}
-        onToggleSavedArticle={handleToggleSavedArticle}
-        savedArticleLinks={savedArticleLinks}
-        saveButtonLabel={isPublicViewer ? "Sign in to save" : "Save article"}
-        showInFeedSponsor={effectiveFeedMode === "all" && !hasFeedError}
-        viewMode={viewMode}
-        emptyStateTitle={emptyState.title}
-        emptyStateMessage={emptyState.message}
-      />
+      {activeShellTab === "alerts" ? (
+        renderAlertsPanel()
+      ) : activeShellTab === "saved" && isPublicViewer ? (
+        renderSignedOutTabCta("saved")
+      ) : (
+        <NewsList
+          alertImportanceByLink={alertImportanceByLink}
+          articles={displayedArticles}
+          emptyStateAction={emptyState.action}
+          newArticleLinks={newArticleLinks}
+          onAlertAction={handleAlertAction}
+          onToggleSavedArticle={handleToggleSavedArticle}
+          savedArticleLinks={savedArticleLinks}
+          saveButtonLabel={isPublicViewer ? "Sign in to save" : "Save article"}
+          viewMode={viewMode}
+          emptyStateTitle={
+            activeShellTab === "saved" && !hasSavedArticles
+              ? "No saved stories yet"
+              : emptyState.title
+          }
+          emptyStateMessage={
+            activeShellTab === "saved" && !hasSavedArticles
+              ? "Tap Save on any story to find it here."
+              : emptyState.message
+          }
+        />
+      )}
     </div>
   );
 }

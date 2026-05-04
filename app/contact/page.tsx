@@ -18,7 +18,7 @@ export default function ContactPage() {
     >
       <p>
         For support, product feedback, or business inquiries, email{" "}
-        <a className="font-medium text-sky-700 hover:text-sky-800" href="mailto:latest@kicker.news">
+        <a className="font-medium text-[var(--accent)] hover:text-[var(--navy)]" href="mailto:latest@kicker.news">
           latest@kicker.news
         </a>
         .

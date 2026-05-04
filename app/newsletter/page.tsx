@@ -1,5 +1,8 @@
+import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { PublicPageShell } from "@/components/PublicPageShell";
 import { buildPageMetadata } from "@/lib/seo";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { NewsletterFrequency } from "@/lib/types";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = buildPageMetadata({
@@ -9,7 +12,26 @@ export const metadata: Metadata = buildPageMetadata({
   title: "Kicker News Newsletter",
 });
 
-export default function NewsletterPage() {
+export default async function NewsletterPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: newsletterRow } = user
+    ? await supabase
+        .from("newsletter_subscriptions")
+        .select("custom_frequency, frequency, is_active")
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null };
+
+  const initialSubscriptionStatus = newsletterRow
+    ? newsletterRow.is_active
+      ? "active"
+      : "inactive"
+    : "none";
+
   return (
     <PublicPageShell
       badge="Newsletter"
@@ -34,6 +56,18 @@ export default function NewsletterPage() {
         Every send includes unsubscribe options, and you can manage newsletter
         settings from your account.
       </p>
+      <div className="mt-8">
+        <NewsletterSignup
+          initialCustomFrequency={newsletterRow?.custom_frequency ?? null}
+          initialEmail={user?.email ?? null}
+          initialFrequency={
+            (newsletterRow?.frequency as NewsletterFrequency | null) ?? "daily"
+          }
+          initialSubscriptionStatus={initialSubscriptionStatus}
+          title="Join the Kicker News newsletter"
+          description="Subscribe here to get the latest Kicker News headlines by email with your preferred cadence."
+        />
+      </div>
     </PublicPageShell>
   );
 }
