@@ -1,7 +1,6 @@
 "use client";
 
 import { trackEvent } from "@/lib/analytics";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -13,7 +12,6 @@ type AuthPanelProps = {
 
 export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
   const router = useRouter();
-  const [supabase] = useState(() => createSupabaseBrowserClient());
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,11 +45,6 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
   }, [syncWithHash]);
 
   async function handleSignUp() {
-    if (!email.trim() || !password) {
-      setMessage("Enter an email and password.");
-      return;
-    }
-
     trackEvent("account_signup_attempt", {
       auth_mode: "signup",
       method: "password",
@@ -60,19 +53,30 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
     setIsSubmitting(true);
     setMessage(null);
 
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
+    const response = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+      }),
     });
+    const result = (await response.json()) as {
+      confirmationRequired?: boolean;
+      error?: string;
+      message?: string;
+    };
 
-    if (error) {
-      setMessage(error.message);
-    } else if (data.user && !data.session) {
+    if (!response.ok) {
+      setMessage(result.error ?? "Unable to sign up right now.");
+    } else if (result.confirmationRequired) {
       trackEvent("account_signup_success", {
         auth_mode: "signup",
         confirmation_required: true,
       });
-      setMessage("Sign-up successful. Check your email to confirm your account.");
+      setMessage(result.message ?? "Sign-up successful. Check your email to confirm your account.");
     } else {
       trackEvent("account_signup_success", {
         auth_mode: "signup",
@@ -87,11 +91,6 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
   }
 
   async function handleSignIn() {
-    if (!email.trim() || !password) {
-      setMessage("Enter an email and password.");
-      return;
-    }
-
     trackEvent("account_login_attempt", {
       auth_mode: "login",
       method: "password",
@@ -100,13 +99,23 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
     setIsSubmitting(true);
     setMessage(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+      }),
     });
+    const result = (await response.json()) as {
+      error?: string;
+      message?: string;
+    };
 
-    if (error) {
-      setMessage(error.message);
+    if (!response.ok) {
+      setMessage(result.error ?? "Unable to log in right now.");
     } else {
       trackEvent("account_login_success", {
         auth_mode: "login",

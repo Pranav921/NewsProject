@@ -32,7 +32,7 @@ export function LeadStoryCard({
   const isBreaking = isBreakingStory(article);
   const isImportantAlert = alertImportance === "important";
   const isNormalAlert = alertImportance === "normal";
-  const metadataTone = isBreaking || isImportantAlert ? "text-white/45" : "text-white/42";
+  const metadataTone = isBreaking || isImportantAlert ? "text-white/56" : "text-white/52";
   const leadImageUrl =
     typeof article.imageUrl === "string" && article.imageUrl.length > 0
       ? article.imageUrl
@@ -71,7 +71,7 @@ export function LeadStoryCard({
             <span>{article.source}</span>
             <span>{getCoverageLabel(article.source)}</span>
             <time
-              className="ml-auto text-right text-white/40 lg:ml-0 lg:text-white/36"
+              className="ml-auto text-right text-white/54 lg:ml-0 lg:text-white/48"
               dateTime={article.publishedAt ?? undefined}
             >
               <span className="lg:hidden">{formatPublishedCompact(article.publishedAt)}</span>
@@ -97,7 +97,7 @@ export function LeadStoryCard({
             {article.title}
           </a>
 
-          <p className="mt-3 max-w-[480px] text-[12px] leading-[1.6] text-white/50 lg:mt-4 lg:text-[13px] lg:leading-[1.7]">
+          <p className="mt-3 max-w-[480px] text-[12px] leading-[1.6] text-white/60 lg:mt-4 lg:text-[13px] lg:leading-[1.7]">
             {article.summary ?? "No summary available."}
           </p>
 
@@ -155,7 +155,7 @@ export function LeadStoryCard({
             </div>
           ) : (
             <div className="flex aspect-[5/4] items-center justify-center rounded-[8px] border border-white/10 bg-white/[0.06]">
-              <p className="mono-meta text-[9px] font-medium uppercase tracking-[0.18em] text-white/24">
+              <p className="mono-meta text-[9px] font-medium uppercase tracking-[0.18em] text-white/40">
                 Article image unavailable
               </p>
             </div>

@@ -686,48 +686,13 @@ export function AccountSettings({
       </section>
 
       <section className="editorial-page-card rounded-[1rem] p-5 sm:p-6">
-        <p className="editorial-section-label">Account &amp; data</p>
+        <p className="editorial-section-label">Account Management</p>
         <h2 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-[var(--foreground)]">
-          Account &amp; data
+          Account Management
         </h2>
         <p className="mt-2 text-sm leading-6 text-[var(--text-sub)]">
-          Export and account deletion controls are planned, but not available yet.
-          This section is here so users know the roadmap is intentional.
+          To delete your account or export your data, contact support.
         </p>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-900">Export my data</p>
-            <p className="mt-1.5 text-sm leading-6 text-slate-600">
-              Coming soon. This will provide a safe export of your account
-              preferences, alerts, saved stories, and newsletter settings.
-            </p>
-            <button
-              className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-400 disabled:cursor-not-allowed"
-              type="button"
-              disabled
-              aria-disabled="true"
-            >
-              Export my data
-            </button>
-          </div>
-
-          <div className="rounded-[1.1rem] border border-rose-200 bg-rose-50/60 p-4">
-            <p className="text-sm font-semibold text-slate-900">Delete my account</p>
-            <p className="mt-1.5 text-sm leading-6 text-slate-600">
-              Coming soon. Permanent deletion is not enabled yet because it needs
-              a careful, auditable flow across auth and user data.
-            </p>
-            <button
-              className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-medium text-rose-300 disabled:cursor-not-allowed"
-              type="button"
-              disabled
-              aria-disabled="true"
-            >
-              Delete my account
-            </button>
-          </div>
-        </div>
       </section>
     </div>
   );

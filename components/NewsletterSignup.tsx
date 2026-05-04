@@ -49,28 +49,32 @@ export function NewsletterSignup({
     setMessageTone(null);
 
     try {
-      const response = await fetch("/api/newsletter-subscriptions", {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body:
-          method === "POST"
-            ? JSON.stringify({
+      const response =
+        method === "POST"
+          ? await fetch("/api/newsletter/subscribe", {
+              method,
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
                 customFrequency:
                   preferredFrequency === "custom"
                     ? customFrequency.trim()
                     : null,
                 email: email.trim(),
                 preferredFrequency,
-              })
-            : undefined,
-      });
-
-      const result = (await response.json()) as { message?: string };
+              }),
+            })
+          : await fetch("/api/newsletter-subscriptions", {
+              method,
+              headers: {
+                "Content-Type": "application/json",
+              },
+            });
+      const result = (await response.json()) as { error?: string; message?: string };
 
       if (!response.ok) {
-        setMessage(result.message ?? "Something went wrong. Please try again.");
+        setMessage(result.error ?? result.message ?? "Something went wrong. Please try again.");
         setMessageTone("error");
       } else if (method === "DELETE") {
         setSubscriptionStatus("inactive");
@@ -97,21 +101,6 @@ export function NewsletterSignup({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!email.trim()) {
-      setMessage("Enter an email address.");
-      setMessageTone("error");
-      return;
-    }
-
-    if (
-      preferredFrequency === "custom" &&
-      !/^[1-9]\d*$/.test(customFrequency.trim())
-    ) {
-      setMessage("Enter a whole number of hours greater than 0.");
-      setMessageTone("error");
-      return;
-    }
 
     setIsSubmitting(true);
     setMessage(null);
