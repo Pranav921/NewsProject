@@ -1,11 +1,26 @@
-import { getFeedCoverage } from "@/lib/feeds";
-import type { NewsItem } from "@/lib/types";
+import { getFeedCoverage } from "./feeds.ts";
+import type { NewsItem } from "./types.ts";
 
 const BREAKING_TITLE_PATTERN =
   /\b(breaking|urgent|launches|missile|strike|earthquake|evacuation|war|attack|explosion)\b/i;
 
 export function isBreakingStory(article: NewsItem): boolean {
   return BREAKING_TITLE_PATTERN.test(article.title);
+}
+
+export function getLeadArticle(articles: NewsItem[]): NewsItem | null {
+  if (articles.length === 0) {
+    return null;
+  }
+
+  const sortedArticles = [...articles].sort((left, right) => {
+    const leftTime = left.publishedAt ? Date.parse(left.publishedAt) : 0;
+    const rightTime = right.publishedAt ? Date.parse(right.publishedAt) : 0;
+
+    return rightTime - leftTime;
+  });
+
+  return sortedArticles.find((article) => isBreakingStory(article)) ?? sortedArticles[0] ?? null;
 }
 
 export function getCoverageLabel(source: string): string {

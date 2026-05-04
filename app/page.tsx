@@ -1,6 +1,7 @@
 import { DashboardView } from "@/components/DashboardView";
 import { PublicNewsView } from "@/components/PublicNewsView";
 import { PublicFooter } from "@/components/PublicFooter";
+import { enhanceLeadArticleImage } from "@/lib/article-images";
 import { fromAlertKeywordRows } from "@/lib/custom-alerts";
 import { getAllNewsItems } from "@/lib/rss";
 import { fromSavedArticleRows } from "@/lib/saved-articles";
@@ -46,6 +47,7 @@ export default async function Home() {
 
   try {
     articles = await getCachedHomepageNewsItems();
+    articles = await enhanceLeadArticleImage(articles);
   } catch {
     feedErrorMessage =
       "We couldn't load the live feed right now. Please refresh and try again in a moment.";

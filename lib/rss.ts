@@ -1,7 +1,7 @@
-import { RSS_FEEDS } from "@/lib/feeds";
-import { normalizeArticleLink } from "@/lib/news-updates";
-import { cleanSummary, stripCdata, stripHtml } from "@/lib/rss-format";
-import type { FeedDefinition, NewsItem } from "@/lib/types";
+import { RSS_FEEDS } from "./feeds.ts";
+import { normalizeArticleLink } from "./news-updates.ts";
+import { cleanSummary, stripCdata, stripHtml } from "./rss-format.ts";
+import type { FeedDefinition, NewsItem } from "./types.ts";
 
 function truncateSummary(summary: string, maxLength = 220): string | null {
   const minimumSummaryLength = 50;
@@ -86,6 +86,178 @@ function parseDate(value: string | null): string | null {
   return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString();
 }
 
+function normalizeImageUrl(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const trimmedValue = stripCdata(value)
+    .replace(/&amp;/g, "&")
+    .trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  if (trimmedValue.startsWith("//")) {
+    return `https:${trimmedValue}`;
+  }
+
+  if (/^https?:\/\//i.test(trimmedValue)) {
+    return trimmedValue;
+  }
+
+  return null;
+}
+
+function upgradeImageUrl(value: string): string {
+  let upgradedValue = value;
+
+  // Many publishers expose WordPress-style resized derivatives such as
+  // `photo-300x200.jpg`. Prefer the original asset path when possible.
+  upgradedValue = upgradedValue.replace(/-\d{2,4}x\d{2,4}(?=\.(?:jpg|jpeg|png|webp))/i, "");
+
+  try {
+    const parsedUrl = new URL(upgradedValue);
+
+    if (parsedUrl.searchParams.has("w")) {
+      parsedUrl.searchParams.set("w", "1600");
+    }
+    if (parsedUrl.searchParams.has("width")) {
+      parsedUrl.searchParams.set("width", "1600");
+    }
+    if (parsedUrl.searchParams.has("h")) {
+      parsedUrl.searchParams.delete("h");
+    }
+    if (parsedUrl.searchParams.has("height")) {
+      parsedUrl.searchParams.delete("height");
+    }
+    if (parsedUrl.searchParams.has("q")) {
+      parsedUrl.searchParams.set("q", "90");
+    }
+    if (parsedUrl.searchParams.has("quality")) {
+      parsedUrl.searchParams.set("quality", "90");
+    }
+
+    upgradedValue = parsedUrl.toString();
+  } catch {
+    return upgradedValue;
+  }
+
+  return upgradedValue;
+}
+
+function getFirstAttributeValue(block: string, tagPattern: string, attributeName: string): string | null {
+  const pattern = new RegExp(`<${tagPattern}[^>]*\\b${attributeName}=["']([^"']+)["'][^>]*\\/?>`, "i");
+  const match = block.match(pattern);
+
+  return normalizeImageUrl(match?.[1] ?? null);
+}
+
+function parseSrcsetLargestCandidate(srcset: string): string | null {
+  const candidates = srcset
+    .split(",")
+    .map((candidate) => candidate.trim())
+    .map((candidate) => {
+      const [urlPart, descriptorPart] = candidate.split(/\s+/, 2);
+      const normalizedUrl = normalizeImageUrl(urlPart ?? null);
+
+      if (!normalizedUrl) {
+        return null;
+      }
+
+      const widthMatch = descriptorPart?.match(/(\d+)w/i);
+      const densityMatch = descriptorPart?.match(/(\d+(?:\.\d+)?)x/i);
+      const score = widthMatch
+        ? Number.parseInt(widthMatch[1], 10)
+        : densityMatch
+          ? Math.round(Number.parseFloat(densityMatch[1]) * 1000)
+          : 0;
+
+      return {
+        score,
+        url: normalizedUrl,
+      };
+    })
+    .filter((candidate): candidate is { score: number; url: string } => candidate !== null)
+    .sort((left, right) => right.score - left.score);
+
+  return candidates[0]?.url ?? null;
+}
+
+function extractImageFromHtml(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const html = stripCdata(value);
+  const srcsetMatch = html.match(/<img\b[^>]*\bsrcset=["']([^"']+)["'][^>]*>/i);
+  const srcsetImage = srcsetMatch?.[1] ? parseSrcsetLargestCandidate(srcsetMatch[1]) : null;
+
+  if (srcsetImage) {
+    return srcsetImage;
+  }
+
+  const imgMatch = html.match(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i);
+  return normalizeImageUrl(imgMatch?.[1] ?? null);
+}
+
+function selectLargestMediaImage(block: string): string | null {
+  const mediaTagPattern = /<media:(?:content|thumbnail)\b[^>]*\/?>/gi;
+  const tags = [...block.matchAll(mediaTagPattern)].map((match) => match[0]);
+
+  const candidates = tags
+    .map((tag) => {
+      const urlMatch = tag.match(/\burl=["']([^"']+)["']/i);
+      const widthMatch = tag.match(/\bwidth=["'](\d+)["']/i);
+      const heightMatch = tag.match(/\bheight=["'](\d+)["']/i);
+      const normalizedUrl = normalizeImageUrl(urlMatch?.[1] ?? null);
+
+      if (!normalizedUrl) {
+        return null;
+      }
+
+      const width = widthMatch?.[1] ? Number.parseInt(widthMatch[1], 10) : 0;
+      const height = heightMatch?.[1] ? Number.parseInt(heightMatch[1], 10) : 0;
+
+      return {
+        score: width * height,
+        url: normalizedUrl,
+      };
+    })
+    .filter((candidate): candidate is { score: number; url: string } => candidate !== null)
+    .sort((left, right) => right.score - left.score);
+
+  return candidates[0]?.url ?? null;
+}
+
+function extractImageUrl(block: string, summarySource: string | null): string | null {
+  const mediaContentImage =
+    selectLargestMediaImage(block) ??
+    getFirstAttributeValue(block, "media:content", "url") ??
+    getFirstAttributeValue(block, "media:thumbnail", "url");
+
+  if (mediaContentImage) {
+    return upgradeImageUrl(mediaContentImage);
+  }
+
+  const enclosureBlockMatch = block.match(/<enclosure\b[^>]*\/?>/i);
+  const enclosureBlock = enclosureBlockMatch?.[0] ?? null;
+  const enclosureTypeMatch = enclosureBlock?.match(/\btype=["'](image\/[^"']+)["']/i);
+  const enclosureUrlMatch = enclosureBlock?.match(/\burl=["']([^"']+)["']/i);
+  const enclosureImage =
+    enclosureTypeMatch?.[1] && enclosureUrlMatch?.[1]
+      ? normalizeImageUrl(enclosureUrlMatch[1])
+      : null;
+
+  if (enclosureImage) {
+    return upgradeImageUrl(enclosureImage);
+  }
+
+  const htmlImage = extractImageFromHtml(summarySource);
+  return htmlImage ? upgradeImageUrl(htmlImage) : null;
+}
+
 function parseNewsItem(block: string, fallbackSource: string): NewsItem | null {
   const title = stripHtml(getFirstTagValue(block, "title") ?? "");
   const rawLink =
@@ -109,6 +281,7 @@ function parseNewsItem(block: string, fallbackSource: string): NewsItem | null {
   );
   const cleanedSummary = summarySource ? cleanSummary(summarySource) : "";
   const summary = truncateSummary(cleanedSummary);
+  const imageUrl = extractImageUrl(block, summarySource);
 
   if (!title || !link) {
     return null;
@@ -120,6 +293,7 @@ function parseNewsItem(block: string, fallbackSource: string): NewsItem | null {
     source,
     summary,
     publishedAt,
+    imageUrl,
   };
 }
 

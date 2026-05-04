@@ -33,12 +33,16 @@ export function LeadStoryCard({
   const isImportantAlert = alertImportance === "important";
   const isNormalAlert = alertImportance === "normal";
   const metadataTone = isBreaking || isImportantAlert ? "text-white/45" : "text-white/42";
+  const leadImageUrl =
+    typeof article.imageUrl === "string" && article.imageUrl.length > 0
+      ? article.imageUrl
+      : null;
 
   return (
     <article className="fade-up relative isolate overflow-hidden rounded-[12px] border border-[#241614] bg-[#130a08] shadow-[0_22px_52px_rgba(19,10,8,0.24)]">
       <div className="h-[2px] w-full bg-[linear-gradient(90deg,#c8200e_0%,#FF6B00_58%,transparent_100%)] lg:h-[3px]" />
 
-      <div className="grid gap-4 px-4 pb-[14px] pt-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-8 lg:px-8 lg:py-7">
+      <div className="grid gap-4 px-4 pb-[14px] pt-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:px-8 lg:py-7">
         <div className="relative z-10 flex min-w-0 flex-col">
           <div
             className={`mono-meta flex flex-wrap items-center gap-x-2.5 gap-y-2 text-[9px] font-medium uppercase tracking-[0.18em] ${metadataTone}`}
@@ -120,7 +124,7 @@ export function LeadStoryCard({
             </button>
             <a
               aria-label={`Read original article: ${article.title}`}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-4.5 py-2 text-sm font-semibold text-[var(--navy)] transition-colors hover:bg-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)]"
+              className="hidden min-h-10 items-center justify-center rounded-xl bg-white px-4.5 py-2 text-sm font-semibold text-[var(--navy)] transition-colors hover:bg-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)] lg:inline-flex"
               href={article.link}
               rel="noopener noreferrer"
               target="_blank"
@@ -137,38 +141,25 @@ export function LeadStoryCard({
           </div>
         </div>
 
-        <div className="relative z-10 hidden rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-4 lg:block">
-          <div className="flex aspect-[16/10] items-center justify-center rounded-[8px] border border-white/10 bg-white/[0.06]">
-            <p className="mono-meta text-[9px] font-medium uppercase tracking-[0.18em] text-white/24">
-              Article image unavailable
-            </p>
-          </div>
-          <div className="mt-5 space-y-3">
-            <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-              <p className="mono-meta text-[9px] uppercase tracking-[0.16em] text-white/44">
-                Source
-              </p>
-              <p className="mt-1 text-sm font-medium text-[var(--hero-headline)]">
-                {article.source}
+        <div className="relative z-10 hidden rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3 lg:block">
+          {leadImageUrl ? (
+            <div className="overflow-hidden rounded-[8px] border border-white/10 bg-white/[0.06]">
+              {/* Using a plain img here keeps arbitrary RSS-hosted images working without maintaining Next remote patterns. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt={article.title}
+                className="aspect-[5/4] w-full object-cover"
+                loading="lazy"
+                src={leadImageUrl}
+              />
+            </div>
+          ) : (
+            <div className="flex aspect-[5/4] items-center justify-center rounded-[8px] border border-white/10 bg-white/[0.06]">
+              <p className="mono-meta text-[9px] font-medium uppercase tracking-[0.18em] text-white/24">
+                Article image unavailable
               </p>
             </div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-              <p className="mono-meta text-[9px] uppercase tracking-[0.16em] text-white/44">
-                Coverage
-              </p>
-              <p className="mt-1 text-sm font-medium text-[var(--hero-headline)]">
-                {getCoverageLabel(article.source)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-              <p className="mono-meta text-[9px] uppercase tracking-[0.16em] text-white/44">
-                Updated
-              </p>
-              <p className="mt-1 text-sm font-medium text-[var(--hero-headline)]">
-                {formatPublishedDate(article.publishedAt)}
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </article>

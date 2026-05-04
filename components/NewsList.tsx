@@ -1,6 +1,6 @@
 import { LeadStoryCard } from "@/components/LeadStoryCard";
 import { NewsCard } from "@/components/NewsCard";
-import { isBreakingStory } from "@/lib/news-presentation";
+import { getLeadArticle, isBreakingStory } from "@/lib/news-presentation";
 import type { SmartAlertImportance } from "@/lib/smart-alerts";
 import type { NewsItem } from "@/lib/types";
 import type { ReactNode } from "react";
@@ -126,19 +126,4 @@ export function NewsList({
       </div>
     </div>
   );
-}
-
-function getLeadArticle(articles: NewsItem[]): NewsItem | null {
-  if (articles.length === 0) {
-    return null;
-  }
-
-  const sortedArticles = [...articles].sort((left, right) => {
-    const leftTime = left.publishedAt ? Date.parse(left.publishedAt) : 0;
-    const rightTime = right.publishedAt ? Date.parse(right.publishedAt) : 0;
-
-    return rightTime - leftTime;
-  });
-
-  return sortedArticles.find((article) => isBreakingStory(article)) ?? sortedArticles[0] ?? null;
 }

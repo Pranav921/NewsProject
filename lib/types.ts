@@ -20,6 +20,7 @@ export type NewsItem = {
   source: string;
   summary: string | null;
   publishedAt: string | null;
+  imageUrl?: string | null;
 };
 
 export type SavedArticle = NewsItem;

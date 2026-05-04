@@ -1,4 +1,5 @@
 import { getAllNewsItems } from "@/lib/rss";
+import { enhanceLeadArticleImage } from "@/lib/article-images";
 import { buildNewsApiPayload, shouldBypassNewsCache } from "@/lib/news-api";
 import { logApiError, logApiInfo } from "@/lib/api-logging";
 import { unstable_cache } from "next/cache";
@@ -19,9 +20,10 @@ export async function GET(request: Request) {
   try {
     const requestUrl = new URL(request.url);
     const bypassCache = shouldBypassNewsCache(requestUrl.searchParams);
-    const articles = bypassCache
+    let articles = bypassCache
       ? await getAllNewsItems({ fresh: true })
       : await getCachedNewsItems();
+    articles = await enhanceLeadArticleImage(articles);
 
     logApiInfo("[news][get]", {
       articleCount: articles.length,
