@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Mono, DM_Sans } from "next/font/google";
 import { AnalyticsProvider } from "@/components/AnalyticsProvider";
-import {
-  getDefaultOpenGraphImageUrl,
-  getSiteUrl,
-  SITE_DESCRIPTION,
-  SITE_NAME,
-} from "@/lib/seo";
+import { SITE_NAME } from "@/lib/seo";
 import { Suspense } from "react";
 import "./globals.css";
 
@@ -23,8 +18,15 @@ const dmMono = DM_Mono({
   weight: ["400", "500"],
 });
 
+const SITE_URL = "https://kicker.news";
+const SITE_DESCRIPTION =
+  "A clean, real-time feed for the day’s most important headlines.";
+const OPEN_GRAPH_IMAGE_URL = `${SITE_URL}/og-image.png`;
+const TWITTER_IMAGE_URL = `${SITE_URL}/twitter-image.png`;
+
 export const metadata: Metadata = {
   applicationName: SITE_NAME,
+  metadataBase: new URL(SITE_URL),
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
@@ -35,25 +37,33 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
-  metadataBase: new URL(getSiteUrl()),
   openGraph: {
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    images: [
+      {
+        alt: `${SITE_NAME} preview`,
+        height: 630,
+        url: OPEN_GRAPH_IMAGE_URL,
+        width: 1200,
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
     description: SITE_DESCRIPTION,
     images: [
       {
         alt: `${SITE_NAME} preview`,
-        url: getDefaultOpenGraphImageUrl(),
+        height: 630,
+        url: TWITTER_IMAGE_URL,
+        width: 1200,
       },
     ],
-    siteName: SITE_NAME,
-    title: SITE_NAME,
-    type: "website",
-    url: getSiteUrl(),
-  },
-  twitter: {
-    card: "summary_large_image",
-    description: SITE_DESCRIPTION,
-    images: [getDefaultOpenGraphImageUrl()],
-    title: SITE_NAME,
   },
 };
 
