@@ -55,6 +55,7 @@ type NewsFeedProps = {
 type ViewMode = "standard" | "compact";
 type FeedMode = "all" | "saved";
 type AlertMatchView = "off" | "all" | "important" | "normal";
+const SHOW_ALERTS_UI = false;
 const COVERAGE_FILTER_OPTIONS: Array<{
   label: string;
   value: CoverageFilter;
@@ -145,7 +146,6 @@ export function NewsFeed({
   const hasAlertKeywords = alertKeywords.length > 0;
   const alertsEnabledByDefault = !isPublicViewer && hasAlertKeywords;
   const alertsEnabled = alertsEnabledOverride ?? alertsEnabledByDefault;
-  const canEnableAlerts = !isPublicViewer && hasAlertKeywords;
   const currentLinks = useMemo(
     () => articles.map((article) => article.link),
     [articles],
@@ -335,73 +335,22 @@ export function NewsFeed({
     coverageFilter !== "all" ||
     activeSource !== "All Sources" ||
     timeFilter !== "all" ||
-    showOnlyNew ||
-    alertMatchView !== "off";
+    showOnlyNew;
   const hasFeedError = Boolean(feedErrorMessage) && articles.length === 0;
   const hasSavedArticles = savedArticles.length > 0;
 
   function promptProtectedAction(feature: string) {
     setProtectedActionMessage({
       description:
-        "Create a free account to save stories, set alerts, and personalize your newsletter.",
+        "Create a free account to save stories and personalize your newsletter.",
       title: `Sign in to ${feature}.`,
     });
-  }
-
-  function openAlertManagement() {
-    window.location.assign("/account#alerts");
   }
 
   function closeAlertDialog() {
     setAlertDialogArticle(null);
     setAlertDialogMessage(null);
     setAlertDraftKeyword("");
-  }
-
-  function handleAlertsToggle() {
-    if (isPublicViewer) {
-      promptProtectedAction("use alerts");
-      return;
-    }
-
-    if (!hasAlertKeywords) {
-      openAlertManagement();
-      return;
-    }
-
-    if (alertsEnabled) {
-      setAlertsEnabledOverride(false);
-      setAlertMatchView("off");
-      return;
-    }
-
-    setAlertsEnabledOverride(true);
-  }
-
-  function handleAlertMatchesChip() {
-    if (isPublicViewer) {
-      promptProtectedAction("use alert matching");
-      return;
-    }
-
-    if (!hasAlertKeywords) {
-      openAlertManagement();
-      return;
-    }
-
-    if (!alertsEnabled) {
-      setAlertsEnabledOverride(true);
-      return;
-    }
-
-    if (activeShellTab !== "feed" || alertMatchView === "off") {
-      onShellTabChange?.("feed");
-      setFeedMode("all");
-      setAlertMatchView("all");
-      return;
-    }
-
-    setAlertMatchView("off");
   }
 
   function resetFilters() {
@@ -518,6 +467,8 @@ export function NewsFeed({
     );
   }
 
+  void renderAlertsPanel;
+
   function getEmptyState() {
     if (hasFeedError) {
       return {
@@ -553,7 +504,7 @@ export function NewsFeed({
       };
     }
 
-    if (alertMatchView !== "off" && displayedArticles.length === 0) {
+    if (SHOW_ALERTS_UI && alertMatchView !== "off" && displayedArticles.length === 0) {
       return {
         action: (
           <button
@@ -781,6 +732,12 @@ export function NewsFeed({
   ]);
 
   useEffect(() => {
+    if (!SHOW_ALERTS_UI && activeShellTab === "alerts") {
+      onShellTabChange?.("feed");
+    }
+  }, [activeShellTab, onShellTabChange]);
+
+  useEffect(() => {
     if (!sourceOptions.includes(selectedSource)) {
       setSelectedSource(DEFAULT_SOURCE_FILTER);
     }
@@ -938,9 +895,9 @@ export function NewsFeed({
 
   return (
     <div className="space-y-5">
-      <section className="border-y border-[var(--border)] bg-white px-3 py-3 shadow-[0_8px_24px_rgba(26,24,20,0.03)] sm:px-4 sm:py-3.5 lg:-mx-7 lg:px-7 xl:-mx-7 xl:px-[28px] xl:py-[10px] 2xl:-mx-8 2xl:px-8">
+      <section className="border-y border-[var(--border)] bg-white px-3 py-2.5 shadow-[0_8px_24px_rgba(26,24,20,0.03)] sm:px-4 sm:py-3.5 lg:-mx-7 lg:px-7 xl:-mx-7 xl:px-[28px] xl:py-[10px] 2xl:-mx-8 2xl:px-8">
         <div
-          className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-[10px] xl:overflow-x-auto xl:overflow-y-hidden xl:whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:gap-[10px] xl:overflow-x-auto xl:overflow-y-hidden xl:whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="search"
           aria-label="News feed filters"
         >
@@ -966,8 +923,8 @@ export function NewsFeed({
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 overflow-x-auto pb-1 xl:flex-1 xl:overflow-visible xl:pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="w-[148px] shrink-0 xl:w-[132px]">
+          <div className="grid grid-cols-2 gap-2 xl:flex xl:flex-1 xl:items-center xl:overflow-visible xl:pb-0">
+            <div className="w-full xl:w-[132px] xl:shrink-0">
               <label className="sr-only" htmlFor="coverage-filter">
                 Filter by coverage
               </label>
@@ -987,7 +944,7 @@ export function NewsFeed({
               </select>
             </div>
 
-            <div className="w-[170px] shrink-0 xl:w-[150px]">
+            <div className="w-full xl:w-[150px] xl:shrink-0">
               <label className="sr-only" htmlFor="source-filter">
                 Filter by source
               </label>
@@ -1010,7 +967,7 @@ export function NewsFeed({
               </select>
             </div>
 
-            <div className="w-[148px] shrink-0 xl:w-[138px]">
+            <div className="col-span-2 w-full xl:col-auto xl:w-[138px] xl:shrink-0">
               <label className="sr-only" htmlFor="time-filter">
                 Filter by time
               </label>
@@ -1031,13 +988,13 @@ export function NewsFeed({
             <div aria-hidden="true" className="hidden h-5 w-px shrink-0 bg-[var(--border)] xl:block" />
 
             <div
-              className="flex rounded-full border border-[var(--border)] bg-[var(--background)] p-0.5"
+              className="col-span-2 hidden rounded-full border border-[var(--border)] bg-[var(--background)] p-0.5 xl:col-auto xl:flex"
               role="group"
               aria-label="Article list scope"
             >
               <button
                 className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-                  activeShellTab === "feed" && alertMatchView === "off"
+                  activeShellTab === "feed"
                     ? "bg-[var(--foreground)] text-white"
                     : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
                 }`}
@@ -1063,26 +1020,10 @@ export function NewsFeed({
               >
                 Saved
               </button>
-              <button
-                className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-                  alertsEnabled && alertMatchView !== "off"
-                    ? "bg-[var(--foreground)] text-white"
-                    : !canEnableAlerts
-                      ? "text-[var(--text-muted)] hover:bg-white hover:text-[var(--text-sub)]"
-                      : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
-                }`}
-                type="button"
-                onClick={handleAlertMatchesChip}
-                aria-pressed={alertsEnabled && alertMatchView !== "off"}
-              >
-                Alert matches
-              </button>
             </div>
 
-            <div aria-hidden="true" className="hidden h-5 w-px shrink-0 bg-[var(--border)] xl:block" />
-
             <div
-              className="flex rounded-full border border-[var(--border)] bg-[var(--background)] p-0.5"
+              className="hidden rounded-full border border-[var(--border)] bg-[var(--background)] p-0.5 md:flex xl:col-auto"
               role="group"
               aria-label="Article view mode"
             >
@@ -1096,7 +1037,7 @@ export function NewsFeed({
                 onClick={() => setViewMode("standard")}
                 aria-pressed={viewMode === "standard"}
               >
-                Standard
+                Grid
               </button>
               <button
                 className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
@@ -1108,31 +1049,37 @@ export function NewsFeed({
                 onClick={() => setViewMode("compact")}
                 aria-pressed={viewMode === "compact"}
               >
-                Compact
+                List
               </button>
             </div>
 
-            <button
-              className={`min-h-9 shrink-0 rounded-full border px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-                alertsEnabled
-                  ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,white)] text-[var(--accent)]"
-                  : "border-[var(--border)] bg-transparent text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
-              }`}
-              type="button"
-              onClick={handleAlertsToggle}
-              aria-pressed={alertsEnabled}
-            >
-              {alertsEnabled ? "Alerts on" : "Alerts off"}
-            </button>
+            {newArticleLinks.length > 0 ? (
+              <button
+                className={`hidden rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 md:inline-flex xl:col-auto ${
+                  showOnlyNew
+                    ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+                type="button"
+                onClick={() => {
+                  setShowOnlyNew((currentValue) => !currentValue);
+                }}
+                aria-pressed={showOnlyNew}
+              >
+                {showOnlyNew ? "Showing only new" : "Only new"}
+              </button>
+            ) : null}
 
-            <div className="mono-meta text-left text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)] xl:ml-auto xl:shrink-0 xl:text-right">
-              <span className="block">{filteredStoryCount} stories</span>
-              <span className="mt-1 block">{filteredSourceCount} sources</span>
+            <div className="hidden xl:ml-auto xl:col-auto xl:block xl:shrink-0 xl:text-right">
+              <div className="mono-meta text-left text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)] xl:text-right">
+                <span className="block">{filteredStoryCount} stories</span>
+                <span className="mt-1 block">{filteredSourceCount} sources</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-3 flex flex-col gap-3">
+        <div className="mt-2 flex flex-col gap-2">
           {protectedActionMessage && activeShellTab === "feed" ? (
             <div className="rounded-[1.1rem] border border-sky-200 bg-sky-50 px-4 py-3">
               <p className="text-sm font-semibold text-slate-900">
@@ -1159,26 +1106,32 @@ export function NewsFeed({
             </div>
           ) : null}
 
-          {newArticleLinks.length > 0 || hasActiveFilters ? (
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              {newArticleLinks.length > 0 ? (
-                <button
-                  className={`inline-flex rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
-                    showOnlyNew
-                      ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                  type="button"
-                  onClick={() => {
-                    setShowOnlyNew((currentValue) => !currentValue);
-                  }}
-                  aria-pressed={showOnlyNew}
-                >
-                  {showOnlyNew ? "Showing only new" : "Only new"}
-                </button>
-              ) : null}
+          <div className="flex items-center justify-between gap-2 md:hidden">
+            <div className="mono-meta text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              {filteredStoryCount} stories · {filteredSourceCount} sources
+            </div>
 
-              {newAlertMatchLinks.length > 0 ? (
+            {newArticleLinks.length > 0 ? (
+              <button
+                className={`inline-flex min-h-8 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+                  showOnlyNew
+                    ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+                type="button"
+                onClick={() => {
+                  setShowOnlyNew((currentValue) => !currentValue);
+                }}
+                aria-pressed={showOnlyNew}
+              >
+                Only new
+              </button>
+            ) : null}
+          </div>
+
+          {((SHOW_ALERTS_UI && newAlertMatchLinks.length > 0) || hasActiveFilters) ? (
+            <div className="flex flex-wrap items-center justify-start gap-2">
+              {SHOW_ALERTS_UI && newAlertMatchLinks.length > 0 ? (
                 <>
                   {importantAlertMatchCount > 0 ? (
                     <StatusBadge tone="rose">
@@ -1201,17 +1154,15 @@ export function NewsFeed({
         </div>
       </section>
 
-      {activeShellTab === "alerts" ? (
-        renderAlertsPanel()
-      ) : activeShellTab === "saved" && isPublicViewer ? (
+      {activeShellTab === "saved" && isPublicViewer ? (
         renderSignedOutTabCta("saved")
       ) : (
         <NewsList
-          alertImportanceByLink={alertImportanceByLink}
+          alertImportanceByLink={SHOW_ALERTS_UI ? alertImportanceByLink : {}}
           articles={displayedArticles}
           emptyStateAction={emptyState.action}
           newArticleLinks={newArticleLinks}
-          onAlertAction={handleAlertAction}
+          onAlertAction={SHOW_ALERTS_UI ? handleAlertAction : undefined}
           onToggleSavedArticle={handleToggleSavedArticle}
           savedArticleLinks={savedArticleLinks}
           saveButtonLabel={isPublicViewer ? "Sign in to save" : "Save article"}
@@ -1229,7 +1180,7 @@ export function NewsFeed({
         />
       )}
 
-      {alertDialogArticle ? (
+      {SHOW_ALERTS_UI && alertDialogArticle ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(26,24,20,0.5)] px-4 backdrop-blur-[8px]">
           <div className="w-full max-w-[380px] rounded-[16px] bg-white p-6 shadow-[0_16px_64px_rgba(0,0,0,0.2)]">
             <div className="flex items-start justify-between gap-4">

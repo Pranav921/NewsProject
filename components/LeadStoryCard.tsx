@@ -9,6 +9,7 @@ import {
 } from "@/lib/news-presentation";
 import type { SmartAlertImportance } from "@/lib/smart-alerts";
 import type { NewsItem } from "@/lib/types";
+import { useState } from "react";
 
 type LeadStoryCardProps = {
   alertImportance?: SmartAlertImportance | null;
@@ -19,6 +20,40 @@ type LeadStoryCardProps = {
   onToggleSaved?: (article: NewsItem) => void;
   saveButtonLabel?: string;
 };
+
+function LeadImagePanel({
+  article,
+  leadImageUrl,
+}: {
+  article: NewsItem;
+  leadImageUrl: string | null;
+}) {
+  const [hasImageError, setHasImageError] = useState(false);
+
+  return (
+    <div className="relative z-10 hidden rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3 lg:block">
+      {leadImageUrl && !hasImageError ? (
+        <div className="overflow-hidden rounded-[8px] border border-white/10 bg-white/[0.06]">
+          {/* Using a plain img here keeps arbitrary RSS-hosted images working without maintaining Next remote patterns. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            alt={article.title}
+            className="aspect-[5/4] w-full object-cover"
+            loading="lazy"
+            src={leadImageUrl}
+            onError={() => setHasImageError(true)}
+          />
+        </div>
+      ) : (
+        <div className="flex aspect-[5/4] items-center justify-center rounded-[8px] border border-white/10 bg-white/[0.06]">
+          <p className="mono-meta text-[9px] font-medium uppercase tracking-[0.18em] text-white/40">
+            Article image unavailable
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function LeadStoryCard({
   alertImportance = null,
@@ -37,6 +72,7 @@ export function LeadStoryCard({
     typeof article.imageUrl === "string" && article.imageUrl.length > 0
       ? article.imageUrl
       : null;
+  const shouldShowAlertAction = typeof onAlertAction === "function";
 
   return (
     <article className="fade-up relative isolate overflow-hidden rounded-[12px] border border-[#241614] bg-[#130a08] shadow-[0_22px_52px_rgba(19,10,8,0.24)]">
@@ -102,13 +138,15 @@ export function LeadStoryCard({
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-2.5 lg:mt-6">
-            <button
-              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/14 bg-white/8 px-3.5 py-2 text-sm font-medium text-[var(--hero-headline)] transition-colors hover:bg-white/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)]"
-              type="button"
-              onClick={() => onAlertAction?.(article)}
-            >
-              {isImportantAlert || isNormalAlert ? "Alert" : "Set alert"}
-            </button>
+            {shouldShowAlertAction ? (
+              <button
+                className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/14 bg-white/8 px-3.5 py-2 text-sm font-medium text-[var(--hero-headline)] transition-colors hover:bg-white/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)]"
+                type="button"
+                onClick={() => onAlertAction?.(article)}
+              >
+                {isImportantAlert || isNormalAlert ? "Alert" : "Set alert"}
+              </button>
+            ) : null}
             <button
               aria-label={`${isSaved ? "Remove saved article" : saveButtonLabel}: ${article.title}`}
               aria-pressed={isSaved}
@@ -141,26 +179,11 @@ export function LeadStoryCard({
           </div>
         </div>
 
-        <div className="relative z-10 hidden rounded-[0.95rem] border border-white/8 bg-white/[0.04] p-3 lg:block">
-          {leadImageUrl ? (
-            <div className="overflow-hidden rounded-[8px] border border-white/10 bg-white/[0.06]">
-              {/* Using a plain img here keeps arbitrary RSS-hosted images working without maintaining Next remote patterns. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                alt={article.title}
-                className="aspect-[5/4] w-full object-cover"
-                loading="lazy"
-                src={leadImageUrl}
-              />
-            </div>
-          ) : (
-            <div className="flex aspect-[5/4] items-center justify-center rounded-[8px] border border-white/10 bg-white/[0.06]">
-              <p className="mono-meta text-[9px] font-medium uppercase tracking-[0.18em] text-white/40">
-                Article image unavailable
-              </p>
-            </div>
-          )}
-        </div>
+        <LeadImagePanel
+          key={`${article.link}:${leadImageUrl ?? "none"}`}
+          article={article}
+          leadImageUrl={leadImageUrl}
+        />
       </div>
     </article>
   );

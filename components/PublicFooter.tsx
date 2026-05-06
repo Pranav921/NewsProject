@@ -29,12 +29,9 @@ export function PublicFooter() {
               </p>
             </div>
           </div>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Clean RSS-based news tracking, saved stories, alerts, and newsletters.
-          </p>
         </div>
         <nav
-          className="grid w-full grid-cols-2 gap-x-5 gap-y-2 text-sm text-slate-600 sm:grid-cols-3 md:w-auto md:flex md:flex-wrap md:justify-end md:gap-x-4 md:gap-y-2"
+          className="grid w-full grid-cols-2 gap-x-5 gap-y-2 text-sm text-slate-600 sm:grid-cols-3 md:w-auto md:flex md:flex-wrap md:justify-end md:gap-x-4 md:gap-y-2 md:pt-1"
           aria-label="Public site links"
         >
           {PUBLIC_LINKS.map((link) => (

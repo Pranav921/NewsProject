@@ -35,6 +35,7 @@ export function NewsCard({
   const isBreaking = isBreakingStory(article);
   const isImportantAlert = alertImportance === "important";
   const isNormalAlert = alertImportance === "normal";
+  const shouldShowAlertAction = typeof onAlertAction === "function";
   const cardToneClasses = isImportantAlert
     ? "border-rose-200 bg-white"
     : isNormalAlert
@@ -111,13 +112,15 @@ export function NewsCard({
             </p>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                className="inline-flex min-h-8 items-center justify-center rounded-[6px] border border-[var(--border)] bg-white px-[11px] py-[4px] text-[11px] font-medium text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-                type="button"
-                onClick={() => onAlertAction?.(article)}
-              >
-                Alert
-              </button>
+              {shouldShowAlertAction ? (
+                <button
+                  className="inline-flex min-h-8 items-center justify-center rounded-[6px] border border-[var(--border)] bg-white px-[11px] py-[4px] text-[11px] font-medium text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                  type="button"
+                  onClick={() => onAlertAction?.(article)}
+                >
+                  Alert
+                </button>
+              ) : null}
               <button
                 aria-label={`${isSaved ? "Remove saved article" : saveButtonLabel}: ${article.title}`}
                 aria-pressed={isSaved}
@@ -208,13 +211,15 @@ export function NewsCard({
         </p>
 
         <div className="mt-auto flex flex-wrap items-center gap-2">
-          <button
-            className="inline-flex min-h-8 items-center justify-center rounded-[6px] border border-[var(--border)] bg-white px-[11px] py-[4px] text-[11px] font-medium text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-            type="button"
-            onClick={() => onAlertAction?.(article)}
-          >
-            Alert
-          </button>
+          {shouldShowAlertAction ? (
+            <button
+              className="inline-flex min-h-8 items-center justify-center rounded-[6px] border border-[var(--border)] bg-white px-[11px] py-[4px] text-[11px] font-medium text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+              type="button"
+              onClick={() => onAlertAction?.(article)}
+            >
+              Alert
+            </button>
+          ) : null}
           <button
             aria-label={`${isSaved ? "Remove saved article" : saveButtonLabel}: ${article.title}`}
             aria-pressed={isSaved}

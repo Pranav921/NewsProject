@@ -48,7 +48,6 @@ export function DashboardView({
     <>
       <AppShell
         activeTab={activeShellTab}
-        articles={currentArticles}
         onRefresh={refreshArticles}
         onTabChange={setActiveShellTab}
         pendingUpdateCount={pendingUpdateCount}

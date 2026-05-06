@@ -6,10 +6,15 @@ import { useState } from "react";
 
 type UserMenuProps = {
   email: string | null;
-  variant?: "card" | "inline" | "menu";
+  className?: string;
+  variant?: "button" | "card" | "inline" | "menu";
 };
 
-export function UserMenu({ email, variant = "card" }: UserMenuProps) {
+export function UserMenu({
+  email,
+  className,
+  variant = "card",
+}: UserMenuProps) {
   const router = useRouter();
   const [supabase] = useState(() => createSupabaseBrowserClient());
   const [isPending, setIsPending] = useState(false);
@@ -29,6 +34,19 @@ export function UserMenu({ email, variant = "card" }: UserMenuProps) {
 
     router.replace("/");
     router.refresh();
+  }
+
+  if (variant === "button") {
+    return (
+      <button
+        className={`inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 font-sans text-sm font-medium tracking-normal text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
+        type="button"
+        onClick={handleSignOut}
+        disabled={isPending}
+      >
+        {isPending ? "Logging out..." : "Log out"}
+      </button>
+    );
   }
 
   if (variant === "menu") {

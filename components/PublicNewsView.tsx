@@ -56,7 +56,6 @@ export function PublicNewsView({
     <div className="space-y-4">
       <AppShell
         activeTab={activeShellTab}
-        articles={currentArticles}
         onRefresh={refreshArticles}
         onTabChange={setActiveShellTab}
         pendingUpdateCount={pendingUpdateCount}
@@ -92,7 +91,7 @@ export function PublicNewsView({
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] lg:items-center">
-            <div className="flex h-full flex-col justify-center rounded-[1.2rem] border border-slate-200 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-4 sm:p-5">
+            <div className="hidden h-full flex-col justify-center rounded-[1.2rem] border border-slate-200 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-4 sm:flex sm:p-5">
               <p className="mono-meta text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
                 Join Kicker News
               </p>
@@ -100,12 +99,11 @@ export function PublicNewsView({
                 id="public-auth-title"
                 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-[var(--foreground)]"
               >
-                Save stories, track alerts, and keep your reading in one place.
+                Save stories and keep your reading in one place.
               </h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Create a free account to unlock saved articles, private alert
-                keywords, newsletter preferences, and email analytics built around
-                your reading habits.
+                Create a free account to unlock saved articles, newsletter
+                preferences, and email analytics built around your reading habits.
               </p>
 
               <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
@@ -116,9 +114,9 @@ export function PublicNewsView({
                   </p>
                 </div>
                 <div className="rounded-[1rem] border border-slate-200 bg-white px-3.5 py-3">
-                  <p className="text-sm font-semibold text-slate-900">Set smarter alerts</p>
+                  <p className="text-sm font-semibold text-slate-900">Get newsletters that fit</p>
                   <p className="mt-1 text-sm leading-5 text-slate-600">
-                    Track new stories that match your saved keywords.
+                    Tune delivery settings without leaving the Kicker experience.
                   </p>
                 </div>
               </div>

@@ -168,8 +168,8 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
       </h1>
       <p className="mt-1.5 text-sm leading-5 text-slate-500">
         {authMode === "login"
-          ? "Log in to your feed, saved stories, alerts, and newsletter settings."
-          : "Create an account to sync saved stories, alerts, and newsletter preferences."}
+          ? "Log in to your feed, saved stories, and newsletter settings."
+          : "Create an account to sync saved stories and newsletter preferences."}
       </p>
 
       <div className="mt-3.5 space-y-2.5">
