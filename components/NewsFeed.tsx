@@ -338,6 +338,9 @@ export function NewsFeed({
     showOnlyNew;
   const hasFeedError = Boolean(feedErrorMessage) && articles.length === 0;
   const hasSavedArticles = savedArticles.length > 0;
+  const hasNewOnlyToggle = newArticleLinks.length > 0;
+  const useTightDesktopControls = hasNewOnlyToggle;
+  const useTightestDesktopControls = hasNewOnlyToggle && showOnlyNew;
 
   function promptProtectedAction(feature: string) {
     setProtectedActionMessage({
@@ -901,7 +904,7 @@ export function NewsFeed({
           role="search"
           aria-label="News feed filters"
         >
-          <div className="xl:w-[260px] xl:flex-none">
+          <div className="xl:w-[310px] xl:flex-none">
             <label className="sr-only" htmlFor="article-search">
               Search articles
             </label>
@@ -923,8 +926,8 @@ export function NewsFeed({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 xl:flex xl:flex-1 xl:items-center xl:overflow-visible xl:pb-0">
-            <div className="w-full xl:w-[132px] xl:shrink-0">
+          <div className="grid grid-cols-2 gap-2 xl:flex xl:flex-1 xl:items-center xl:gap-3 xl:overflow-visible xl:pb-0">
+            <div className="w-full xl:w-[164px] xl:shrink-0">
               <label className="sr-only" htmlFor="coverage-filter">
                 Filter by coverage
               </label>
@@ -944,7 +947,7 @@ export function NewsFeed({
               </select>
             </div>
 
-            <div className="w-full xl:w-[150px] xl:shrink-0">
+            <div className="w-full xl:w-[184px] xl:shrink-0">
               <label className="sr-only" htmlFor="source-filter">
                 Filter by source
               </label>
@@ -967,7 +970,7 @@ export function NewsFeed({
               </select>
             </div>
 
-            <div className="col-span-2 w-full xl:col-auto xl:w-[138px] xl:shrink-0">
+            <div className="col-span-2 w-full xl:col-auto xl:w-[160px] xl:shrink-0">
               <label className="sr-only" htmlFor="time-filter">
                 Filter by time
               </label>
@@ -988,12 +991,20 @@ export function NewsFeed({
             <div aria-hidden="true" className="hidden h-5 w-px shrink-0 bg-[var(--border)] xl:block" />
 
             <div
-              className="col-span-2 hidden rounded-full border border-[var(--border)] bg-[var(--background)] p-0.5 xl:col-auto xl:flex"
+              className={`col-span-2 hidden rounded-full border border-[var(--border)] bg-[var(--background)] p-1 xl:col-auto xl:flex xl:mr-1 ${
+                useTightDesktopControls ? "xl:gap-0" : ""
+              }`}
               role="group"
               aria-label="Article list scope"
             >
               <button
-                className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                  useTightestDesktopControls
+                    ? "px-3.5"
+                    : useTightDesktopControls
+                      ? "px-4.5"
+                      : "px-6"
+                } ${
                   activeShellTab === "feed"
                     ? "bg-[var(--foreground)] text-white"
                     : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
@@ -1007,7 +1018,13 @@ export function NewsFeed({
                 All articles
               </button>
               <button
-                className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                  useTightestDesktopControls
+                    ? "px-3.5"
+                    : useTightDesktopControls
+                      ? "px-4.5"
+                      : "px-6"
+                } ${
                   activeShellTab === "saved"
                     ? "bg-[var(--foreground)] text-white"
                     : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
@@ -1023,12 +1040,20 @@ export function NewsFeed({
             </div>
 
             <div
-              className="hidden rounded-full border border-[var(--border)] bg-[var(--background)] p-0.5 md:flex xl:col-auto"
+              className={`hidden rounded-full border border-[var(--border)] bg-[var(--background)] p-1 md:flex xl:col-auto xl:mr-1 ${
+                useTightDesktopControls ? "xl:gap-0" : ""
+              }`}
               role="group"
               aria-label="Article view mode"
             >
               <button
-                className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                  useTightestDesktopControls
+                    ? "px-3.5"
+                    : useTightDesktopControls
+                      ? "px-4"
+                      : "px-6"
+                } ${
                   viewMode === "standard"
                     ? "bg-[var(--foreground)] text-white"
                     : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
@@ -1040,7 +1065,13 @@ export function NewsFeed({
                 Grid
               </button>
               <button
-                className={`min-h-9 shrink-0 rounded-full px-3.5 py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                  useTightestDesktopControls
+                    ? "px-3.5"
+                    : useTightDesktopControls
+                      ? "px-4"
+                      : "px-6"
+                } ${
                   viewMode === "compact"
                     ? "bg-[var(--foreground)] text-white"
                     : "text-[var(--text-sub)] hover:bg-white hover:text-[var(--foreground)]"
@@ -1055,7 +1086,11 @@ export function NewsFeed({
 
             {newArticleLinks.length > 0 ? (
               <button
-                className={`hidden rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 md:inline-flex xl:col-auto ${
+                className={`hidden rounded-full border font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 md:inline-flex xl:col-auto ${
+                  showOnlyNew
+                    ? "px-3 py-[3px] text-[12px]"
+                    : "px-3.5 py-1 text-[12px]"
+                } ${
                   showOnlyNew
                     ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
                     : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"

@@ -66,8 +66,8 @@ const NEWSLETTER_EMAIL_FORMAT_OPTIONS: Array<{
   label: string;
   value: NewsletterEmailFormat;
 }> = [
-  { label: "Standard email", value: "standard" },
-  { label: "Compact email", value: "compact" },
+  { label: "Grid email", value: "standard" },
+  { label: "List email", value: "compact" },
 ];
 
 const NEWSLETTER_ARTICLE_MODE_OPTIONS: Array<{
@@ -369,8 +369,8 @@ export function AccountSettings({
                 setDefaultViewMode(event.target.value as ViewMode)
               }
             >
-              <option value="standard">Standard</option>
-              <option value="compact">Compact</option>
+              <option value="standard">Grid</option>
+              <option value="compact">List</option>
             </select>
           </div>
         </div>

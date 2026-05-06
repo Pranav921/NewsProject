@@ -49,12 +49,18 @@ export function getValidatedNewsletterSettings(
     body.preferredFrequency?.trim().toLowerCase() ??
     "";
   const normalizedCustomFrequency = body.customFrequency?.trim() ?? "";
-  const emailFormat = body.emailFormat?.trim().toLowerCase() ?? "standard";
+  const rawEmailFormat = body.emailFormat?.trim().toLowerCase() ?? "standard";
+  const emailFormat =
+    rawEmailFormat === "grid"
+      ? "standard"
+      : rawEmailFormat === "list"
+        ? "compact"
+        : rawEmailFormat;
   const articleMode = body.articleMode?.trim().toLowerCase() ?? "all_missed";
 
   if (!VALID_EMAIL_FORMATS.has(emailFormat as NewsletterEmailFormat)) {
     return {
-      errorMessage: "Email format must be standard or compact.",
+      errorMessage: "Email format must be grid or list.",
       status: 400,
     };
   }

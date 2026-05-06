@@ -394,7 +394,7 @@ function buildCompactNewsletterEmailHtml(
               year: "numeric",
               timeZone: NEWSLETTER_TIME_ZONE,
             }),
-          )} - Compact view
+          )} - List view
         </p>
         <section style="margin-top:18px;">
           ${articleMarkup}
@@ -427,7 +427,7 @@ function buildCompactNewsletterEmailText(
     `Unsubscribe: ${unsubscribeUrl}`,
     ...(topSponsor ? ["", ...buildSponsorBlockText(topSponsor), ""] : []),
     "",
-    "Latest headlines (compact)",
+    "Latest headlines (list)",
     "",
     ...articles.flatMap((article, index) => {
       const lines = [`${article.title} (${article.source})`, article.link, ""];
