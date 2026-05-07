@@ -45,22 +45,27 @@ export function AppShell({
     <header className="relative left-1/2 right-1/2 w-screen -mx-[50vw] border-b border-[var(--border)] bg-white">
       <div className="mx-auto w-full px-3 py-2 sm:px-6 md:flex md:h-[52px] md:items-center md:justify-between md:px-[40px] md:py-0">
         <div className="flex items-center justify-between gap-3 md:min-w-0 md:flex-1">
-          <div className="flex shrink-0 items-center gap-3 md:mr-8">
-            <Image
-              alt="Kicker News"
-              className="h-8 w-8 rounded-[0.7rem] object-contain sm:h-9 sm:w-9"
-              height={1024}
-              src="/logo-icon.png"
-              width={1024}
-            />
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[16px] font-semibold tracking-tight text-[var(--foreground)] md:text-[17px]">
-                Kicker
-              </span>
-              <span className="text-[16px] font-medium text-[var(--foreground)] md:text-[17px]">
-                News
-              </span>
+          <div className="flex shrink-0 items-center gap-4 md:mr-8">
+            <div className="flex items-center gap-3">
+              <Image
+                alt="Kicker News"
+                className="h-8 w-8 rounded-[0.7rem] object-contain sm:h-9 sm:w-9"
+                height={1024}
+                src="/logo-icon.png"
+                width={1024}
+              />
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[16px] font-semibold tracking-tight text-[var(--foreground)] md:text-[17px]">
+                  Kicker
+                </span>
+                <span className="text-[16px] font-medium text-[var(--foreground)] md:text-[17px]">
+                  News
+                </span>
+              </div>
             </div>
+            <span className="hidden text-sm font-medium text-[var(--text-muted)] md:inline-block">
+              Top headlines from the world's most trusted newsrooms. One feed.
+            </span>
           </div>
           <div className="flex shrink-0 items-center justify-end gap-2">
             {pendingUpdateCount > 0 ? (
