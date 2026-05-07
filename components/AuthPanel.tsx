@@ -23,24 +23,37 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
       return;
     }
 
+    function setMode(nextMode: AuthMode) {
+      setAuthMode(nextMode);
+      setMessage(null);
+    }
+
     function updateModeFromHash() {
       if (window.location.hash === "#public-auth-panel-signup") {
-        setAuthMode("signup");
-        setMessage(null);
+        setMode("signup");
         return;
       }
 
       if (window.location.hash === "#public-auth-panel-login") {
-        setAuthMode("login");
-        setMessage(null);
+        setMode("login");
+      }
+    }
+
+    function handleModeChange(event: Event) {
+      const nextMode = (event as CustomEvent<{ mode?: AuthMode }>).detail?.mode;
+
+      if (nextMode === "login" || nextMode === "signup") {
+        setMode(nextMode);
       }
     }
 
     updateModeFromHash();
     window.addEventListener("hashchange", updateModeFromHash);
+    window.addEventListener("public-auth-mode-change", handleModeChange);
 
     return () => {
       window.removeEventListener("hashchange", updateModeFromHash);
+      window.removeEventListener("public-auth-mode-change", handleModeChange);
     };
   }, [syncWithHash]);
 

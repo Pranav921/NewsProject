@@ -15,6 +15,7 @@ export default function TermsPage() {
       badge="Terms"
       title="Terms of use"
       description="These launch-stage terms explain how Kicker News should be used and what users can expect from the product."
+      footerGapClassName="gap-[150px]"
     >
       <p>
         Kicker News is a dashboard and newsletter product that organizes links and

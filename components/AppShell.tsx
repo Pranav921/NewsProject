@@ -15,11 +15,6 @@ type AppShellProps = {
   viewerMode: "authenticated" | "public";
 };
 
-const SHELL_TABS: Array<{ label: string; value: ShellTab }> = [
-  { label: "Feed", value: "feed" },
-  { label: "Saved", value: "saved" },
-];
-
 export function AppShell({
   activeTab,
   onRefresh,
@@ -30,6 +25,8 @@ export function AppShell({
   userEmail = null,
   viewerMode,
 }: AppShellProps) {
+  void activeTab;
+  void onTabChange;
   const updateLabel =
     pendingUpdateCount === 1
       ? "1 new update"
@@ -65,30 +62,6 @@ export function AppShell({
               </span>
             </div>
           </div>
-
-          <nav aria-label="Primary" className="hidden min-w-0 flex-1 justify-start md:flex">
-            <div className="flex items-center gap-2 md:ml-2">
-              {SHELL_TABS.map((tab) => {
-                const isActive = activeTab === tab.value;
-
-                return (
-                  <button
-                    key={tab.value}
-                    className={`inline-flex items-center justify-center rounded-[6px] px-3 py-1.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-                      isActive
-                        ? "font-semibold text-[var(--foreground)]"
-                        : "font-normal text-[var(--text-sub)] hover:text-[var(--foreground)]"
-                    }`}
-                    type="button"
-                    onClick={() => onTabChange(tab.value)}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-
           <div className="flex shrink-0 items-center justify-end gap-2">
             {pendingUpdateCount > 0 ? (
               <button
@@ -116,38 +89,8 @@ export function AppShell({
         </div>
 
         <div className="md:hidden">
-          <nav
-            aria-label="Primary mobile"
-            className="mt-2 flex items-end justify-start gap-5 border-t border-[var(--border)] pt-2"
-          >
-            {SHELL_TABS.map((tab) => {
-              const isActive = activeTab === tab.value;
-
-              return (
-                <button
-                  key={`${tab.value}-mobile`}
-                  className={`relative inline-flex min-h-9 shrink-0 items-center justify-center pb-2 text-[15px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-                    isActive
-                      ? "font-semibold text-[var(--foreground)]"
-                      : "font-normal text-[var(--text-sub)]"
-                  }`}
-                  type="button"
-                  onClick={() => onTabChange(tab.value)}
-                >
-                  {tab.label}
-                  {isActive ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[var(--accent)]"
-                    />
-                  ) : null}
-                </button>
-              );
-            })}
-          </nav>
-
           {pendingUpdateCount > 0 ? (
-            <div className="flex justify-start pt-2.5">
+            <div className="flex justify-start border-t border-[var(--border)] pt-2.5">
               <button
                 aria-label={`Refresh to show ${updateLabel}`}
                 className="badge-in inline-flex min-h-9 cursor-pointer items-center justify-center rounded-full bg-[var(--accent)] px-[18px] py-[7px] text-[13px] font-semibold text-white shadow-[0_2px_12px_rgba(255,107,0,0.27)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"

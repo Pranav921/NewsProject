@@ -34,6 +34,34 @@ export function AccountMenu({
   const sharedButtonTone =
     "text-[var(--foreground)] hover:bg-[var(--background)] hover:text-[var(--foreground)]";
 
+  function handlePublicAuthOpen(mode: "login" | "signup") {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextHash =
+      mode === "login"
+        ? "#public-auth-panel-login"
+        : "#public-auth-panel-signup";
+    const isAuthPanelOpen = Boolean(document.getElementById("public-auth-panel"));
+
+    if (!isAuthPanelOpen) {
+      window.location.hash = nextHash;
+      return;
+    }
+
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}${nextHash}`,
+    );
+    window.dispatchEvent(
+      new CustomEvent("public-auth-mode-change", {
+        detail: { mode },
+      }),
+    );
+  }
+
   return (
     <div className={`${containerClasses} ${className ?? ""}`}>
       <RefreshButton
@@ -51,19 +79,21 @@ export function AccountMenu({
 
       {isPublicViewer ? (
         <>
-          <a
+          <button
             className={`inline-flex items-center justify-center border border-[var(--border)] bg-white font-sans font-medium tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${sharedButtonTone} ${buttonClasses}`}
-            href="#public-auth-panel-login"
+            type="button"
+            onClick={() => handlePublicAuthOpen("login")}
           >
             {isMobileLayout ? "Sign in" : "Log in"}
-          </a>
+          </button>
           {isMobileLayout ? null : (
-            <a
+            <button
               className={`inline-flex items-center justify-center border border-[var(--border)] bg-white font-sans font-medium tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${sharedButtonTone} ${buttonClasses}`}
-              href="#public-auth-panel-signup"
+              type="button"
+              onClick={() => handlePublicAuthOpen("signup")}
             >
               Create account
-            </a>
+            </button>
           )}
         </>
       ) : (

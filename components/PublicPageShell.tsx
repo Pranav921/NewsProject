@@ -6,6 +6,7 @@ type PublicPageShellProps = {
   badge: string;
   children: ReactNode;
   description: string;
+  footerGapClassName?: string;
   title: string;
 };
 
@@ -13,10 +14,15 @@ export function PublicPageShell({
   badge,
   children,
   description,
+  footerGapClassName,
   title,
 }: PublicPageShellProps) {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-1 flex-col gap-4 bg-[var(--background)] px-4 py-6 sm:px-6 lg:px-8">
+    <main
+      className={`mx-auto flex min-h-screen w-full max-w-6xl flex-1 flex-col bg-[var(--background)] px-4 py-6 sm:px-6 lg:px-8 ${
+        footerGapClassName ?? "gap-[104px]"
+      }`}
+    >
       <section className="editorial-page-card rounded-[1rem] p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="editorial-section-label inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background)] px-3 py-1.5">

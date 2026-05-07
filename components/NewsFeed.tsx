@@ -374,7 +374,7 @@ export function NewsFeed({
         : "Create a free account to save alert keywords and track matching stories.";
 
     return (
-      <div className="rounded-[1.45rem] border border-[var(--border)] bg-white p-8 text-center shadow-[0_8px_24px_rgba(26,24,20,0.04)]">
+      <div className="rounded-[1.45rem] border border-[var(--border)] bg-white px-8 py-[157px] text-center shadow-[0_8px_24px_rgba(26,24,20,0.04)]">
         <p className="mono-meta text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
           {feature === "saved" ? "Saved" : "Alerts"}
         </p>
