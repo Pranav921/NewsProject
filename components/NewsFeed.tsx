@@ -917,7 +917,7 @@ export function NewsFeed({
               </span>
               <input
                 id="article-search"
-                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 pl-8 text-sm text-[var(--foreground)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 pl-8 text-sm text-[var(--foreground)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
                 type="search"
                 placeholder="Search headlines, sources..."
                 value={searchQuery}
@@ -933,7 +933,7 @@ export function NewsFeed({
               </label>
               <select
                 id="coverage-filter"
-                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
                 value={coverageFilter}
                 onChange={(event) =>
                   setCoverageFilter(event.target.value as CoverageFilter)
@@ -953,7 +953,7 @@ export function NewsFeed({
               </label>
               <select
                 id="source-filter"
-                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
                 value={activeSource}
                 onChange={(event) => {
                   setSelectedSource(event.target.value);
@@ -976,7 +976,7 @@ export function NewsFeed({
               </label>
               <select
                 id="time-filter"
-                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
                 value={timeFilter}
                 onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
               >

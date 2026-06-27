@@ -87,7 +87,7 @@ export function NewsList({
   ));
   const desktopGridClassName =
     viewMode === "compact"
-      ? "grid gap-[10px] md:grid-cols-2 xl:grid-cols-4"
+      ? "flex flex-col gap-[10px]"
       : "grid gap-[10px] md:grid-cols-2 xl:grid-cols-3";
 
   return (

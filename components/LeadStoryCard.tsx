@@ -73,6 +73,7 @@ export function LeadStoryCard({
       ? article.imageUrl
       : null;
   const shouldShowAlertAction = typeof onAlertAction === "function";
+  const isSignInToSaveCta = !isSaved && saveButtonLabel.toLowerCase().includes("sign in");
 
   return (
     <article className="fade-up relative isolate overflow-hidden rounded-[12px] border border-[#241614] bg-[#130a08] shadow-[0_22px_52px_rgba(19,10,8,0.24)]">
@@ -153,7 +154,9 @@ export function LeadStoryCard({
               className={`inline-flex min-h-10 items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)] ${
                 isSaved
                   ? "border-white/20 bg-white/12 text-[var(--hero-headline)] hover:bg-white/16"
-                  : "border-white/14 bg-white/8 text-[var(--hero-headline)] hover:bg-white/12"
+                  : isSignInToSaveCta
+                    ? "border-white/18 bg-white/10 text-[var(--hero-headline)] hover:border-white/28 hover:bg-white/16 hover:text-white"
+                    : "border-white/14 bg-white/8 text-[var(--hero-headline)] hover:bg-white/12"
               }`}
               type="button"
               onClick={() => onToggleSaved?.(article)}

@@ -64,7 +64,7 @@ export function AppShell({
               </div>
             </div>
             <span className="hidden text-sm font-medium text-[var(--text-muted)] md:inline-block">
-              Top headlines from the world's most trusted newsrooms. One feed.
+              Top headlines from the world&rsquo;s most trusted newsrooms. One feed.
             </span>
           </div>
           <div className="flex shrink-0 items-center justify-end gap-2">
