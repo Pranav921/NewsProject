@@ -23,7 +23,7 @@ type NewsCardProps = {
 };
 
 function formatMobileRailDateParts(publishedAt: string | null | undefined) {
-  const compactValue = formatPublishedCompact(publishedAt);
+  const compactValue = formatPublishedCompact(publishedAt ?? null);
   const [datePart, ...timeParts] = compactValue.split(" ");
 
   return {
