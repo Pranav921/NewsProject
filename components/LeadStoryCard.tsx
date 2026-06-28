@@ -1,5 +1,6 @@
 "use client";
 
+import { ShareArticleButton } from "@/components/ShareArticleButton";
 import { trackEvent } from "@/lib/analytics";
 import {
   formatPublishedCompact,
@@ -67,17 +68,19 @@ export function LeadStoryCard({
   const isBreaking = isBreakingStory(article);
   const isImportantAlert = alertImportance === "important";
   const isNormalAlert = alertImportance === "normal";
-  const metadataTone = isBreaking || isImportantAlert ? "text-white/56" : "text-white/52";
+  const metadataTone =
+    isBreaking || isImportantAlert ? "text-white/56" : "text-white/52";
   const leadImageUrl =
     typeof article.imageUrl === "string" && article.imageUrl.length > 0
       ? article.imageUrl
       : null;
   const shouldShowAlertAction = typeof onAlertAction === "function";
-  const isSignInToSaveCta = !isSaved && saveButtonLabel.toLowerCase().includes("sign in");
+  const isSignInToSaveCta =
+    !isSaved && saveButtonLabel.toLowerCase().includes("sign in");
 
   return (
     <article className="fade-up relative isolate overflow-hidden rounded-[12px] border border-[#241614] bg-[#130a08] shadow-[0_22px_52px_rgba(19,10,8,0.24)]">
-      <div className="h-[2px] w-full bg-[linear-gradient(90deg,#c8200e_0%,#FF6B00_58%,transparent_100%)] lg:h-[3px]" />
+      <div className="h-[2px] w-full bg-[linear-gradient(90deg,#c8200e_0%,var(--accent)_58%,transparent_100%)] lg:h-[3px]" />
 
       <div className="grid gap-4 px-4 pb-[14px] pt-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:px-8 lg:py-7">
         <div className="relative z-10 flex min-w-0 flex-col">
@@ -111,8 +114,12 @@ export function LeadStoryCard({
               className="ml-auto text-right text-white/54 lg:ml-0 lg:text-white/48"
               dateTime={article.publishedAt ?? undefined}
             >
-              <span className="lg:hidden">{formatPublishedCompact(article.publishedAt)}</span>
-              <span className="hidden lg:inline">{formatPublishedDate(article.publishedAt)}</span>
+              <span className="lg:hidden">
+                {formatPublishedCompact(article.publishedAt)}
+              </span>
+              <span className="hidden lg:inline">
+                {formatPublishedDate(article.publishedAt)}
+              </span>
             </time>
           </div>
 
@@ -163,6 +170,7 @@ export function LeadStoryCard({
             >
               {isSaved ? "Saved" : saveButtonLabel}
             </button>
+            <ShareArticleButton appearance="dark" article={article} />
             <a
               aria-label={`Read original article: ${article.title}`}
               className="hidden min-h-10 items-center justify-center rounded-xl bg-white px-4.5 py-2 text-sm font-semibold text-[var(--navy)] transition-colors hover:bg-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)] lg:inline-flex"
@@ -177,7 +185,7 @@ export function LeadStoryCard({
                 })
               }
             >
-              Read article <span aria-hidden="true" className="ml-1">↗</span>
+              Read article <span aria-hidden="true" className="ml-1">{"\u2197"}</span>
             </a>
           </div>
         </div>
