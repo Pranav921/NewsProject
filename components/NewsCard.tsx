@@ -157,8 +157,10 @@ function ArticleActions({
       <ShareArticleButton
         appearance="light"
         article={article}
+        desktopPlacement={stacked ? "stacked" : "adjacent"}
         fullWidth={stacked && !mobile}
-        onOpenChange={mobile ? setIsShareOpen : undefined}
+        reserveOpenSpace={stacked && !mobile}
+        onOpenChange={mobile || stacked ? setIsShareOpen : undefined}
       />
       <a
         aria-label={`Read original article: ${article.title}`}
@@ -268,7 +270,7 @@ export function NewsCard({
 
       {isCompact ? (
         <div
-          className={`hidden md:block md:overflow-hidden md:rounded-[10px] md:border md:px-[16px] md:py-[14px] md:shadow-[0_8px_24px_rgba(26,24,20,0.04)] ${cardToneClasses}`}
+          className={`hidden md:block md:overflow-visible md:rounded-[10px] md:border md:px-[16px] md:py-[14px] md:shadow-[0_8px_24px_rgba(26,24,20,0.04)] ${cardToneClasses}`}
         >
           {isBreaking ? (
             <div className="absolute inset-x-0 top-0 h-[2px] bg-[linear-gradient(90deg,#c8200e_0%,transparent_100%)]" />
