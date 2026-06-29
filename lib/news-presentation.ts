@@ -30,11 +30,11 @@ export function getCoverageLabel(source: string): string {
     return "U.S. News";
   }
 
-  if (coverage === "international") {
+  if (coverage === "international" || coverage === "both") {
     return "World News";
   }
 
-  return "Global";
+  return "World News";
 }
 
 export function formatPublishedDate(publishedAt: string | null): string {

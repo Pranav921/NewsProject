@@ -298,7 +298,7 @@ export function ShareArticleButton({
 
   const trayClasses = isDark
     ? "absolute left-0 top-[calc(100%+8px)] z-30 rounded-[12px] border border-white/12 bg-[#241714] p-1.5 shadow-[0_18px_44px_rgba(0,0,0,0.32)]"
-    : "absolute bottom-[calc(100%+8px)] left-1/2 z-30 -translate-x-1/2 rounded-[12px] border border-[var(--border)] bg-white p-1.5 shadow-[0_14px_32px_rgba(26,24,20,0.10)] md:left-0 md:translate-x-0";
+    : "absolute bottom-[calc(100%+8px)] left-1/2 z-30 -translate-x-1/2 rounded-[12px] border border-[var(--border)] bg-white p-1.5 shadow-[0_14px_32px_rgba(26,24,20,0.10)] md:bottom-1/2 md:left-[calc(100%+8px)] md:translate-x-0 md:translate-y-1/2";
 
   return (
     <div className={`relative ${fullWidth ? "w-full" : ""}`} ref={containerRef}>
