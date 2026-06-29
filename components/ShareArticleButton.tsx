@@ -2,12 +2,13 @@
 
 import { trackEvent } from "@/lib/analytics";
 import type { NewsItem } from "@/lib/types";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type ShareArticleButtonProps = {
   article: NewsItem;
   appearance?: "dark" | "light";
   fullWidth?: boolean;
+  onOpenChange?: (isOpen: boolean) => void;
 };
 
 type ShareStatus = {
@@ -173,8 +174,10 @@ export function ShareArticleButton({
   article,
   appearance = "light",
   fullWidth = false,
+  onOpenChange,
 }: ShareArticleButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [shareStatus, setShareStatus] = useState<ShareStatus>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isDark = appearance === "dark";
@@ -185,12 +188,20 @@ export function ShareArticleButton({
   const canNativeShare =
     typeof navigator !== "undefined" && typeof navigator.share === "function";
 
-  const isMobileViewport = useMemo(() => {
+  useEffect(() => {
     if (typeof window === "undefined") {
-      return false;
+      return;
     }
 
-    return window.matchMedia("(max-width: 767px)").matches;
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const updateViewportMode = () => setIsMobileViewport(mediaQuery.matches);
+
+    updateViewportMode();
+    mediaQuery.addEventListener("change", updateViewportMode);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updateViewportMode);
+    };
   }, []);
 
   useEffect(() => {
@@ -218,6 +229,10 @@ export function ShareArticleButton({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    onOpenChange?.(isOpen);
+  }, [isOpen, onOpenChange]);
 
   useEffect(() => {
     if (!shareStatus) {
@@ -281,48 +296,9 @@ export function ShareArticleButton({
     ? `${fullWidth ? "w-full" : ""} inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/14 bg-white/8 px-3 py-2 text-[var(--hero-headline)] transition-colors hover:bg-white/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)]`
     : `${fullWidth ? "w-full" : ""} inline-flex min-h-8 min-w-8 items-center justify-center rounded-[6px] border border-[var(--border)] bg-white px-[10px] py-[4px] text-[var(--text-muted)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2`;
 
-  const desktopTrayClasses = isDark
+  const trayClasses = isDark
     ? "absolute left-0 top-[calc(100%+8px)] z-30 rounded-[12px] border border-white/12 bg-[#241714] p-1.5 shadow-[0_18px_44px_rgba(0,0,0,0.32)]"
-    : "absolute left-0 bottom-[calc(100%+8px)] z-30 rounded-[12px] border border-[var(--border)] bg-white p-1.5 shadow-[0_14px_32px_rgba(26,24,20,0.10)]";
-
-  const mobileItems = [
-    {
-      key: "messages",
-      label: "Messages",
-      tone: "messages" as const,
-      icon: <ShareMessagesIcon />,
-      onClick: () => openExternalShare(`sms:?&body=${encodedShareText}`, "messages"),
-    },
-    {
-      key: "whatsapp",
-      label: "WhatsApp",
-      tone: "whatsapp" as const,
-      icon: <ShareWhatsAppIcon />,
-      onClick: () => openExternalShare(`https://wa.me/?text=${encodedShareText}`, "whatsapp"),
-    },
-    ...(canNativeShare
-      ? [
-          {
-            key: "more",
-            label: "More",
-            tone: "more" as const,
-            icon: <ShareMoreIcon />,
-            onClick: () => {
-              void handleNativeShare();
-            },
-          },
-        ]
-      : []),
-    {
-      key: "copy",
-      label: "Copy link",
-      tone: "neutral" as const,
-      icon: <ShareLinkIcon />,
-      onClick: () => {
-        void handleCopyLink();
-      },
-    },
-  ];
+    : "absolute bottom-[calc(100%+8px)] left-1/2 z-30 -translate-x-1/2 rounded-[12px] border border-[var(--border)] bg-white p-1.5 shadow-[0_14px_32px_rgba(26,24,20,0.10)] md:left-0 md:translate-x-0";
 
   return (
     <div className={`relative ${fullWidth ? "w-full" : ""}`} ref={containerRef}>
@@ -357,93 +333,101 @@ export function ShareArticleButton({
       ) : null}
 
       {isOpen ? (
-        isMobileViewport ? (
-          <div className="fixed inset-0 z-40 flex items-end bg-[rgba(26,24,20,0.38)] md:hidden">
-            <div className="w-full rounded-t-[20px] border border-[var(--border)] bg-white px-4 pb-4 pt-3 shadow-[0_-18px_40px_rgba(26,24,20,0.18)]">
-              <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[var(--border)]" />
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <p className="mono-meta text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
-                    Share article
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-[var(--foreground)]">
-                    {article.title}
-                  </p>
-                </div>
-                <button
-                  aria-label="Close share options"
-                  className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)]"
-                  type="button"
-                  onClick={() => setIsOpen(false)}
+        <div
+          className={`${trayClasses} ${isMobileViewport ? "max-w-[176px]" : ""}`}
+          role="menu"
+        >
+          <div className="flex items-center gap-1.5">
+            {isMobileViewport ? (
+              <>
+                <ShareIconButton
+                  ariaLabel="Messages"
+                  isDark={false}
+                  tone="messages"
+                  onClick={() =>
+                    openExternalShare(`sms:?&body=${encodedShareText}`, "messages")
+                  }
                 >
-                  ×
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
-                {mobileItems.map((item) => (
-                  <div
-                    key={item.key}
-                    className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
+                  <ShareMessagesIcon />
+                </ShareIconButton>
+                <ShareIconButton
+                  ariaLabel="WhatsApp"
+                  isDark={false}
+                  tone="whatsapp"
+                  onClick={() =>
+                    openExternalShare(
+                      `https://wa.me/?text=${encodedShareText}`,
+                      "whatsapp",
+                    )
+                  }
+                >
+                  <ShareWhatsAppIcon />
+                </ShareIconButton>
+                {canNativeShare ? (
+                  <ShareIconButton
+                    ariaLabel="More sharing options"
+                    isDark={false}
+                    tone="more"
+                    onClick={() => {
+                      void handleNativeShare();
+                    }}
                   >
-                    <ShareIconButton
-                      ariaLabel={item.label}
-                      isDark={false}
-                      tone={item.tone}
-                      onClick={item.onClick}
-                    >
-                      {item.icon}
-                    </ShareIconButton>
-                    <span className="text-[10px] font-medium text-[var(--text-muted)]">
-                      {item.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+                    <ShareMoreIcon />
+                  </ShareIconButton>
+                ) : null}
+                <ShareIconButton
+                  ariaLabel="Copy article link"
+                  isDark={false}
+                  tone="neutral"
+                  onClick={() => {
+                    void handleCopyLink();
+                  }}
+                >
+                  <ShareLinkIcon />
+                </ShareIconButton>
+              </>
+            ) : (
+              <>
+                <ShareIconButton
+                  ariaLabel="Share to X"
+                  isDark={isDark}
+                  tone="x"
+                  onClick={() =>
+                    openExternalShare(
+                      `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
+                      "x",
+                    )
+                  }
+                >
+                  <ShareXIcon />
+                </ShareIconButton>
+                <ShareIconButton
+                  ariaLabel="Share to Facebook"
+                  isDark={isDark}
+                  tone="facebook"
+                  onClick={() =>
+                    openExternalShare(
+                      `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+                      "facebook",
+                    )
+                  }
+                >
+                  <ShareFacebookIcon />
+                </ShareIconButton>
+                <ShareIconButton
+                  ariaLabel="Copy article link"
+                  isDark={isDark}
+                  tone="neutral"
+                  onClick={() => {
+                    void handleCopyLink();
+                  }}
+                >
+                  <ShareLinkIcon />
+                </ShareIconButton>
+              </>
+            )}
           </div>
-        ) : (
-          <div className={desktopTrayClasses} role="menu">
-            <div className="flex items-center gap-1.5">
-              <ShareIconButton
-                ariaLabel="Share to X"
-                isDark={isDark}
-                tone="x"
-                onClick={() =>
-                  openExternalShare(
-                    `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
-                    "x",
-                  )
-                }
-              >
-                <ShareXIcon />
-              </ShareIconButton>
-              <ShareIconButton
-                ariaLabel="Share to Facebook"
-                isDark={isDark}
-                tone="facebook"
-                onClick={() =>
-                  openExternalShare(
-                    `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-                    "facebook",
-                  )
-                }
-              >
-                <ShareFacebookIcon />
-              </ShareIconButton>
-              <ShareIconButton
-                ariaLabel="Copy article link"
-                isDark={isDark}
-                tone="neutral"
-                onClick={() => {
-                  void handleCopyLink();
-                }}
-              >
-                <ShareLinkIcon />
-              </ShareIconButton>
-            </div>
-          </div>
-        )
+        </div>
       ) : null}
     </div>
   );

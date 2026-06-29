@@ -10,6 +10,7 @@ import {
 } from "@/lib/news-presentation";
 import type { SmartAlertImportance } from "@/lib/smart-alerts";
 import type { NewsItem } from "@/lib/types";
+import { useState } from "react";
 
 type NewsCardProps = {
   alertImportance?: SmartAlertImportance | null;
@@ -120,8 +121,11 @@ function ArticleActions({
   stacked?: boolean;
 }) {
   const shouldShowAlertAction = typeof onAlertAction === "function";
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const layoutClasses = mobile
-    ? "grid w-full grid-cols-[minmax(0,1fr)_36px_auto] items-center gap-2"
+    ? `grid w-full grid-cols-[minmax(0,1fr)_36px_auto] items-center gap-2 ${
+        isShareOpen ? "pt-[52px]" : ""
+      }`
     : stacked
       ? "flex w-full flex-col items-end gap-2"
       : "flex flex-wrap items-center gap-2";
@@ -154,6 +158,7 @@ function ArticleActions({
         appearance="light"
         article={article}
         fullWidth={stacked && !mobile}
+        onOpenChange={mobile ? setIsShareOpen : undefined}
       />
       <a
         aria-label={`Read original article: ${article.title}`}
