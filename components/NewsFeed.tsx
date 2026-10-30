@@ -8,6 +8,7 @@ import {
   parseAlertKeywords,
   suggestAlertKeywordForArticle,
 } from "@/lib/custom-alerts";
+import { NEWS_CATEGORIES, filterArticlesByCategory, getArticleCategory } from "@/lib/news-categories";
 import { filterArticlesByCoverage } from "@/lib/feeds";
 import {
   getNewArticleLinks,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/smart-alerts";
 import type {
   CoverageFilter,
+  NewsCategory,
   NewsItem,
   SavedArticle,
   UserPreferences,
@@ -113,6 +115,7 @@ export function NewsFeed({
   const normalizedInitialPreferences = normalizeUserPreferences(initialPreferences);
   const [supabase] = useState(() => createSupabaseBrowserClient());
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<NewsCategory | "all">("all");
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
   const [selectedSource, setSelectedSource] = useState(
     normalizedInitialPreferences.defaultSourceFilter,
@@ -158,8 +161,8 @@ export function NewsFeed({
   const effectiveFeedMode = isPublicViewer ? "all" : feedMode;
   const baseArticles = effectiveFeedMode === "saved" ? savedArticles : articles;
   const coverageFilteredArticles = useMemo(
-    () => filterArticlesByCoverage(baseArticles, coverageFilter),
-    [baseArticles, coverageFilter],
+    () => filterArticlesByCategory(filterArticlesByCoverage(baseArticles, coverageFilter), categoryFilter),
+    [baseArticles, coverageFilter, categoryFilter],
   );
   const sourceOptions = useMemo(
     () => [
@@ -333,6 +336,7 @@ export function NewsFeed({
   const hasActiveFilters =
     normalizedSearchQuery.length > 0 ||
     coverageFilter !== "all" ||
+    categoryFilter !== "all" ||
     activeSource !== "All Sources" ||
     timeFilter !== "all" ||
     showOnlyNew;
@@ -359,6 +363,7 @@ export function NewsFeed({
   function resetFilters() {
     setSearchQuery("");
     setCoverageFilter("all");
+    setCategoryFilter("all");
     setSelectedSource(DEFAULT_SOURCE_FILTER);
     setTimeFilter(DEFAULT_TIME_FILTER as TimeFilter);
     setShowOnlyNew(false);
@@ -800,6 +805,7 @@ export function NewsFeed({
     const { error } = await supabase.from("saved_articles").upsert(
       {
         article_link: article.link,
+        category: getArticleCategory(article),
         published_at: article.publishedAt,
         source: article.source,
         summary: article.summary,
@@ -900,7 +906,7 @@ export function NewsFeed({
     <div className="space-y-5">
       <section className="border-y border-[var(--border)] bg-white px-3 py-2.5 shadow-[0_8px_24px_rgba(26,24,20,0.03)] sm:px-4 sm:py-3.5 lg:-mx-7 lg:px-7 xl:-mx-7 xl:px-[28px] xl:py-[10px] 2xl:-mx-8 2xl:px-8">
         <div
-          className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:gap-[10px] xl:overflow-x-auto xl:overflow-y-hidden xl:whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex flex-col gap-2.5 xl:flex-row xl:flex-wrap xl:items-center xl:gap-[10px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="search"
           aria-label="News feed filters"
         >
@@ -926,7 +932,7 @@ export function NewsFeed({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 xl:flex xl:flex-1 xl:items-center xl:gap-3 xl:overflow-visible xl:pb-0">
+          <div className="grid grid-cols-2 gap-2 xl:flex xl:flex-wrap xl:flex-1 xl:items-center xl:gap-3 xl:overflow-visible xl:pb-0">
             <div className="w-full xl:w-[164px] xl:shrink-0">
               <label className="sr-only" htmlFor="coverage-filter">
                 Filter by coverage
@@ -947,6 +953,22 @@ export function NewsFeed({
               </select>
             </div>
 
+            <div className="w-full xl:w-[184px] xl:shrink-0">
+              <label className="sr-only" htmlFor="category-filter">
+                Filter by category
+              </label>
+              <select
+                id="category-filter"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+                value={categoryFilter}
+                onChange={(event) => setCategoryFilter(event.target.value as NewsCategory | "all")}
+              >
+                <option value="all">All Categories</option>
+                {NEWS_CATEGORIES.map((category) => (
+                  <option key={category.value} value={category.value}>{category.label}</option>
+                ))}
+              </select>
+            </div>
             <div className="w-full xl:w-[184px] xl:shrink-0">
               <label className="sr-only" htmlFor="source-filter">
                 Filter by source
@@ -970,7 +992,7 @@ export function NewsFeed({
               </select>
             </div>
 
-            <div className="col-span-2 w-full xl:col-auto xl:w-[160px] xl:shrink-0">
+            <div className="w-full xl:w-[160px] xl:shrink-0">
               <label className="sr-only" htmlFor="time-filter">
                 Filter by time
               </label>

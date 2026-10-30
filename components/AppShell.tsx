@@ -42,9 +42,9 @@ export function AppShell({
   }
 
   return (
-    <header className="relative left-1/2 right-1/2 w-screen -mx-[50vw] border-b border-[var(--border)] bg-white">
-      <div className="mx-auto w-full px-3 py-2 sm:px-6 md:flex md:h-[52px] md:items-center md:justify-between md:px-[40px] md:py-0">
-        <div className="flex items-center justify-between gap-3 md:min-w-0 md:flex-1">
+    <header className="relative -mx-3 border-b border-[var(--border)] bg-white sm:-mx-6 lg:-mx-7 2xl:-mx-8">
+      <div className="mx-auto w-full px-3 py-2 sm:px-6 md:flex md:min-h-[52px] md:items-center md:justify-between md:px-[40px]">
+        <div className="flex items-center justify-between gap-3 md:min-w-0 md:flex-1 md:flex-wrap md:gap-y-2">
           <div className="flex shrink-0 items-center gap-4 md:mr-8">
             <div className="flex items-center gap-3">
               <Image
@@ -63,7 +63,7 @@ export function AppShell({
                 </span>
               </div>
             </div>
-            <span className="hidden text-sm font-medium text-[var(--text-muted)] md:inline-block">
+            <span className="hidden text-sm font-medium text-[var(--text-muted)] 2xl:inline-block">
               Top headlines from the world&rsquo;s most trusted newsrooms. One feed.
             </span>
           </div>

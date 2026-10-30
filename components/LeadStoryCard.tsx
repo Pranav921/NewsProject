@@ -3,6 +3,7 @@
 import { ShareArticleButton } from "@/components/ShareArticleButton";
 import { SubscriptionRequiredBadge } from "@/components/SubscriptionRequiredBadge";
 import { trackEvent } from "@/lib/analytics";
+import { getArticleCategory, getCategoryLabel } from "@/lib/news-categories";
 import {
   formatPublishedCompact,
   formatPublishedDate,
@@ -111,6 +112,7 @@ export function LeadStoryCard({
               </span>
             ) : null}
             <span>{article.source}</span>
+            <span>{getCategoryLabel(getArticleCategory(article))}</span>
             {isNewYorkTimesSource(article.source) ? (
               <SubscriptionRequiredBadge tone="dark" />
             ) : null}

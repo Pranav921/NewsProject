@@ -1,7 +1,9 @@
-import type { NewsItem, SavedArticle } from "@/lib/types";
+import { getArticleCategory } from "./news-categories.ts";
+import type { NewsCategory, NewsItem, SavedArticle } from "./types.ts";
 
 export function toSavedArticle(article: NewsItem): SavedArticle {
   return {
+    category: getArticleCategory(article),
     title: article.title,
     link: article.link,
     source: article.source,
@@ -11,6 +13,7 @@ export function toSavedArticle(article: NewsItem): SavedArticle {
 }
 
 type SavedArticleRow = {
+  category?: NewsCategory | null;
   article_link: string;
   published_at: string | null;
   source: string | null;
@@ -24,6 +27,7 @@ export function fromSavedArticleRows(rows: SavedArticleRow[] | null): SavedArtic
   }
 
   return rows.map((row) => ({
+    category: getArticleCategory({ category: row.category ?? undefined }),
     title: row.title,
     link: row.article_link,
     source: row.source ?? "",

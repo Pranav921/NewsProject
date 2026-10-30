@@ -8,6 +8,7 @@ import type {
   NewsletterArticleMode,
   NewsletterEmailFormat,
   NewsletterFrequency,
+  NewsletterSortOrder,
 } from "@/lib/types";
 import { NextResponse } from "next/server";
 
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
     return await upsertNewsletterSubscription({
       actionLabel: "POST",
       articleMode: validatedSettings.articleMode,
+      sortOrder: validatedSettings.sortOrder,
       customFrequency: validatedSettings.customFrequency,
       emailFormat: validatedSettings.emailFormat,
       frequency: validatedSettings.frequency,
@@ -82,6 +84,7 @@ export async function PUT(request: Request) {
     return await upsertNewsletterSubscription({
       actionLabel: "PUT",
       articleMode: validatedSettings.articleMode,
+      sortOrder: validatedSettings.sortOrder,
       customFrequency: validatedSettings.customFrequency,
       emailFormat: validatedSettings.emailFormat,
       frequency: validatedSettings.frequency,
@@ -154,6 +157,7 @@ export async function DELETE() {
 async function upsertNewsletterSubscription({
   actionLabel,
   articleMode,
+  sortOrder,
   customFrequency,
   emailFormat,
   frequency,
@@ -164,6 +168,7 @@ async function upsertNewsletterSubscription({
 }: {
   actionLabel: "POST" | "PUT";
   articleMode: NewsletterArticleMode;
+  sortOrder: NewsletterSortOrder;
   customFrequency: string | null;
   emailFormat: NewsletterEmailFormat;
   frequency: NewsletterFrequency;
@@ -202,6 +207,7 @@ async function upsertNewsletterSubscription({
         .from("newsletter_subscriptions")
         .update({
           article_mode: articleMode,
+          sort_order: sortOrder,
           custom_frequency: customFrequency,
           email_format: emailFormat,
           frequency,
@@ -252,6 +258,7 @@ async function upsertNewsletterSubscription({
       .from("newsletter_subscriptions")
       .update({
         article_mode: articleMode,
+        sort_order: sortOrder,
         custom_frequency: customFrequency,
         email_format: emailFormat,
         frequency,
@@ -293,6 +300,7 @@ async function upsertNewsletterSubscription({
 
   const { error: insertError } = await supabase.from("newsletter_subscriptions").insert({
     article_mode: articleMode,
+    sort_order: sortOrder,
     custom_frequency: customFrequency,
     email: normalizedEmail,
     email_format: emailFormat,

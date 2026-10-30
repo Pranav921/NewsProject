@@ -1,3 +1,4 @@
+import { categoryFromPublisherLabels, getArticleCategory } from "./news-categories.ts";
 import { RSS_FEEDS } from "./feeds.ts";
 import { normalizeArticleLink } from "./news-updates.ts";
 import { cleanSummary, stripCdata, stripHtml } from "./rss-format.ts";
@@ -302,7 +303,18 @@ export function parseRssXml(xml: string, feed: FeedDefinition): NewsItem[] {
 
   return blocks
     // Turn raw XML blocks into easy-to-render article objects.
-    .map((block) => parseNewsItem(block, feed.name))
+    .map((block): NewsItem | null => {
+      const item = parseNewsItem(block, feed.name);
+      if (!item) return null;
+      const labels = [...block.matchAll(/<category\b[^>]*>([\s\S]*?)<\/category>/gi)].map((match) => stripHtml(stripCdata(match[1].trim())));
+      const atomLabels = [...block.matchAll(/<category\b[^>]*\bterm=["']([^"']+)["'][^>]*\/?>/gi)].map((match) => match[1]);
+      return {
+        ...item,
+        category: feed.category && feed.category !== "general"
+          ? feed.category
+          : categoryFromPublisherLabels([...labels, ...atomLabels]),
+      };
+    })
     .filter((item): item is NewsItem => item !== null);
 }
 
@@ -336,6 +348,7 @@ async function fetchFeed(
 
     const response = await fetch(feed.url, {
       ...fetchOptions,
+      signal: AbortSignal.timeout(12000),
     });
 
     if (!response.ok) {
@@ -352,18 +365,20 @@ async function fetchFeed(
 }
 
 function dedupeByLink(items: NewsItem[]): NewsItem[] {
-  const seenLinks = new Set<string>();
+  const seenLinks = new Map<string, NewsItem>();
 
   return items.filter((item) => {
     // Links make a practical unique key because the same story can appear
     // across multiple feeds.
     const normalizedLink = normalizeArticleLink(item.link);
 
-    if (seenLinks.has(normalizedLink)) {
+    const existing = seenLinks.get(normalizedLink);
+    if (existing) {
+      if (getArticleCategory(existing) === "general" && getArticleCategory(item) !== "general") existing.category = item.category;
       return false;
     }
 
-    seenLinks.add(normalizedLink);
+    seenLinks.set(normalizedLink, item);
     return true;
   });
 }

@@ -12,6 +12,7 @@ import type {
   NewsletterArticleMode,
   NewsletterEmailFormat,
   NewsletterFrequency,
+  NewsletterSortOrder,
   UserPreferences,
 } from "@/lib/types";
 import type { FormEvent } from "react";
@@ -22,6 +23,7 @@ type AccountSettingsProps = {
   initialAlertKeywords: string[];
   initialNewsletterClickedArticleCount: number;
   initialEmailSendLogs: EmailSendLog[];
+  initialNewsletterSortOrder?: NewsletterSortOrder | null;
   initialNewsletterArticleMode: NewsletterArticleMode | null;
   initialNewsletterCustomFrequency: string | null;
   initialNewsletterEmailFormat: NewsletterEmailFormat | null;
@@ -46,9 +48,9 @@ const TIME_FILTER_OPTIONS: Array<{ label: string; value: TimeFilter }> = [
 
 const DEFAULT_SOURCE_OPTIONS = [
   { label: "All Sources", value: "" },
-  ...RSS_FEEDS.map((feed) => ({
-    label: feed.name,
-    value: feed.name,
+  ...Array.from(new Set(RSS_FEEDS.map((feed) => feed.name))).map((name) => ({
+    label: name,
+    value: name,
   })),
 ];
 
@@ -95,6 +97,7 @@ export function AccountSettings({
   initialNewsletterClickedArticleCount,
   initialEmailSendLogs,
   initialNewsletterArticleMode,
+  initialNewsletterSortOrder,
   initialNewsletterCustomFrequency,
   initialNewsletterEmailFormat,
   initialNewsletterFrequency,
@@ -125,6 +128,7 @@ export function AccountSettings({
     useState<NewsletterEmailFormat>(
       initialNewsletterEmailFormat ?? "standard",
     );
+  const [newsletterSortOrder, setNewsletterSortOrder] = useState<NewsletterSortOrder>(initialNewsletterSortOrder ?? "default");
   const [newsletterArticleMode, setNewsletterArticleMode] =
     useState<NewsletterArticleMode>(
       initialNewsletterArticleMode ?? "all_missed",
@@ -252,6 +256,7 @@ export function AccountSettings({
         body: newsletterEnabled
           ? JSON.stringify({
               articleMode: newsletterArticleMode,
+              sortOrder: newsletterSortOrder,
               customFrequency:
                 newsletterFrequency === "custom"
                   ? newsletterCustomFrequency.trim()
@@ -536,6 +541,25 @@ export function AccountSettings({
           </select>
         </div>
 
+        <div className="mt-4 max-w-sm">
+          <label className="text-sm font-medium text-slate-700" htmlFor="newsletter-sort-order">
+            Newsletter order
+          </label>
+          <select
+            id="newsletter-sort-order"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 focus-visible:ring-2 focus-visible:ring-sky-500 disabled:opacity-60"
+            value={newsletterSortOrder}
+            onChange={(event) => setNewsletterSortOrder(event.target.value as NewsletterSortOrder)}
+            disabled={!newsletterEnabled}
+          >
+            <option value="default">Default article order</option>
+            <option value="category">Group by category</option>
+          </select>
+          <p className="mt-1.5 text-sm leading-6 text-slate-500">
+            Group stories into alphabetical category sections in both email formats.
+            Stories keep their usual order within each section.
+          </p>
+        </div>
         <div className="mt-4 max-w-2xl">
           <label
             className="text-sm font-medium text-slate-700"

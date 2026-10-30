@@ -1,4 +1,5 @@
 import type { NewsItem } from "./types.ts";
+import { getArticleCategory } from "./news-categories.ts";
 import { isNewYorkTimesSource } from "./news-presentation.ts";
 
 const STOP_WORDS = new Set([
@@ -122,7 +123,15 @@ export function deduplicateNewsletterArticles(articles: NewsItem[]): NewsItem[] 
 
   return [...bestByGroup.values()]
     .sort((left, right) => left.index - right.index)
-    .map(({ article }) => article);
+    .map(({ article, index }) => {
+      if (getArticleCategory(article) !== "general") return article;
+      const root = find(parents, index);
+      const topicCandidate = candidates.find((candidate) =>
+        find(parents, candidate.index) === root &&
+        getArticleCategory(candidate.article) !== "general",
+      );
+      return topicCandidate ? { ...article, category: topicCandidate.article.category } : article;
+    });
 }
 
 function areDuplicateStories(

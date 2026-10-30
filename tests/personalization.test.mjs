@@ -555,6 +555,7 @@ test("getValidatedNewsletterSettings defaults article_mode to all_missed", () =>
 
   assert.deepEqual(result, {
     articleMode: "all_missed",
+    sortOrder: "default",
     customFrequency: null,
     emailFormat: "standard",
     frequency: "daily",

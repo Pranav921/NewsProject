@@ -2,7 +2,7 @@ import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { PublicPageShell } from "@/components/PublicPageShell";
 import { buildPageMetadata } from "@/lib/seo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { NewsletterFrequency } from "@/lib/types";
+import type { NewsletterFrequency, NewsletterSortOrder } from "@/lib/types";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = buildPageMetadata({
@@ -21,7 +21,7 @@ export default async function NewsletterPage() {
   const { data: newsletterRow } = user
     ? await supabase
         .from("newsletter_subscriptions")
-        .select("custom_frequency, frequency, is_active")
+        .select("custom_frequency, frequency, sort_order, is_active")
         .eq("user_id", user.id)
         .maybeSingle()
     : { data: null };
@@ -58,6 +58,7 @@ export default async function NewsletterPage() {
       </p>
       <div className="mt-8">
         <NewsletterSignup
+          initialSortOrder={(newsletterRow?.sort_order as NewsletterSortOrder) ?? "default"}
           initialCustomFrequency={newsletterRow?.custom_frequency ?? null}
           initialEmail={user?.email ?? null}
           initialFrequency={

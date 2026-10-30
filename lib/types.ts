@@ -1,4 +1,5 @@
 export type FeedDefinition = {
+  category?: NewsCategory;
   coverage: "national" | "international" | "both";
   name: string;
   url: string;
@@ -15,6 +16,7 @@ export type SponsorConfig = {
 };
 
 export type NewsItem = {
+  category?: NewsCategory;
   title: string;
   link: string;
   source: string;
@@ -26,6 +28,8 @@ export type NewsItem = {
 export type SavedArticle = NewsItem;
 
 export type NewsletterArticleMode = "all_missed" | "personalized";
+export type NewsCategory = "general" | "technology" | "business" | "politics" | "science" | "health" | "environment" | "sports" | "entertainment" | "education";
+export type NewsletterSortOrder = "default" | "category";
 export type NewsletterEmailFormat = "standard" | "compact";
 export type NewsletterFrequency = "hourly" | "daily" | "weekly" | "custom";
 

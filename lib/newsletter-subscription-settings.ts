@@ -2,10 +2,12 @@ import type {
   NewsletterArticleMode,
   NewsletterEmailFormat,
   NewsletterFrequency,
+  NewsletterSortOrder,
 } from "./types.ts";
 
 export type NewsletterSubscriptionRequest = {
   articleMode?: string;
+  sortOrder?: string;
   customFrequency?: string;
   email?: string;
   emailFormat?: string;
@@ -20,6 +22,7 @@ export type ValidatedNewsletterSettings =
     }
   | {
       articleMode: NewsletterArticleMode;
+      sortOrder: NewsletterSortOrder;
       customFrequency: string | null;
       emailFormat: NewsletterEmailFormat;
       frequency: NewsletterFrequency;
@@ -44,6 +47,10 @@ const VALID_ARTICLE_MODES = new Set<NewsletterArticleMode>([
 export function getValidatedNewsletterSettings(
   body: NewsletterSubscriptionRequest,
 ): ValidatedNewsletterSettings {
+  const sortOrder = body.sortOrder ?? "default";
+  if (sortOrder !== "default" && sortOrder !== "category") {
+    return { errorMessage: "Newsletter order must be default or category.", status: 400 };
+  }
   const frequency =
     body.frequency?.trim().toLowerCase() ??
     body.preferredFrequency?.trim().toLowerCase() ??
@@ -82,6 +89,7 @@ export function getValidatedNewsletterSettings(
   if (frequency !== "custom") {
     return {
       articleMode: articleMode as NewsletterArticleMode,
+      sortOrder,
       customFrequency: null,
       emailFormat: emailFormat as NewsletterEmailFormat,
       frequency: frequency as NewsletterFrequency,
@@ -98,6 +106,7 @@ export function getValidatedNewsletterSettings(
 
   return {
     articleMode: articleMode as NewsletterArticleMode,
+    sortOrder,
     customFrequency: normalizedCustomFrequency,
     emailFormat: emailFormat as NewsletterEmailFormat,
     frequency: frequency as NewsletterFrequency,

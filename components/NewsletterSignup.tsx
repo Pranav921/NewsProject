@@ -1,11 +1,13 @@
 "use client";
 
 import { trackEvent } from "@/lib/analytics";
+import type { NewsletterSortOrder } from "@/lib/types";
 import { useState } from "react";
 
 type NewsletterSubscriptionStatus = "active" | "inactive" | "none";
 
 type NewsletterSignupProps = {
+  initialSortOrder?: NewsletterSortOrder;
   initialEmail?: string | null;
   initialFrequency?: FrequencyOption;
   initialCustomFrequency?: string | null;
@@ -25,12 +27,14 @@ const FREQUENCY_OPTIONS: Array<{ label: string; value: FrequencyOption }> = [
 
 export function NewsletterSignup({
   initialEmail = null,
+  initialSortOrder = "default",
   initialFrequency = "daily",
   initialCustomFrequency = null,
   initialSubscriptionStatus = "none",
   title = "Newsletter sign-up",
   description = "Get ready for future email updates by saving your preferred delivery frequency.",
 }: NewsletterSignupProps) {
+  const [sortOrder, setSortOrder] = useState<NewsletterSortOrder>(initialSortOrder);
   const [email, setEmail] = useState(initialEmail ?? "");
   const [preferredFrequency, setPreferredFrequency] =
     useState<FrequencyOption>(initialFrequency);
@@ -63,6 +67,7 @@ export function NewsletterSignup({
                     : null,
                 email: email.trim(),
                 preferredFrequency,
+                sortOrder,
               }),
             })
           : await fetch("/api/newsletter-subscriptions", {
@@ -204,6 +209,13 @@ export function NewsletterSignup({
             ))}
           </select>
 
+          <label className="block text-sm font-medium text-slate-700">
+            Newsletter order
+            <select className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm focus-visible:ring-2 focus-visible:ring-sky-500" value={sortOrder} onChange={(event) => setSortOrder(event.target.value as NewsletterSortOrder)}>
+              <option value="default">Default article order</option>
+              <option value="category">Group by category</option>
+            </select>
+          </label>
           {preferredFrequency === "custom" ? (
             <input
               className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"

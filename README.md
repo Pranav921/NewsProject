@@ -137,6 +137,56 @@ When editing feeds:
 - preserve any metadata used by filters
 - avoid parser changes unless the feed format truly requires it
 
+### Topics and newsletter ordering
+
+The catalog includes 30 feeds from 18 source names. New publishers include Ars
+Technica, TechCrunch, NASA, ScienceDaily, PBS NewsHour, and Deutsche Welle.
+Dedicated topic feeds expand BBC, Guardian, and NPR coverage. Publisher feed
+references: [BBC](https://support.bbc.co.uk/platform/feeds/NewsFeeds.htm),
+[Guardian](https://www.theguardian.com/help/feeds), and
+[NASA](https://www.nasa.gov/rss-feeds/).
+
+`lib/news-categories.ts` defines ten categories: business, education,
+entertainment/culture, environment, general news, health, politics, science/space,
+sports, and technology. Dedicated feeds supply the category; general feeds use
+recognized RSS/Atom topic metadata and fall back to general news. Categories are
+preserved when identical links appear in multiple feeds and when stories are saved.
+Older saved articles without topic metadata appear under General News.
+
+The category menu works alongside search, source, coverage, time, and saved-story
+filters. Account → Newsletter → Newsletter order lets subscribers choose
+**Group by category**. Category sections are alphabetical and preserve the existing
+recency or personalized ranking within each section. Both HTML layouts and plain
+text emails use the same order; existing subscribers keep their current order.
+
+Before deploying these changes, apply
+`supabase/migrations/20261030_add_newsletter_sort_order.sql` in Supabase. It adds
+`newsletter_subscriptions.sort_order` (default `default`, optional `category`) and
+the nullable `saved_articles.category` field. Deploy the migration before the app.
+
+Additional validation commands (Node 24):
+
+```bash
+# Verify added feeds over the network; --all also checks original feeds.
+node --experimental-strip-types scripts/validate-news-feeds.mjs
+node --experimental-strip-types scripts/validate-news-feeds.mjs --all
+
+# Real-component browser checks, using installed Chrome and a temporary local route.
+# Override CHROME_PATH when Chrome is installed elsewhere.
+node scripts/validate-news-ui.mjs
+node scripts/validate-news-ui.mjs --live-homepage
+```
+
+The browser check uses local ports 3100 and 9311, mocks newsletter saves, checks
+seven viewport widths from 320px to 1920px, saved-story filtering, and both header
+variants with pending updates. `--live-homepage` also checks the actual homepage
+with live news. It removes its temporary route and generated route types on exit. It does
+not sign in, write account data, or send email. Live feed availability varies:
+the full catalog check on October 30, 2026 found four pre-existing endpoints
+unavailable (CNN, USA Today, Reuters U.S., Reuters World); all 18 added feeds
+returned parseable articles. Feed failures remain isolated and requests time out
+after 12 seconds.
+
 ## Newsletter System Overview
 
 Newsletter delivery uses:

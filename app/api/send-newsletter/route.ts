@@ -55,7 +55,7 @@ export async function GET(request: Request) {
   const { data: subscriptions, error: subscriptionsError } = await supabase
     .from("newsletter_subscriptions")
     .select(
-      "id, user_id, email, frequency, custom_frequency, email_format, article_mode, is_active, last_sent_at, last_status, last_error, unsubscribe_token",
+      "id, user_id, email, frequency, custom_frequency, email_format, article_mode, sort_order, is_active, last_sent_at, last_status, last_error, unsubscribe_token",
     )
     .eq("is_active", true)
     .order("created_at", { ascending: true });
@@ -210,6 +210,7 @@ export async function GET(request: Request) {
         unsubscribeUrl,
         subscription.email_format === "compact" ? "compact" : "standard",
         trackingContext,
+        subscription.sort_order ?? "default",
       ),
       idempotencyKey: crypto.randomUUID(),
       headers: emailHeaders,
@@ -218,6 +219,7 @@ export async function GET(request: Request) {
         rankedArticles,
         unsubscribeUrl,
         subscription.email_format === "compact" ? "compact" : "standard",
+        subscription.sort_order ?? "default",
       ),
     });
 

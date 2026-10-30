@@ -67,6 +67,7 @@ export async function POST(request: Request) {
         .from("newsletter_subscriptions")
         .update({
           article_mode: validatedSettings.articleMode,
+          sort_order: validatedSettings.sortOrder,
           custom_frequency: validatedSettings.customFrequency,
           email_format: validatedSettings.emailFormat,
           frequency: validatedSettings.frequency,
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
       .from("newsletter_subscriptions")
       .insert({
         article_mode: validatedSettings.articleMode,
+        sort_order: validatedSettings.sortOrder,
         custom_frequency: validatedSettings.customFrequency,
         email: normalizedEmail,
         email_format: validatedSettings.emailFormat,

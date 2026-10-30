@@ -3,6 +3,7 @@ import type {
   NewsletterArticleMode,
   NewsletterEmailFormat,
   NewsletterFrequency,
+  NewsletterSortOrder,
   SponsorConfig,
 } from "./types.ts";
 import {
@@ -10,6 +11,8 @@ import {
   getNewsletterTopSponsor,
 } from "./sponsors.ts";
 import { isNewYorkTimesSource } from "./news-presentation.ts";
+
+import { getArticleCategory, getCategoryLabel, orderNewsletterArticles } from "./news-categories.ts";
 
 const NEWSLETTER_TIME_ZONE = "America/New_York";
 export const NEWSLETTER_ARTICLE_LIMIT = 20;
@@ -19,6 +22,7 @@ const NEWSLETTER_MAILING_ADDRESS = process.env.NEWSLETTER_MAILING_ADDRESS?.trim(
 
 export type NewsletterSubscriptionRow = {
   article_mode?: NewsletterArticleMode | null;
+  sort_order?: NewsletterSortOrder | null;
   custom_frequency: string | null;
   email: string;
   email_format?: NewsletterEmailFormat | null;
@@ -176,7 +180,9 @@ export function buildNewsletterEmailHtml(
   tracking:
     | { sendLogId: string; subscriptionId: number; email: string }
     | null = null,
+  sortOrder: NewsletterSortOrder = "default",
 ): string {
+  articles = orderNewsletterArticles(articles, sortOrder);
   const topSponsor = getNewsletterTopSponsor();
   const midSponsor = getNewsletterMidSponsor();
 
@@ -188,6 +194,7 @@ export function buildNewsletterEmailHtml(
       tracking,
       topSponsor,
       midSponsor,
+      sortOrder,
     );
   }
 
@@ -214,7 +221,7 @@ export function buildNewsletterEmailHtml(
         ? `<span style="display:inline-block;margin-left:8px;border:1px solid #cbd5e1;border-radius:9999px;padding:3px 8px;color:#475569;font-size:10px;font-weight:600;letter-spacing:normal;text-transform:none;">Subscription required</span>`
         : "";
 
-      const articleBlock = `
+      const articleBlock = `${buildCategoryHeadingHtml(articles, index, sortOrder)}
         <article style="padding:24px 0;border-top:1px solid #e2e8f0;">
           <p style="margin:0;color:#0369a1;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(article.source)}${subscriptionRequiredMarkup}</p>
           <h2 style="margin:10px 0 0;font-size:22px;line-height:1.3;color:#0f172a;">${escapeHtml(article.title)}</h2>
@@ -282,7 +289,9 @@ export function buildNewsletterEmailText(
   articles: NewsItem[],
   unsubscribeUrl: string,
   emailFormat: "standard" | "compact" = "standard",
+  sortOrder: NewsletterSortOrder = "default",
 ): string {
+  articles = orderNewsletterArticles(articles, sortOrder);
   const topSponsor = getNewsletterTopSponsor();
   const midSponsor = getNewsletterMidSponsor();
 
@@ -292,6 +301,7 @@ export function buildNewsletterEmailText(
       unsubscribeUrl,
       topSponsor,
       midSponsor,
+      sortOrder,
     );
   }
 
@@ -306,6 +316,7 @@ export function buildNewsletterEmailText(
     ...articles.flatMap((article, index) => {
       const publishedLabel = formatPublishedTime(article.publishedAt);
       const lines = [
+        categoryHeading(articles, index, sortOrder),
         `${article.title}`,
         `Source: ${article.source}${isNewYorkTimesSource(article.source) ? " (Subscription required)" : ""}`,
         publishedLabel ? `Published: ${publishedLabel}` : null,
@@ -339,6 +350,7 @@ function buildCompactNewsletterEmailHtml(
     | null,
   topSponsor: SponsorConfig | null,
   midSponsor: SponsorConfig | null,
+  sortOrder: NewsletterSortOrder,
 ): string {
   const midpointIndex =
     midSponsor && articles.length > 3
@@ -356,7 +368,7 @@ function buildCompactNewsletterEmailHtml(
         ? `<span style="display:inline-block;margin-left:8px;border:1px solid #cbd5e1;border-radius:9999px;padding:2px 7px;color:#475569;font-size:9px;font-weight:600;letter-spacing:normal;text-transform:none;">Subscription required</span>`
         : "";
 
-      const articleBlock = `
+      const articleBlock = `${buildCategoryHeadingHtml(articles, index, sortOrder)}
         <article style="padding:16px 0;border-top:1px solid #e2e8f0;">
           <p style="margin:0;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(article.source)}${subscriptionRequiredMarkup}</p>
           <p style="margin:8px 0 0;font-size:16px;line-height:1.4;color:#0f172a;font-weight:600;">
@@ -422,6 +434,7 @@ function buildCompactNewsletterEmailText(
   unsubscribeUrl: string,
   topSponsor: SponsorConfig | null,
   midSponsor: SponsorConfig | null,
+  sortOrder: NewsletterSortOrder,
 ): string {
   const midpointIndex =
     midSponsor && articles.length > 3
@@ -441,6 +454,7 @@ function buildCompactNewsletterEmailText(
         ? " - Subscription required"
         : "";
       const lines = [
+        categoryHeading(articles, index, sortOrder),
         `${article.title} (${article.source})${subscriptionLabel}`,
         article.link,
         "",
@@ -456,6 +470,17 @@ function buildCompactNewsletterEmailText(
     "Unsubscribe:",
     unsubscribeUrl,
   ].filter((line): line is string => Boolean(line)).join("\n");
+}
+
+function categoryHeading(articles: NewsItem[], index: number, sortOrder: NewsletterSortOrder): string {
+  const category = getArticleCategory(articles[index]);
+  return sortOrder === "category" && (index === 0 || getArticleCategory(articles[index - 1]) !== category)
+    ? getCategoryLabel(category) : "";
+}
+
+function buildCategoryHeadingHtml(articles: NewsItem[], index: number, sortOrder: NewsletterSortOrder): string {
+  const heading = categoryHeading(articles, index, sortOrder);
+  return heading ? `<h2 style="margin:24px 0 8px;color:#0369a1;font-size:18px;">${escapeHtml(heading)}</h2>` : "";
 }
 
 function buildSponsorBlockHtml(sponsor: SponsorConfig): string {

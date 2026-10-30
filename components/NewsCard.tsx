@@ -1,5 +1,7 @@
 "use client";
 
+import { getArticleCategory, getCategoryLabel } from "@/lib/news-categories";
+
 import { ShareArticleButton } from "@/components/ShareArticleButton";
 import { SubscriptionRequiredBadge } from "@/components/SubscriptionRequiredBadge";
 import { trackEvent } from "@/lib/analytics";
@@ -81,6 +83,7 @@ function ArticleMeta({
       >
         {article.source}
       </span>
+      <span className="mono-meta text-[9px] text-[var(--text-muted)]">{getCategoryLabel(getArticleCategory(article))}</span>
       {isNewYorkTimesSource(article.source) ? (
         <SubscriptionRequiredBadge />
       ) : null}

@@ -117,7 +117,7 @@ export default async function Home() {
     .maybeSingle();
   const { data: savedArticleRows } = await supabase
     .from("saved_articles")
-    .select("article_link, title, source, summary, published_at")
+    .select("article_link, title, source, summary, published_at, category")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
   const { data: alertKeywordRows } = await supabase
