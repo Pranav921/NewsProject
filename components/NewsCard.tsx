@@ -1,12 +1,14 @@
 "use client";
 
 import { ShareArticleButton } from "@/components/ShareArticleButton";
+import { SubscriptionRequiredBadge } from "@/components/SubscriptionRequiredBadge";
 import { trackEvent } from "@/lib/analytics";
 import {
   formatPublishedCompact,
   formatPublishedDate,
   getCoverageLabel,
   isBreakingStory,
+  isNewYorkTimesSource,
 } from "@/lib/news-presentation";
 import type { SmartAlertImportance } from "@/lib/smart-alerts";
 import type { NewsItem } from "@/lib/types";
@@ -79,6 +81,9 @@ function ArticleMeta({
       >
         {article.source}
       </span>
+      {isNewYorkTimesSource(article.source) ? (
+        <SubscriptionRequiredBadge />
+      ) : null}
       {mobile ? null : (
         <span aria-hidden="true" className="text-[10px] text-[var(--border)]">
           {"\u00b7"}

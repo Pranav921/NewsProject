@@ -1,12 +1,14 @@
 "use client";
 
 import { ShareArticleButton } from "@/components/ShareArticleButton";
+import { SubscriptionRequiredBadge } from "@/components/SubscriptionRequiredBadge";
 import { trackEvent } from "@/lib/analytics";
 import {
   formatPublishedCompact,
   formatPublishedDate,
   getCoverageLabel,
   isBreakingStory,
+  isNewYorkTimesSource,
 } from "@/lib/news-presentation";
 import type { SmartAlertImportance } from "@/lib/smart-alerts";
 import type { NewsItem } from "@/lib/types";
@@ -109,6 +111,9 @@ export function LeadStoryCard({
               </span>
             ) : null}
             <span>{article.source}</span>
+            {isNewYorkTimesSource(article.source) ? (
+              <SubscriptionRequiredBadge tone="dark" />
+            ) : null}
             <span>{getCoverageLabel(article.source)}</span>
             <time
               className="ml-auto text-right text-white/54 lg:ml-0 lg:text-white/48"

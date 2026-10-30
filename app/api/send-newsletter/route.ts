@@ -9,6 +9,7 @@ import {
   getRecentNewsletterArticles,
   type NewsletterSubscriptionRow,
 } from "@/lib/newsletter";
+import { deduplicateNewsletterArticles } from "@/lib/newsletter-deduplication";
 import {
   selectNewsletterArticlesForUser,
   type PersonalizationProfile,
@@ -84,9 +85,8 @@ export async function GET(request: Request) {
     filteredSubscriptions,
   );
 
-  const recentArticles = getRecentNewsletterArticles(
-    await getAllNewsItems({ fresh: true }),
-    now,
+  const recentArticles = deduplicateNewsletterArticles(
+    getRecentNewsletterArticles(await getAllNewsItems({ fresh: true }), now),
   );
 
   const summary: SendResultSummary = {

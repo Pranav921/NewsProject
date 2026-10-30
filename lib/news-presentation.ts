@@ -37,6 +37,17 @@ export function getCoverageLabel(source: string): string {
   return "World News";
 }
 
+export function isNewYorkTimesSource(source: string): boolean {
+  const normalizedSource = source.toLowerCase().replace(/[^a-z]/g, "");
+
+  return (
+    normalizedSource === "thenewyorktimes" ||
+    normalizedSource === "newyorktimes" ||
+    normalizedSource === "nytimes" ||
+    normalizedSource === "nyt"
+  );
+}
+
 export function formatPublishedDate(publishedAt: string | null): string {
   if (!publishedAt) {
     return "Date unavailable";

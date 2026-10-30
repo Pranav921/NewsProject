@@ -144,15 +144,20 @@ Newsletter delivery uses:
 - `newsletter_subscriptions` for subscription state
 - `app/api/send-newsletter/route.ts` for send orchestration
 - `lib/newsletter.ts` for subject lines, HTML/text rendering, unsubscribe URLs, and tracking URLs
+- `lib/newsletter-deduplication.ts` for cross-source story deduplication
 - Resend for delivery
 
 The send route is responsible for:
 
 - eligibility checks
+- merging matching recent stories across sources before per-user selection, preferring a non-paywalled version when available
 - ranking and personalization selection
 - dedupe against previously sent articles
 - unsubscribe handling
 - open and click tracking integration
+
+New York Times articles are labeled "Subscription required" in both newsletter
+email formats.
 
 Deliverability checklist:
 

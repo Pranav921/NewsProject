@@ -9,6 +9,7 @@ import {
   getNewsletterMidSponsor,
   getNewsletterTopSponsor,
 } from "./sponsors.ts";
+import { isNewYorkTimesSource } from "./news-presentation.ts";
 
 const NEWSLETTER_TIME_ZONE = "America/New_York";
 export const NEWSLETTER_ARTICLE_LIMIT = 20;
@@ -209,10 +210,13 @@ export function buildNewsletterEmailHtml(
         article.title,
         article.source,
       );
+      const subscriptionRequiredMarkup = isNewYorkTimesSource(article.source)
+        ? `<span style="display:inline-block;margin-left:8px;border:1px solid #cbd5e1;border-radius:9999px;padding:3px 8px;color:#475569;font-size:10px;font-weight:600;letter-spacing:normal;text-transform:none;">Subscription required</span>`
+        : "";
 
       const articleBlock = `
         <article style="padding:24px 0;border-top:1px solid #e2e8f0;">
-          <p style="margin:0;color:#0369a1;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(article.source)}</p>
+          <p style="margin:0;color:#0369a1;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(article.source)}${subscriptionRequiredMarkup}</p>
           <h2 style="margin:10px 0 0;font-size:22px;line-height:1.3;color:#0f172a;">${escapeHtml(article.title)}</h2>
           ${publishedMarkup}
           ${summary}
@@ -303,7 +307,7 @@ export function buildNewsletterEmailText(
       const publishedLabel = formatPublishedTime(article.publishedAt);
       const lines = [
         `${article.title}`,
-        `Source: ${article.source}`,
+        `Source: ${article.source}${isNewYorkTimesSource(article.source) ? " (Subscription required)" : ""}`,
         publishedLabel ? `Published: ${publishedLabel}` : null,
         article.summary ?? null,
         `Read more: ${article.link}`,
@@ -348,10 +352,13 @@ function buildCompactNewsletterEmailHtml(
         article.title,
         article.source,
       );
+      const subscriptionRequiredMarkup = isNewYorkTimesSource(article.source)
+        ? `<span style="display:inline-block;margin-left:8px;border:1px solid #cbd5e1;border-radius:9999px;padding:2px 7px;color:#475569;font-size:9px;font-weight:600;letter-spacing:normal;text-transform:none;">Subscription required</span>`
+        : "";
 
       const articleBlock = `
         <article style="padding:16px 0;border-top:1px solid #e2e8f0;">
-          <p style="margin:0;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(article.source)}</p>
+          <p style="margin:0;color:#0369a1;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">${escapeHtml(article.source)}${subscriptionRequiredMarkup}</p>
           <p style="margin:8px 0 0;font-size:16px;line-height:1.4;color:#0f172a;font-weight:600;">
             <a href="${escapeAttribute(trackedLink)}" style="color:#0f172a;text-decoration:none;">${escapeHtml(article.title)}</a>
           </p>
@@ -430,7 +437,14 @@ function buildCompactNewsletterEmailText(
     "Latest headlines (list)",
     "",
     ...articles.flatMap((article, index) => {
-      const lines = [`${article.title} (${article.source})`, article.link, ""];
+      const subscriptionLabel = isNewYorkTimesSource(article.source)
+        ? " - Subscription required"
+        : "";
+      const lines = [
+        `${article.title} (${article.source})${subscriptionLabel}`,
+        article.link,
+        "",
+      ];
 
       if (midSponsor && index === midpointIndex - 1) {
         return [...lines, ...buildSponsorBlockText(midSponsor), ""];
