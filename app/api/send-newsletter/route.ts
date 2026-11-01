@@ -52,13 +52,19 @@ export async function GET(request: Request) {
 
   const supabase = createSupabaseAdminClient();
   const now = new Date();
-  const { data: subscriptions, error: subscriptionsError } = await supabase
+  const requestedEmail = new URL(request.url).searchParams.get("email")?.trim().toLowerCase();
+  let subscriptionsQuery = supabase
     .from("newsletter_subscriptions")
-    .select(
-      "id, user_id, email, frequency, custom_frequency, email_format, article_mode, sort_order, is_active, last_sent_at, last_status, last_error, unsubscribe_token",
-    )
+    // Optional preferences may not exist until their migrations are installed.
+    // Read available columns and use the defaults below rather than aborting
+    // delivery for every subscriber when a new preference column is missing.
+    .select("*")
     .eq("is_active", true)
     .order("created_at", { ascending: true });
+  if (requestedEmail) {
+    subscriptionsQuery = subscriptionsQuery.eq("email", requestedEmail);
+  }
+  const { data: subscriptions, error: subscriptionsError } = await subscriptionsQuery;
 
   if (subscriptionsError) {
     logApiError("[newsletter][send][subscriptions]", subscriptionsError);

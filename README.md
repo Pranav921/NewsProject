@@ -206,6 +206,13 @@ The send route is responsible for:
 - unsubscribe handling
 - open and click tracking integration
 
+The sender reads available subscription columns and defaults missing optional
+preferences, so a pending category migration cannot stop scheduled email delivery.
+The category settings migration is still required to save category preferences.
+For a targeted delivery check, `/api/send-newsletter?email=<subscriber-email>`
+uses the same cron authorization and only considers that active subscription.
+Normal frequency checks and previously sent article exclusions still apply.
+
 New York Times articles are labeled "Subscription required" in both newsletter
 email formats.
 
