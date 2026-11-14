@@ -1,9 +1,11 @@
+"use client";
+
 import { LeadStoryCard } from "@/components/LeadStoryCard";
 import { NewsCard } from "@/components/NewsCard";
 import { getLeadArticle, isBreakingStory } from "@/lib/news-presentation";
 import type { SmartAlertImportance } from "@/lib/smart-alerts";
 import type { NewsItem } from "@/lib/types";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 type NewsListProps = {
   alertImportanceByLink?: Record<string, SmartAlertImportance>;
@@ -32,17 +34,22 @@ export function NewsList({
   saveButtonLabel = "Save article",
   viewMode = "standard",
 }: NewsListProps) {
+  // All filters/counts still operate on the complete feed. Bound mounted cards
+  // instead of hydrating hundreds of hidden mobile/desktop action components.
+  const [page, setPage] = useState({ articles, limit: 30 });
+  const visibleLimit = page.articles === articles ? page.limit : 30;
   const newArticleLinkSet = new Set(newArticleLinks);
   const savedArticleLinkSet = new Set(savedArticleLinks);
   const leadArticle = getLeadArticle(articles);
   const shouldShowMobileHero = Boolean(leadArticle && isBreakingStory(leadArticle));
+  const visibleArticles = (leadArticle ? [leadArticle, ...articles.filter((article) => article.link !== leadArticle.link)] : articles).slice(0, visibleLimit);
   const desktopArticles = leadArticle
-    ? articles.filter((article) => article.link !== leadArticle.link)
-    : articles;
+    ? visibleArticles.filter((article) => article.link !== leadArticle.link)
+    : visibleArticles;
   const mobileArticles =
     shouldShowMobileHero && leadArticle
-      ? articles.filter((article) => article.link !== leadArticle.link)
-      : articles;
+      ? visibleArticles.filter((article) => article.link !== leadArticle.link)
+      : visibleArticles;
 
   if (articles.length === 0) {
     return (
@@ -124,6 +131,15 @@ export function NewsList({
           {cards}
         </div>
       </div>
+      {visibleLimit < articles.length ? (
+        <div className="flex flex-wrap items-center justify-center gap-3 py-3">
+          <p className="text-sm text-text-sub">Showing {visibleArticles.length} of {articles.length} stories</p>
+          <button type="button" onClick={() => setPage({ articles, limit: visibleLimit + 30 })}
+            className="min-h-11 rounded-xl border border-border-strong bg-surface px-5 py-2 text-sm font-semibold text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+            Show more stories
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

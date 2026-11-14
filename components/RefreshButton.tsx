@@ -23,6 +23,7 @@ export function RefreshButton({
 }: RefreshButtonProps) {
   const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   async function handleRefresh() {
     // Save the full list of links before refreshing so the next render can
@@ -31,6 +32,7 @@ export function RefreshButton({
     sessionStorage.removeItem(HANDLED_NEW_ARTICLE_LINKS_KEY);
     sessionStorage.removeItem(PENDING_NEW_ARTICLE_LINKS_KEY);
     setIsRefreshing(true);
+    setRefreshError(null);
 
     try {
       if (onRefresh) {
@@ -41,13 +43,16 @@ export function RefreshButton({
         router.refresh();
       }
     } catch {
-      router.refresh();
+      // A failed API refresh must keep the current stories, not replace them
+      // with a second server request that may return an empty feed too.
+      setRefreshError("Unable to refresh headlines. Keeping the current stories; please try again.");
     } finally {
       setIsRefreshing(false);
     }
   }
 
   return (
+    <>
     <button
       aria-label="Refresh headlines"
       className={`inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 font-sans text-sm font-medium tracking-normal text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--text-sub)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
@@ -57,5 +62,7 @@ export function RefreshButton({
     >
       {isRefreshing ? "Refreshing..." : label}
     </button>
+    {refreshError && <span role="alert" className="text-xs text-amber-800">{refreshError}</span>}
+    </>
   );
 }

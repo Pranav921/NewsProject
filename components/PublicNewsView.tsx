@@ -19,15 +19,20 @@ export function PublicNewsView({
   feedErrorMessage = null,
 }: PublicNewsViewProps) {
   const [currentArticles, setCurrentArticles] = useState(articles);
+  const [currentFeedError, setCurrentFeedError] = useState(feedErrorMessage);
   const [activeShellTab, setActiveShellTab] = useState<ShellTab>("feed");
   const [isAuthPanelVisible, setIsAuthPanelVisible] = useState(false);
   const [pendingUpdateCount, setPendingUpdateCount] = useState(0);
   const [pendingUpdateLinks, setPendingUpdateLinks] = useState<string[]>([]);
   const articleLinks = currentArticles.map((article) => article.link);
 
-  useEffect(() => {
+  // Reset local refresh results only when a new server snapshot arrives.
+  const [serverSnapshot, setServerSnapshot] = useState({ articles, feedErrorMessage });
+  if (serverSnapshot.articles !== articles || serverSnapshot.feedErrorMessage !== feedErrorMessage) {
+    setServerSnapshot({ articles, feedErrorMessage });
     setCurrentArticles(articles);
-  }, [articles]);
+    setCurrentFeedError(feedErrorMessage);
+  }
 
   useEffect(() => {
     function syncAuthPanelVisibilityFromHash() {
@@ -48,7 +53,7 @@ export function PublicNewsView({
   }, []);
 
   async function refreshArticles() {
-    const latestArticles = await fetchLatestNews("refresh");
+    const latestArticles = await fetchLatestNews("refresh", { onWarning: setCurrentFeedError });
     setCurrentArticles(latestArticles);
   }
 
@@ -136,7 +141,7 @@ export function PublicNewsView({
         articles={currentArticles}
         authCtaHref="#public-auth-panel-login"
         authSignupHref="#public-auth-panel-signup"
-        feedErrorMessage={feedErrorMessage}
+        feedErrorMessage={currentFeedError}
         onShellTabChange={setActiveShellTab}
         viewerMode="public"
       />

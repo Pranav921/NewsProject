@@ -7,11 +7,30 @@ it stands (Next.js 16.2.0 App Router, React 19.2.4, Supabase, Resend, Vercel).
 For the short version, see [README.md](README.md). For contributor rules, see
 [AGENTS.md](AGENTS.md).
 
+Last reviewed: **November 13, 2026**, against repository HEAD `0d6a4d6` (November 1,
+2026), plus the local AI Briefing implementation described in §21. Production
+migration state and live publisher availability have not been verified. The AI
+feature remains disabled by default. The user reports successful approved local
+Claude generation; production is not enabled. See the final pre-deployment review
+for the latest evidence and rollout blockers.
+
+Recent changes reflected in this guide:
+
+- **October 30 — newsletter deduplication and subscription labels:** similar
+  stories are merged across publishers before newsletter selection, and New York
+  Times stories display "Subscription required" on cards and in emails.
+- **October 30 — sources and categories:** the catalog grew to 30 feeds from 18
+  source names, with ten categories, category filtering, saved-story topics, and
+  optional newsletter grouping. A second SQL migration supports these settings.
+- **November 1 — newsletter delivery compatibility:** the sender tolerates missing
+  optional subscription columns, supports targeting one subscriber with `?email=`,
+  and has route-level regression tests. CI now runs Node 24.
+
 ---
 
 ## 1. What Kicker News Is
 
-Kicker News aggregates trusted RSS/Atom feeds from twelve major newsrooms into one
+Kicker News aggregates 30 configured RSS/Atom feeds from 18 source names into one
 deduplicated, newest-first feed, and layers personal features on top for signed-in
 users: saved articles, keyword alerts, a configurable email newsletter, and
 per-user email engagement analytics.
@@ -55,7 +74,7 @@ else intact. Never introduce a second notion of article identity.
 
 Note: **there is no `middleware.ts`.** Next.js 16 renamed it, and this repo uses
 [proxy.ts](proxy.ts) at the root, exporting `proxy(request)` plus a `config.matcher`.
-It refreshes the Supabase session cookie on every non-asset request.
+It verifies/refreshes Supabase sessions on page requests carrying auth cookies. API handlers authenticate independently; anonymous pages and assets skip proxy auth work.
 
 ---
 
@@ -78,8 +97,10 @@ app/
 
 components/                    All UI. Server components unless marked "use client".
 lib/                           All logic. Pure/testable modules + Supabase clients.
-tests/                         57 Node tests across 9 files, no test framework deps.
-supabase/migrations/           SQL migrations (currently one: article_mode column)
+tests/                         Node tests across 21 files (pure functions + route fixtures)
+scripts/                       Feed/Chrome validation and guarded AI smoke test
+docs/                          AI operation, development provenance, follow-up tickets
+supabase/migrations/           Two migrations: article_mode; sort_order + saved category
 public/                        Logos, favicon, OG/Twitter images
 .github/workflows/ci.yml       lint → tsc → test → build on PR and push to main
 ```
@@ -92,6 +113,7 @@ Defined in [lib/types.ts](lib/types.ts):
 
 ```ts
 type NewsItem = {
+  category?: NewsCategory;
   title: string;
   link: string;          // canonical identity
   source: string;        // feed display name, e.g. "BBC News"
@@ -100,12 +122,15 @@ type NewsItem = {
   imageUrl?: string | null;
 };
 
-type FeedDefinition  = { coverage: "national" | "international" | "both"; name; url };
+type FeedDefinition  = { category?: NewsCategory; coverage: "national" | "international" | "both"; name; url };
 type CoverageFilter  = "all" | "national" | "international";
 type SavedArticle    = NewsItem;
 type UserPreferences = { defaultSourceFilter; defaultTimeFilter; defaultViewMode };
 
 type NewsletterArticleMode  = "all_missed" | "personalized";
+type NewsletterSortOrder    = "default" | "category";
+type NewsCategory = "general" | "technology" | "business" | "politics" | "science"
+  | "health" | "environment" | "sports" | "entertainment" | "education";
 type NewsletterEmailFormat  = "standard" | "compact";
 type NewsletterFrequency    = "hourly" | "daily" | "weekly" | "custom";
 type SponsorConfig          = { label; title; description; ctaText; ctaUrl };
@@ -118,28 +143,50 @@ type EmailSendLog           = { status: "failed"|"sent"|"skipped"; error; articl
 
 ### 5.1 Feed configuration — [lib/feeds.ts](lib/feeds.ts)
 
-Twelve feeds, each with a display `name`, `url`, and a `coverage` tag used by the
-U.S./World filter:
+Thirty feeds share 18 source names. Each has a display `name`, `url`, `coverage`,
+and optional `category`. The original twelve headline feeds remain, alongside
+18 added feeds: BBC technology/business/health/science; Guardian
+technology/business/environment/sports/culture/education; NPR politics/health;
+and Ars Technica, TechCrunch, NASA, ScienceDaily, PBS NewsHour, Deutsche Welle.
+Topic feeds retain their publisher's existing source name.
+
+Coverage lookup is **source-based**: only uncategorized or `general` feed entries
+populate the map. Topic-feed coverage does not override a publisher's headline
+coverage; topic-only sources fall back to `both`.
 
 | Source | Coverage |
 |---|---|
-| BBC News, The Guardian, Al Jazeera, Sky News, Reuters World | `international` |
+| BBC News, The Guardian, Al Jazeera, Sky News, Reuters World, Deutsche Welle | `international` |
 | CBS News, NBC News, USA Today, Reuters U.S. | `national` |
-| The New York Times, NPR, CNN | `both` |
+| The New York Times, NPR, CNN, PBS NewsHour | `both` |
+| Ars Technica, TechCrunch, NASA, ScienceDaily | `both` (fallback) |
 
 Two exported helpers:
 - `getFeedCoverage(source)` — map lookup, defaults to `"both"` for unknown sources.
 - `filterArticlesByCoverage(articles, filter)` — `"both"` articles always pass; a
   filtered view keeps only matching plus `both`.
 
-To add a source: append to `RSS_FEEDS` with a stable name and a correct coverage
-value. Nothing else needs to change — the source dropdown, coverage filter, and
-coverage labels are all derived.
+To add a feed: append to `RSS_FEEDS` with a stable name, correct coverage, and an
+optional category. Source options are derived from available articles. Account
+for the source-based coverage rule above when adding topic-only publishers.
+
+### Categories — [lib/news-categories.ts](lib/news-categories.ts)
+
+The ten display categories, in alphabetical section order, are Business,
+Education, Entertainment & Culture, Environment, General News, Health, Politics,
+Science & Space, Sports, and Technology.
+
+Dedicated non-general feeds supply the category. Otherwise the parser matches
+recognized publisher RSS `<category>` values and Atom `category term` attributes;
+it does not infer topics from headline keywords. Unrecognized or absent metadata
+falls back to `general`. `getArticleCategory()` supplies the same fallback for
+older saved rows. When identical links appear in multiple feeds, a specific
+category upgrades a previously general article without replacing its other fields.
 
 ### 5.2 Parsing — [lib/rss.ts](lib/rss.ts)
 
-A hand-rolled regex parser, deliberately dependency-free. **Do not modify it unless
-parser behavior genuinely needs to change** (this rule is in AGENTS.md).
+A hand-rolled regex parser with no external parser dependency. Change it only when
+parser behavior needs to change; this maintenance guidance also appears in README.md.
 
 How it works:
 
@@ -172,16 +219,20 @@ How it works:
      and raises `q`/`quality` to 90.
    - `normalizeImageUrl` accepts only `http(s)` and protocol-relative `//` URLs.
 6. Items missing a title or link are dropped.
+7. `parseRssXml()` assigns the feed/publisher category described above.
 
 ### 5.3 Fetch, dedupe, sort — `getAllNewsItems({ fresh })`
 
-- All twelve feeds fetched in parallel with `Promise.all`; a failed feed logs and
-  returns `[]` rather than breaking the page.
+- All 30 feeds load in parallel with a 12-second timeout per publisher.
+- A process-local, per-feed cache shares pending work and retains successful data
+  for 90 seconds in development and production. Explicit refresh bypasses that TTL.
+- Failed publishers retry after 15 seconds; last-good stories can be used for up
+  to 30 minutes, with unavailable/stale feed counts surfaced to callers.
+- Cold-start failures have no persistent fallback. An entirely unavailable news API
+  returns HTTP 503; clients keep their existing stories on failed/empty refreshes.
 - Custom `User-Agent: breaking-news-site/0.1`.
-- Caching: `cache: "no-store"` when `NODE_ENV === "development"` or `fresh: true`;
-  otherwise `next: { revalidate: 3600 }` (one hour).
-- `dedupeByLink` keeps the first occurrence per normalized link (the same story
-  reaching two feeds appears once).
+- `dedupeByLink` keeps the first occurrence per normalized link, upgrading a
+  general category if a later duplicate supplies a specific topic.
 - `sortNewestFirst` — descending `publishedAt`; missing dates sort as epoch 0.
 
 ### 5.4 Lead-image enhancement — [lib/article-images.ts](lib/article-images.ts)
@@ -199,18 +250,20 @@ The hero story deserves a better image than RSS usually provides, so
 
 All candidates are resolved against the article URL, so relative paths work. Any
 failure returns the articles unchanged. Called from both the homepage and
-`/api/news`.
+`/api/news` except update polls. Retrieval has a 1.5-second deadline, shares pending
+requests, caches successful images for six hours and failures for one minute.
 
-### 5.5 Three caching layers, and how to bust them
+### 5.5 Effective feed caching
 
 | Layer | Where | TTL | Bypass |
 |---|---|---|---|
-| `fetch` cache on each feed | `fetchFeed` | 3600s (prod only) | `fresh: true` |
-| `unstable_cache` on the merged list | [app/page.tsx](app/page.tsx#L30), [app/api/news/route.ts](app/api/news/route.ts#L11) | 90s | `?fresh=1`, `?refresh=1`, `?checkForUpdates=1` |
-| HTTP response cache | `/api/news` headers | `s-maxage=90, stale-while-revalidate=300` | same query params → `no-store` |
+| Shared per-feed process cache | `lib/feed-cache.ts`, `lib/rss.ts` | 90s; last-good fallback up to 30min; failure backoff 15s | `fresh: true`, sharing concurrent work and respecting failure backoff |
+| HTTP response cache | `/api/news` headers | `s-maxage=90, stale-while-revalidate=300` | explicit fresh/refresh or partial feed failure produces `no-store` |
 
-`shouldBypassNewsCache()` in [lib/news-api.ts](lib/news-api.ts) is the single place
-that decides, accepting `1` or `true` for any of the three params.
+`shouldBypassNewsCache()` accepts `1` or `true` for `fresh` and `refresh`.
+`checkForUpdates` uses the shared feed cache and skips lead-image enhancement.
+Homepage and news API no longer use separate merged-list cache keys. These caches
+are process-local: separate workers/cold starts do not share last-good RSS data.
 
 ---
 
@@ -235,14 +288,16 @@ Filters compose in a fixed order, each memoized:
 
 1. **Feed mode** — `all` articles or `saved` articles (authenticated only).
 2. **Coverage** — All News / U.S. News / World News.
-3. **Source** — dropdown built dynamically from the coverage-filtered set, so it
+3. **Category** — All Categories or one of the ten topics; works on live and saved
+   articles and participates in clearing filters and the active-filter indicator.
+4. **Source** — dropdown built dynamically from the coverage/category-filtered set, so it
    never offers a source with zero results. Falls back to "All Sources" if the
    selected source disappears.
-4. **Search** — case-insensitive substring across title + source + summary.
-5. **Time window** — All Time, Last Hour, 3h, 6h, 12h, 24h, Last Week. Articles
+5. **Search** — case-insensitive substring across title + source + summary.
+6. **Time window** — All Time, Last Hour, 3h, 6h, 12h, 24h, Last Week. Articles
    with no `publishedAt` are excluded from any windowed view.
-6. **Only new** — restricts to links detected as new this session (§6.4).
-7. **Alert match view** — currently inert; see §8.3.
+7. **Only new** — restricts to links detected as new this session (§6.4).
+8. **Alert match view** — currently inert; see §8.3.
 
 Also: **Grid vs List** view mode, a **story/source counter**, a "Filters active"
 badge, and context-aware empty states (feed error → Retry; no saved → Browse all;
@@ -250,6 +305,8 @@ filters too narrow → Clear filters).
 
 For signed-in users, `selectedSource`, `timeFilter`, and `viewMode` are upserted to
 `user_preferences` on every change and restored on the next server render.
+Coverage and category filters are local component state and are not persisted
+in `user_preferences`.
 
 ### 6.3 Breaking stories and the lead card
 
@@ -281,8 +338,9 @@ This is the subtlest part of the app. Three `sessionStorage` keys, defined in
 Flow:
 
 1. **[NewArticlesPrompt](components/NewArticlesPrompt.tsx)** polls `/api/news`
-   every **180 seconds**, and additionally whenever the tab becomes visible and
-   once on mount. It only polls while `document.visibilityState === "visible"`.
+   every **180 seconds** while visible, with a visibility-return check at most
+   once per 30 seconds and one request in flight. It does not refetch on mount.
+   Empty initial feeds are not treated as a baseline for announcing every story.
 2. It diffs via `getNewArticleLinks(previous, latest)` — normalizes both sides,
    returns each genuinely new canonical link exactly once — then subtracts any
    already-handled links.
@@ -301,8 +359,8 @@ other path: it saves the current links as the baseline, clears pending/handled, 
 then everything newer than that baseline is flagged New.
 
 Client refreshes go through `fetchLatestNews(reason)` in
-[lib/news-client.ts](lib/news-client.ts), which always adds `fresh=1`, a timestamp
-cache-buster, and either `refresh=1` or `checkForUpdates=1`.
+[lib/news-client.ts](lib/news-client.ts), which adds a timestamp and either `fresh=1&refresh=1` for manual refreshes or
+`checkForUpdates=1` for cache-aware polls. Requests have a 25-second deadline.
 
 ### 6.5 Card anatomy
 
@@ -312,6 +370,11 @@ grid card with clamped summary and bottom-anchored actions. Badges: **Breaking**
 (red, flashing dot), **New** (accent), **Important**/**Match** for alerts. Titles
 open in a new tab with `rel="noopener noreferrer"` and fire an
 `article_original_click` analytics event.
+
+Regular and lead cards also show category labels. New York Times articles display
+[SubscriptionRequiredBadge](components/SubscriptionRequiredBadge.tsx), using
+`isNewYorkTimesSource()` in [lib/news-presentation.ts](lib/news-presentation.ts).
+This is a publisher-specific label, not a general paywall detector.
 
 [LeadStoryCard](components/LeadStoryCard.tsx) is the dark hero (`--hero-dark`) with
 a gradient top rule, a 5:4 image panel that degrades to an "Article image
@@ -342,6 +405,9 @@ dark/light appearance, adjacent or stacked on desktop, and an optional
   [lib/saved-articles.ts](lib/saved-articles.ts) map between the camelCase
   `NewsItem` and the snake_case row shape. Note the stored row deliberately omits
   `imageUrl` — saved cards render without images.
+- Category is saved alongside the story and restored when it leaves the live feed.
+  Older rows without a category display under General News. This requires the
+  `saved_articles.category` migration (§13).
 - Initial saved list is fetched server-side in [app/page.tsx](app/page.tsx) and
   passed down, so the Saved tab is populated on first paint.
 
@@ -409,8 +475,9 @@ supporting code and tests are intact.
   errors for missing `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
   `SUPABASE_SERVICE_ROLE_KEY`.
 - **Session refresh** — [proxy.ts](proxy.ts) → `updateSupabaseSession()` calls
-  `supabase.auth.getUser()` on every matched request and propagates refreshed
-  cookies onto the response. The matcher excludes `_next/static`, `_next/image`,
+  `supabase.auth.getClaims()` for page requests carrying auth cookies and
+  propagates refreshed cookies. API handlers still authenticate independently.
+  Supabase requests have a 10-second per-request deadline. The matcher excludes `_next/static`, `_next/image`,
   `favicon.ico`, and image extensions.
 
 **Auth flows:** [AuthPanel](components/AuthPanel.tsx) posts to
@@ -444,6 +511,7 @@ Validated in one place —
 | `customFrequency` | whole number of hours > 0 | required and only stored when frequency is `custom` |
 | `emailFormat` | `standard`, `compact` | legacy `grid` → `standard`, `list` → `compact` |
 | `articleMode` | `all_missed` (default), `personalized` | |
+| `sortOrder` | `default` (default), `category` | stored as `sort_order`; "Group by category" in Account and signup |
 
 Returns either `{ errorMessage, status }` or the validated settings with
 `status: 200`. Both subscription routes call it, so validation can't drift.
@@ -471,12 +539,16 @@ daily). `runtime = "nodejs"`, `dynamic = "force-dynamic"`.
 
 1. **Auth** — outside development, requires `Authorization: Bearer ${CRON_SECRET}`;
    otherwise 401. Missing `RESEND_API_KEY` → 500.
-2. **Load subscriptions** — all `is_active` rows, oldest first.
+2. **Load subscriptions** — all `is_active` rows, oldest first, using `select("*")`
+   so a missing optional preference column does not abort delivery for everyone.
+   `?email=<subscriber-email>` trims/lowercases the value and restricts the query
+   to that active subscriber; normal cron authorization and send rules still apply.
 3. **Test gate** — if `TEST_NEWSLETTER_EMAIL` is set, every other subscriber is
    filtered out and counted as skipped. This is the safety valve for production
-   dry runs.
+   targeted sends. This still sends real email; it is not a dry-run mode.
 4. **Build personalization maps** once for the whole batch (§10.4).
-5. **Fetch articles once** — `getAllNewsItems({ fresh: true })` → last-24h filter.
+5. **Fetch articles once** — `getAllNewsItems({ fresh: true })` → last-24h filter
+   → cross-source story deduplication (§10.5).
 6. **Per subscriber**:
    - Not eligible → log `skipped` with the reason, continue.
    - No recent articles → log `skipped` / `no-recent-articles`.
@@ -496,6 +568,11 @@ daily). `runtime = "nodejs"`, `dynamic = "force-dynamic"`.
 
 Sender identity is hardcoded: `Kicker News <latest@kicker.news>`.
 
+Missing optional preferences fall back to existing defaults: `all_missed` article
+selection, `standard` email layout, and `default` ordering. This compatibility is
+limited to sending; apply the category migration before deploying features that
+read or save `sort_order` and saved-story categories.
+
 ### 10.4 Personalization profile
 
 Built in `getPersonalizationMaps()` and assembled per subscriber in
@@ -514,6 +591,14 @@ type PersonalizationProfile = {
 ```
 
 ### 10.5 Ranking and selection — [lib/personalization.ts](lib/personalization.ts)
+
+Before per-user selection,
+[deduplicateNewsletterArticles()](lib/newsletter-deduplication.ts) groups matching
+stories across sources using normalized title/summary terms, stop-word removal,
+aliases, and overlap thresholds. It prefers a non-New York Times version, then
+richer content, then recency, with input order as a final tie-breaker. A general
+winner inherits a specific category from another story in its group. This is a
+newsletter-only similarity heuristic; feed identity remains the normalized link.
 
 Additive scoring in `computeArticleScore`:
 
@@ -562,6 +647,11 @@ Both include:
 - A 1×1 tracking pixel when tracking context is present.
 - Subject line: `Kicker News: N stories from the last 24 hours` (singular-aware).
 - Dates rendered in `America/New_York`.
+- New York Times stories labeled **Subscription required** in HTML and plain text.
+- With `sort_order = "category"`, alphabetical category headings in both formats
+  and plain text. `orderNewsletterArticles()` uses a stable sort to preserve the
+  existing recency or personalized order within each section. The default adds no
+  headings and retains existing ordering; grouping happens after article selection.
 
 **Sponsors** ([lib/sponsors.ts](lib/sponsors.ts)) — a top slot and a mid slot, each
 configured entirely by env vars and rendered only when *all five* fields
@@ -642,11 +732,12 @@ of erroring.
 | Route | Methods | Auth | Purpose |
 |---|---|---|---|
 | [/api/news](app/api/news/route.ts) | GET | public | Parsed feed as JSON; honors `fresh`/`refresh`/`checkForUpdates` |
+| [/api/ai/briefing](app/api/ai/briefing/route.ts) | POST | user + origin | On-demand shared AI briefing; disabled by default; no body/query accepted |
 | [/api/auth/login](app/api/auth/login/route.ts) | POST | public | Password sign-in; rate limited `auth-login` |
 | [/api/auth/signup](app/api/auth/signup/route.ts) | POST | public | Sign-up; rate limited `auth-signup`; reports `confirmationRequired` |
 | [/api/newsletter/subscribe](app/api/newsletter/subscribe/route.ts) | POST | user | Subscribe / reactivate; rate limited `newsletter-subscribe` |
 | [/api/newsletter-subscriptions](app/api/newsletter-subscriptions/route.ts) | POST, PUT, DELETE | user | Full subscription settings CRUD |
-| [/api/send-newsletter](app/api/send-newsletter/route.ts) | GET | `CRON_SECRET` | Cron send orchestrator |
+| [/api/send-newsletter](app/api/send-newsletter/route.ts) | GET | `CRON_SECRET` | Cron send orchestrator; optional `?email=` restricts to one active subscriber |
 | [/api/unsubscribe](app/api/unsubscribe/route.ts) | GET, POST | token | Redirect flow + RFC 8058 one-click |
 | [/api/newsletter/open](app/api/newsletter/open/route.ts) | GET | none | Open pixel |
 | [/api/newsletter/click](app/api/newsletter/click/route.ts) | GET | none | Click redirect + logging |
@@ -659,19 +750,25 @@ of erroring.
 
 ## 13. Database Schema (as used by the code)
 
-Eight tables. Only one migration is checked in
-([supabase/migrations/20260424_add_newsletter_article_mode.sql](supabase/migrations/20260424_add_newsletter_article_mode.sql),
-which adds `article_mode` with a CHECK constraint); the rest of the schema is
-managed in the Supabase project.
+Eight tables. Two incremental migrations are checked in; the base schema is
+managed in the Supabase project:
+
+- [20260424_add_newsletter_article_mode.sql](supabase/migrations/20260424_add_newsletter_article_mode.sql)
+  adds `article_mode` with a CHECK constraint.
+- [20261030_add_newsletter_sort_order.sql](supabase/migrations/20261030_add_newsletter_sort_order.sql)
+  adds `newsletter_subscriptions.sort_order` (`NOT NULL`, default `default`,
+  CHECK allowing `default` or `category`) and nullable `saved_articles.category`
+  with a CHECK for the ten category keys. Apply it before deploying category
+  settings and saved-story changes. Existing subscribers retain their old order.
 
 | Table | Columns the code reads/writes |
 |---|---|
-| `newsletter_subscriptions` | `id`, `user_id`, `email`, `frequency`, `custom_frequency`, `email_format`, `article_mode`, `is_active`, `last_sent_at`, `last_status`, `last_error`, `unsubscribe_token`, `created_at`, `updated_at` |
+| `newsletter_subscriptions` | `id`, `user_id`, `email`, `frequency`, `custom_frequency`, `email_format`, `article_mode`, `sort_order`, `is_active`, `last_sent_at`, `last_status`, `last_error`, `unsubscribe_token`, `created_at`, `updated_at` |
 | `newsletter_sent_articles` | `subscription_id`, `user_id`, `email`, `send_log_id`, `article_link`, `article_title`, `article_source`, `sent_at` |
 | `email_send_logs` | `id`, `subscription_id`, `user_id`, `email`, `status`, `error`, `article_count`, `sent_at`, `created_at` |
 | `email_open_events` | `send_log_id`, `subscription_id`, `email`, `user_agent`, `ip_address`, `opened_at`/`created_at` |
 | `email_click_events` | `send_log_id`, `subscription_id`, `user_id`, `email`, `article_link`, `article_title`, `article_source`, `user_agent`, `ip_address`, `clicked_at` |
-| `saved_articles` | `user_id`, `article_link`, `title`, `source`, `summary`, `published_at`, `created_at` — unique on `(user_id, article_link)` |
+| `saved_articles` | `user_id`, `article_link`, `title`, `source`, `summary`, `published_at`, `category`, `created_at` — unique on `(user_id, article_link)` |
 | `user_alert_keywords` | `user_id`, `keyword`, `created_at` — unique on `(user_id, keyword)` |
 | `user_preferences` | `user_id`, `default_source_filter`, `default_time_filter`, `default_view_mode` |
 
@@ -836,30 +933,67 @@ npm test             # Node test runner
 npm run build        # production build
 ```
 
-**Tests** — 57 tests across 9 files in [tests/](tests/), run with
-`node --experimental-strip-types --test --test-isolation=none tests/*.test.mjs`.
-No test framework, no mocking library — the tested modules are pure functions, which
-is why `lib/` modules import each other with explicit `.ts` extensions
-(`allowImportingTsExtensions` is on). Coverage:
+**Tests** — 148 tests across 21 files in [tests/](tests/), verified with `npm test`
+on November 13, 2026 using Node 24.12.0. The package script runs
+`node --experimental-strip-types --experimental-specifier-resolution=node --test --test-isolation=none tests/*.test.mjs`.
+There is no test framework or mocking-library dependency. Pure modules use explicit
+`.ts` imports (`allowImportingTsExtensions` is on); route tests also use TypeScript
+transpilation, Node VM fixtures, and mocked database/provider calls. They do not
+send real email or write production data. Coverage:
 
 | File | Focus |
 |---|---|
-| `personalization.test.mjs` (19) | scoring, the 5-click gate, dedupe, mode fallback, limits |
-| `custom-alerts.test.mjs` (6) | keyword suggestion across topic categories |
-| `smart-alerts.test.mjs` (6) | the "keywords always gate" rule, case-insensitivity |
-| `news-updates.test.mjs` (6) | new-link detection, normalization, duplicate handling |
-| `rss.test.mjs` (5) | entity decoding, image extraction, srcset preference, og:image |
-| `feeds.test.mjs` (5) | coverage lookup and filtering |
-| `seo.test.mjs` (5) | canonical URLs, sitemap excludes private routes |
-| `news-api.test.mjs` (3) | API payload shape stability, cache bypass |
-| `news-client.test.mjs` (2) | refresh vs polling query shapes |
+| `personalization.test.mjs` | scoring, the 5-click gate, dedupe, mode fallback, limits |
+| `custom-alerts.test.mjs` | keyword suggestion across topic categories |
+| `smart-alerts.test.mjs` | the "keywords always gate" rule, case-insensitivity |
+| `news-updates.test.mjs` | new-link detection, normalization, duplicate handling |
+| `rss.test.mjs` | entity decoding, image extraction, srcset preference, og:image |
+| `feeds.test.mjs` | coverage lookup and filtering |
+| `seo.test.mjs` | canonical URLs, sitemap excludes private routes |
+| `news-api.test.mjs` | API payload shape stability, cache bypass |
+| `news-client.test.mjs` | refresh vs polling query shapes |
+| `news-presentation.test.mjs` | New York Times source-name variants for subscription labels |
+| `newsletter-deduplication.test.mjs` | similar stories, free-source preference, distinct stories, email labels |
+| `news-categories.test.mjs` | publisher topics, category filtering/grouping, saved rows, metadata retention, isolated feed failures |
+| `newsletter-routes.test.mjs` | category-order insert/update/reactivation, validation, authentication, write failures |
+| `newsletter-send.test.mjs` | delivery with/without optional migration, targeted sends, cron authorization, send eligibility, provider failure |
+| `ai-briefing.test.mjs` | bounded canonical selection, existing deduplication, schema/reference validation, metadata-only prompt |
+| `ai-briefing-provider.test.mjs` | real adapter with mocked provider responses, errors, refusals, truncation, response limits, configuration |
+| `ai-briefing-service.test.mjs` | shared cache, concurrent requests, recovery, exhausted budgets, empty feeds, lease ownership |
+| `ai-briefing-route.test.mjs` | flags, origin/session enforcement, limits, safe errors, private response caching |
+| `ai-briefing-store.test.mjs` | Redis adapter command wiring, reservation and ownership guards (mocked Redis) |
+
+Additional opt-in validation (Node 24):
+
+```bash
+node --experimental-strip-types scripts/validate-news-feeds.mjs       # 18 added feeds
+node --experimental-strip-types scripts/validate-news-feeds.mjs --all # all 30 feeds
+node scripts/validate-news-ui.mjs
+node scripts/validate-news-ui.mjs --live-homepage
+```
+
+The feed script makes network requests with 15-second timeouts; live availability
+can vary. README.md records four original feeds unavailable during the October 30
+check (CNN, USA Today, Reuters U.S., Reuters World); that is historical evidence,
+not a current availability check.
+
+The UI script uses installed Chrome (`CHROME_PATH` overrides the default path),
+ports 3100/9311, and a temporary local route with real components. It checks seven
+widths from 320 to 1920 pixels, saved/category filtering, newsletter setting
+requests, and both header modes with pending updates. Saves are mocked; it does
+not sign in or send email. `--live-homepage` adds the real homepage with live news.
+Its cleanup removes the temporary route and generated route types. The initial documentation-only update did not rerun those checks; subsequent
+validation is recorded in the performance and AI pre-deployment reviews.
 
 **CI** — [.github/workflows/ci.yml](.github/workflows/ci.yml) runs lint → tsc → test
-→ build on every PR and every push to `main`, Node 20.
+→ build on every PR and every push to `main`, Node 24.
 
 **Deploy** — Vercel. Set all production env vars before the first deploy, verify the
 Resend sending domain (SPF, DKIM, DMARC), and confirm `CRON_SECRET` matches what the
 cron sends. Point UptimeRobot (or similar) at `/api/health`.
+Apply the checked-in SQL migrations in Supabase before deploying code that uses
+their columns (§13); the sender's optional-column fallback does not migrate the
+database or make category settings writes compatible with an older schema.
 
 **Manual checklist before shipping feed/newsletter/auth changes:**
 public homepage renders articles → dashboard loads saved articles and preferences →
@@ -907,3 +1041,91 @@ Worth knowing about before you assume something is missing or delete it as dead:
    previous state and revert on error.
 9. **`proxy.ts`, not `middleware.ts`** — Next.js 16 naming.
 10. **Logging is structured and scoped**; follow the `[area][action][step]` pattern.
+
+---
+
+## 21. AI News Briefing (disabled by default)
+
+The existing authenticated dashboard includes an optional **View AI Briefing**
+action. A bodyless, same-origin `POST /api/ai/briefing` returns a validated shared
+briefing when cached and generates only on a cache miss. There is no generation
+on homepage load or news polling. The UI shows generation time, up to five
+headline/explanation items, and source article links. It labels the output as
+AI-generated summaries based on available publisher metadata, not full articles.
+
+Selection reuses existing RSS fetching, canonical link identity, and newsletter
+story deduplication without changing their implementations. Only recent bounded
+metadata is supplied: up to 12 stories from at most 60 candidates, titles, canonical
+links, source labels, publication times, and available summaries. Missing summaries
+remain null. All model references must exactly match input links; displayed source
+labels/titles/URLs come from application data. Structured output and local validation
+reject malformed results, but do not prove factual grounding.
+
+Server-only Claude Messages integration uses Anthropic's official TypeScript SDK
+and the explicitly configured model `claude-haiku-5-5` (verified against official
+Anthropic documentation). `output_config.format` supplies a transformed wire
+schema; the unchanged local schema and business validator enforce all length,
+count, and exact source-link checks. The adapter handles text/thinking blocks,
+usage and stop reasons, with low effort, no tools, timeouts, byte/token limits,
+and no automatic retries. SDK logging/tracing are disabled. No Python service is
+introduced. `ANTHROPIC_API_KEY` stays in private
+environment variables. Existing Supabase authentication and IP rate limiting are
+reused; separate Redis controls add authenticated-user limits, shared caching,
+ownership-checked generation leases, and global UTC-day attempt budgets. Defaults:
+900-second briefing cache, 90-second RSS snapshot, 48 attempts/day, 30-second retry
+cooldown after failure. Failed calls count toward budget but do not impose the full
+success cache interval. Valid cached results remain accessible at the attempt limit.
+
+Configuration is in [.env.example](.env.example). `AI_BRIEFING_ENABLED=false` is the
+default; production additionally requires `AI_BRIEFING_PRODUCTION_VERIFIED=true`
+after explicit approval and rollout review. No Supabase migrations, email sending,
+subscription updates, authentication-flow changes, or existing analytics changes
+are part of this feature.
+
+- [Operation, configuration, limitations, and test commands](docs/AI_BRIEFING.md)
+- [AI assistance and development provenance](docs/AI_DEVELOPMENT.md)
+- [Separate repository follow-up tickets](docs/FOLLOW_UP_ISSUES.md): Sentry sanitizer
+  registration, App Router cron monitoring, effective cache documentation, and
+  newsletter duplicate-send guarantees. Security concerns were investigated for the
+  new path; deployed telemetry verification remains a production rollout requirement.
+
+Deterministic tests mock model/auth/Redis boundaries. The real-component Chrome
+check is `node scripts/validate-ai-briefing-ui.mjs`; it intercepts all briefing
+requests with fixtures and makes no provider call. The separate live smoke script
+requires explicit paid-call opt-in and an approval environment variable. Actual
+provider compatibility, real Redis Lua/concurrency, and grounding quality remain
+live rollout checks, not claims established by mocked tests.
+
+## Local performance and authentication review
+
+See [the measured performance review](docs/PERFORMANCE_REVIEW.md) for baseline and
+after results, regression checks, remaining production-auth uncertainty and
+OneDrive findings. Feed filters/counts use all articles; `NewsList` mounts 30
+stories initially, with a **Show more** action adding 30 at a time. Auth failures
+always release submission state, including non-JSON responses. Redis protection
+failures return a sanitized retryable 503 rather than escaping as a 500.
+
+## Shared Redis environment keyspaces
+
+See [Redis keyspaces](docs/REDIS_KEYSPACES.md) for exact prefixes, tests and the
+unapproved future production rollover. Local use requires `REDIS_KEYSPACE=dev`;
+Vercel's server-provided `VERCEL_ENV` selects dev/preview/production. Missing or
+conflicting selection with configured Redis fails closed. IP limiter keys and all
+AI cache, RSS snapshot, user limit, daily budget, lease and cooldown keys use this
+policy. Dev and preview have separate prefixes and AI hash tags; production keeps
+`@upstash/ratelimit` and `kicker:{ai-briefing}:v1:` unchanged. Legacy keys must not
+be reset or deleted. This is logical separation in one shared database, not
+credential, availability, storage or billing isolation. No live writes, production
+rollover, Vercel configuration changes or deployments were performed.
+
+## Final AI pre-deployment review
+
+See [the final review and staged deployment checklist](docs/AI_PREDEPLOY_REVIEW.md).
+The briefing now has compact numbered editorial rows, accessible source citations
+and an explicit empty-result error. Provider validation emits sanitized failure
+categories without weakening citation checks. Prompt `metadata-v2` aligns with
+existing uniqueness rules and warns against combining reports solely by location
+or timing. Only cache scope changes; Redis budget/lock/cooldown keys are preserved.
+The review includes the exact cached metadata audit, current cost estimates, 148
+passing mocked tests and the remaining production authentication/telemetry gates.
+No push, deployment or new paid model call was performed in that review.

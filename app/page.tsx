@@ -3,7 +3,7 @@ import { PublicNewsView } from "@/components/PublicNewsView";
 import { PublicFooter } from "@/components/PublicFooter";
 import { enhanceLeadArticleImage } from "@/lib/article-images";
 import { fromAlertKeywordRows } from "@/lib/custom-alerts";
-import { getAllNewsItems } from "@/lib/rss";
+import { getNewsSnapshot } from "@/lib/rss";
 import { fromSavedArticleRows } from "@/lib/saved-articles";
 import {
   buildCanonicalUrl,
@@ -16,7 +16,6 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { NewsItem } from "@/lib/types";
 import { normalizeUserPreferences } from "@/lib/user-preferences";
-import { unstable_cache } from "next/cache";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -28,14 +27,6 @@ export const metadata: Metadata = buildPageMetadata({
   title: "Kicker News | Today's Top Headlines in One Clean Feed",
 });
 
-const getCachedHomepageNewsItems = unstable_cache(
-  async () => getAllNewsItems({ fresh: true }),
-  ["homepage-rss-articles"],
-  {
-    revalidate: 90,
-  },
-);
-
 export default async function Home() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -46,7 +37,10 @@ export default async function Home() {
   let feedErrorMessage: string | null = null;
 
   try {
-    articles = await getCachedHomepageNewsItems();
+    const snapshot = await getNewsSnapshot();
+    articles = snapshot.articles;
+    if (snapshot.feedStatus.failedFeeds) feedErrorMessage = `${snapshot.feedStatus.failedFeeds} feeds are unavailable. ${snapshot.feedStatus.staleFeeds ? "Recent cached stories are included where available." : "Showing stories from the available feeds."}`;
+    if (!articles.length) throw new Error("no-available-feeds");
     articles = await enhanceLeadArticleImage(articles);
   } catch {
     feedErrorMessage =
@@ -146,6 +140,7 @@ export default async function Home() {
         }}
       />
       <DashboardView
+        aiBriefingEnabled={process.env.AI_BRIEFING_ENABLED === "true" && (process.env.NODE_ENV !== "production" || process.env.AI_BRIEFING_PRODUCTION_VERIFIED === "true")}
         articles={articles}
         feedErrorMessage={feedErrorMessage}
         initialAlertKeywords={initialAlertKeywords}

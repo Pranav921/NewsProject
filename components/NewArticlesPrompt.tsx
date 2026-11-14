@@ -34,8 +34,14 @@ export function NewArticlesPrompt({
 
   useEffect(() => {
     let isCancelled = false;
+    let inFlight = false;
+    let lastCheckedAt = Date.now();
+    const controller = new AbortController();
 
     async function checkForNewArticles() {
+      if (inFlight || Date.now() - lastCheckedAt < 30000 || document.visibilityState !== "visible") return;
+      inFlight = true;
+      lastCheckedAt = Date.now();
       try {
         const currentInitialLinks = initialLinksRef.current;
         const handledNewLinks = JSON.parse(
@@ -57,19 +63,19 @@ export function NewArticlesPrompt({
           sessionStorage.removeItem(HANDLED_NEW_ARTICLE_LINKS_KEY);
         }
 
-        const latestArticles = await fetchLatestNews("checkForUpdates");
+        const latestArticles = await fetchLatestNews("checkForUpdates", { signal: controller.signal });
         const latestLinks = latestArticles.map((article) => article.link);
-        const detectedNewLinks = getNewArticleLinks(
+        const detectedNewLinks = currentInitialLinks.length ? getNewArticleLinks(
           currentInitialLinks,
           latestLinks,
-        ).filter((link) => !handledNewLinkSet.has(normalizeArticleLink(link)));
+        ).filter((link) => !handledNewLinkSet.has(normalizeArticleLink(link))) : [];
 
         if (!isCancelled) {
           setNewArticleLinks(detectedNewLinks);
         }
       } catch {
         // Ignore temporary network errors and try again on the next check.
-      }
+      } finally { inFlight = false; }
     }
 
     function handleVisibilityChange() {
@@ -88,12 +94,12 @@ export function NewArticlesPrompt({
       }
     }, POLL_INTERVAL_MS);
 
-    // Run one check on mount so the prompt can recover even if the page stayed
-    // visible the whole time.
-    void checkForNewArticles();
+    // The server just loaded this feed. Do not immediately refetch all publishers
+    // on mount (or twice under Strict Mode). The interval/visibility handles updates.
 
     return () => {
       isCancelled = true;
+      controller.abort();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.clearInterval(pollInterval);
     };

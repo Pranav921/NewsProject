@@ -1,13 +1,15 @@
 "use client";
 
 import { AppShell, type ShellTab } from "@/components/AppShell";
+import { AiNewsBriefing } from "@/components/AiNewsBriefing";
 import { NewArticlesPrompt } from "@/components/NewArticlesPrompt";
 import { NewsFeed } from "@/components/NewsFeed";
 import { fetchLatestNews } from "@/lib/news-client";
 import type { NewsItem, SavedArticle, UserPreferences } from "@/lib/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type DashboardViewProps = {
+  aiBriefingEnabled?: boolean;
   articles: NewsItem[];
   feedErrorMessage?: string | null;
   initialAlertKeywords: string[];
@@ -18,6 +20,7 @@ type DashboardViewProps = {
 };
 
 export function DashboardView({
+  aiBriefingEnabled = false,
   articles,
   feedErrorMessage = null,
   initialAlertKeywords,
@@ -27,6 +30,7 @@ export function DashboardView({
   userId,
 }: DashboardViewProps) {
   const [currentArticles, setCurrentArticles] = useState(articles);
+  const [currentFeedError, setCurrentFeedError] = useState(feedErrorMessage);
   const [activeShellTab, setActiveShellTab] = useState<ShellTab>("feed");
   const [pendingUpdateCount, setPendingUpdateCount] = useState(0);
   const [pendingUpdateLinks, setPendingUpdateLinks] = useState<string[]>([]);
@@ -35,12 +39,16 @@ export function DashboardView({
     initialSavedArticles.length,
   );
 
-  useEffect(() => {
+  // Reset local refresh results only when a new server snapshot arrives.
+  const [serverSnapshot, setServerSnapshot] = useState({ articles, feedErrorMessage });
+  if (serverSnapshot.articles !== articles || serverSnapshot.feedErrorMessage !== feedErrorMessage) {
+    setServerSnapshot({ articles, feedErrorMessage });
     setCurrentArticles(articles);
-  }, [articles]);
+    setCurrentFeedError(feedErrorMessage);
+  }
 
   async function refreshArticles() {
-    const latestArticles = await fetchLatestNews("refresh");
+    const latestArticles = await fetchLatestNews("refresh", { onWarning: setCurrentFeedError });
     setCurrentArticles(latestArticles);
   }
 
@@ -64,11 +72,13 @@ export function DashboardView({
         onPendingLinksChange={setPendingUpdateLinks}
       />
 
+      {aiBriefingEnabled && <AiNewsBriefing />}
+
       <section className="mt-3">
         <NewsFeed
           activeShellTab={activeShellTab}
           articles={currentArticles}
-          feedErrorMessage={feedErrorMessage}
+          feedErrorMessage={currentFeedError}
           initialAlertKeywords={initialAlertKeywords}
           initialPreferences={initialPreferences}
           initialSavedArticles={initialSavedArticles}

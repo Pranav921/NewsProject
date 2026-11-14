@@ -3,6 +3,10 @@ import { RSS_FEEDS } from "./feeds.ts";
 import { normalizeArticleLink } from "./news-updates.ts";
 import { cleanSummary, stripCdata, stripHtml } from "./rss-format.ts";
 import type { FeedDefinition, NewsItem } from "./types.ts";
+import { createFeedCache } from "./feed-cache.ts";
+
+const cacheGlobal = globalThis as typeof globalThis & { __kickerFeedCache?: ReturnType<typeof createFeedCache<NewsItem>> };
+const feedCache = cacheGlobal.__kickerFeedCache ??= createFeedCache<NewsItem>();
 
 function truncateSummary(summary: string, maxLength = 220): string | null {
   const minimumSummaryLength = 50;
@@ -324,43 +328,32 @@ type GetAllNewsItemsOptions = {
 
 async function fetchFeed(
   feed: FeedDefinition,
-  options: GetAllNewsItemsOptions = {},
 ): Promise<NewsItem[]> {
+  const startedAt = Date.now();
   try {
-    const isDevelopment = process.env.NODE_ENV === "development";
-    const shouldUseFreshData = isDevelopment || options.fresh === true;
-    const fetchOptions: RequestInit & {
-      next?: { revalidate: number };
-    } = {
+    const fetchOptions: RequestInit = {
+      // The shared per-feed cache owns freshness for every consumer.
+      cache: "no-store",
       headers: {
         "User-Agent": "breaking-news-site/0.1 (+https://github.com/)",
       },
     };
-
-    if (shouldUseFreshData) {
-      // In development, and in places that explicitly ask for fresh data, we
-      // skip the fetch cache so RSS checks can see the latest feed contents.
-      fetchOptions.cache = "no-store";
-    } else {
-      // In production we can safely reuse feed responses for an hour.
-      fetchOptions.next = { revalidate: 3600 };
-    }
 
     const response = await fetch(feed.url, {
       ...fetchOptions,
       signal: AbortSignal.timeout(12000),
     });
 
-    if (!response.ok) {
-      console.error(`Failed to fetch ${feed.name}: ${response.status}`);
-      return [];
-    }
+    if (!response.ok) throw new Error(`feed-http-${response.status}`);
 
     const xml = await response.text();
-    return parseRssXml(xml, feed);
-  } catch (error) {
-    console.error(`Failed to fetch ${feed.name}`, error);
-    return [];
+    const items = parseRssXml(xml, feed);
+    if (!items.length) throw new Error("empty-feed");
+    console.info("[rss][feed]", { source: feed.name, category: feed.category ?? "headlines", count: items.length, durationMs: Date.now() - startedAt });
+    return items;
+  } catch {
+    console.warn("[rss][feed][unavailable]", { source: feed.name, category: feed.category ?? "headlines", durationMs: Date.now() - startedAt });
+    throw new Error("feed-unavailable");
   }
 }
 
@@ -395,11 +388,20 @@ function sortNewestFirst(items: NewsItem[]): NewsItem[] {
 export async function getAllNewsItems(
   options: GetAllNewsItemsOptions = {},
 ): Promise<NewsItem[]> {
+  return (await getNewsSnapshot(options)).articles;
+}
+
+export async function getNewsSnapshot(options: GetAllNewsItemsOptions = {}) {
   const feedResults = await Promise.all(
-    RSS_FEEDS.map((feed) => fetchFeed(feed, options)),
+    RSS_FEEDS.map((feed) => feedCache.read(feed.url, () => fetchFeed(feed), options.fresh)),
   );
-  const mergedItems = feedResults.flat();
+  const mergedItems = feedResults.flatMap((result) => result.items.map((item) => ({ ...item })));
 
   // Keep the homepage predictable: no duplicates and newest stories first.
-  return sortNewestFirst(dedupeByLink(mergedItems));
+  const snapshot = {
+    articles: sortNewestFirst(dedupeByLink(mergedItems)),
+    feedStatus: { failedFeeds: feedResults.filter((result) => result.failed).length, staleFeeds: feedResults.filter((result) => result.stale).length },
+  };
+  console.info("[rss][snapshot]", { articleCount: snapshot.articles.length, ...snapshot.feedStatus });
+  return snapshot;
 }
