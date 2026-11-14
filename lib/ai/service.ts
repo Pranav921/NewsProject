@@ -35,7 +35,8 @@ function cachedBriefing(value: unknown, config: BriefingConfig, now: Date): Brie
     const expires = Date.parse(cached.expiresAt);
     if (!Number.isFinite(generated) || !Number.isFinite(expires) || generated > now.getTime() || expires <= now.getTime() || expires - generated > config.cacheSeconds * 1000) return null;
     if (!Array.isArray(cached.articles) || !cached.articles.length || cached.articles.some((article) => !article || typeof article.link !== "string" || typeof article.title !== "string" || typeof article.source !== "string" || (article.summary !== null && typeof article.summary !== "string"))) return null;
-    const articles = selectBriefingArticles(cached.articles, now, config.limits);
+    // Revalidate stored evidence without applying today's editorial ordering.
+    const articles = selectBriefingArticles(cached.articles, now, config.limits, "stored");
     if (JSON.stringify(articles) !== JSON.stringify(cached.articles)) return null;
     return { generatedAt: cached.generatedAt, expiresAt: cached.expiresAt, notice: BRIEFING_NOTICE, items: validateBriefingOutput(cached.output, articles, config.limits) };
   } catch { return null; }
@@ -72,10 +73,13 @@ export async function getOrGenerateBriefing(deps: {
     const result = await deps.generate(articles);
     const items = validateBriefingOutput(result.output, articles, config.limits);
     const generatedAt = now();
+    // Keep the persisted order compatible with deployed metadata-v2 readers.
+    // Claude still receives editorial order; references use canonical links.
+    const storedArticles = [...articles].sort((a, b) => b.publishedAt!.localeCompare(a.publishedAt!) || a.link.localeCompare(b.link));
     const stored: StoredBriefing = {
-      articles, output: result.output, generatedAt: generatedAt.toISOString(),
+      articles: storedArticles, output: result.output, generatedAt: generatedAt.toISOString(),
       expiresAt: new Date(generatedAt.getTime() + config.cacheSeconds * 1000).toISOString(),
-      fingerprint: createHash("sha256").update(JSON.stringify(articles)).digest("hex"),
+      fingerprint: createHash("sha256").update(JSON.stringify(storedArticles)).digest("hex"),
     };
     await store.complete(owner, scope, stored, config.cacheSeconds);
     return { briefing: { generatedAt: stored.generatedAt, expiresAt: stored.expiresAt, notice: BRIEFING_NOTICE, items }, cacheHit: false, usage: result.usage, articleCount: articles.length };

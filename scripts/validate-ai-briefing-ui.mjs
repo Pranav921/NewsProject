@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, rmdirSync } from "node:fs";
 import path from "node:path";
+import { editorialArticles } from "../tests/fixtures/briefing-editorial.mjs";
 
 const root = process.cwd();
 const origin = process.env.AI_UI_ORIGIN ?? "http://127.0.0.1:3102";
@@ -81,10 +82,10 @@ try {
         await new Promise(resolve => { window.__aiResolve = resolve; });
         if (window.__aiMode === 0) throw new TypeError('Synthetic network failure');
         return new Response(JSON.stringify({ briefing: {
-          generatedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60000).toISOString(),
+          generatedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + (window.__aiTtl ?? 60000)).toISOString(),
           notice: 'AI-generated summaries based on available publisher metadata, not full-article analysis.',
-          items: window.__aiEmpty ? [] : Array.from({length:5}, (_, index) => ({ headline: 'Synthetic mission preparations ' + (index + 1), explanation: 'A synthetic fixture reports preparations using publisher metadata. The briefing preserves attribution and uncertainty.', references: [{ source: 'Fixture publisher', title: 'Synthetic source title with additional context for a longer citation on small mobile screens', url: index ? 'https://example.com/fixture-' + index : 'https://example.com/fixture' }] }))
-        }, cacheHit: true }), { status: window.__aiMode, headers: { 'Content-Type': 'application/json', 'Retry-After': '3' } });
+          items: window.__aiEmpty ? [] : ${JSON.stringify(editorialArticles.slice(0, 5).map((article, index) => ({ headline: article.title, explanation: article.summary, references: [{ source: article.source, title: article.title, url: index ? `https://example.com/fixture-${index}` : "https://example.com/fixture" }] })))}
+        }, cacheHit: window.__aiCacheHit ?? true }), { status: window.__aiMode, headers: { 'Content-Type': 'application/json', 'Retry-After': '3' } });
       }
       return originalFetch(input, init);
     };` });
@@ -99,14 +100,20 @@ try {
   assert.equal(await evaluate("window.__aiCalls"), 1);
   assert.equal(await evaluate("window.__aiBody"), null);
   assert.ok(await evaluate("document.getElementById('ai-briefing-content').textContent.includes('not full-article analysis')"));
+  assert.equal(await evaluate("document.querySelector('h2').textContent"), "Your News Briefing");
+  assert.ok(await evaluate("document.querySelector('section').textContent.includes('AI-generated')"));
+  assert.ok(await evaluate("document.querySelector('section').textContent.includes('Shared cached briefing')"));
+  assert.equal(await evaluate("document.querySelectorAll('time').length"), 2);
   assert.equal(await evaluate("document.querySelector('a').href"), "https://example.com/fixture");
   await evaluate(`${button}.click()`); await delay(100); await evaluate(`${button}.click()`); await delay(100);
   assert.equal(await evaluate("window.__aiCalls"), 1);
-  for (const width of [320, 390, 768, 1440]) {
+  for (const width of [320, 390, 768, 1440, 1920]) {
     await cdp("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
     await delay(100);
     assert.ok(await evaluate("document.documentElement.scrollWidth <= window.innerWidth"), `Overflow at ${width}px`);
     assert.ok(await evaluate("Array.from(document.querySelectorAll('a')).every(a => a.getBoundingClientRect().height >= 44)"), 'Citation touch targets');
+    assert.ok(await evaluate("document.querySelector('ol').getBoundingClientRect().width <= 768"), "Constrained reading width");
+    assert.ok(await evaluate("Array.from(document.querySelectorAll('ul[aria-label]')).every(list => list.getAttribute('aria-label').startsWith('Source articles for '))"), "Story-specific citation labels");
     const screenshot = await cdp("Page.captureScreenshot", { format: "png" });
     writeFileSync(path.join(root, ".next", `ai-review-${width}.png`), Buffer.from(screenshot.data, "base64"));
   }
@@ -124,6 +131,19 @@ try {
   await evaluate(`${button}.click()`);
   assert.equal(await evaluate(`${button}.getAttribute('aria-expanded')`), "true");
   assert.equal(await evaluate("window.__aiCalls"), 1);
+  await evaluate("window.__aiTtl=1500; window.__aiCacheHit=false; document.getElementById('reset-fixture').click()"); await delay(100);
+  await evaluate(`${button}.click()`); await finishMockRequest();
+  await until(() => evaluate("document.querySelector('section').textContent.includes('Generated on request')"), "new generation label");
+  const callsBeforeExpiry = await evaluate("window.__aiCalls");
+  const refreshButton = "Array.from(document.querySelectorAll('button')).find(button => button.textContent === 'Refresh AI Briefing')";
+  await until(() => evaluate(`Boolean(${refreshButton})`), "expiry update");
+  assert.ok(await evaluate("document.querySelector('section').textContent.includes('Earlier briefing')"));
+  assert.equal(await evaluate("window.__aiCalls"), callsBeforeExpiry, "Expiry never generates automatically");
+  assert.equal(await evaluate(`${button}.textContent`), "Hide AI Briefing", "Expired results can still be collapsed without generation");
+  await evaluate("window.__aiTtl=60000; window.__aiCacheHit=true");
+  await evaluate(`${refreshButton}.click()`); await finishMockRequest();
+  await until(() => evaluate("document.querySelector('section').textContent.includes('Shared cached briefing')"), "explicit refresh result");
+  assert.equal(await evaluate("window.__aiCalls"), callsBeforeExpiry + 1);
   await evaluate("window.__aiEmpty=true; document.getElementById('reset-fixture').click()"); await delay(100);
   await evaluate(`${button}.click()`);
   await finishMockRequest();
@@ -131,7 +151,8 @@ try {
   assert.ok(await evaluate("document.querySelector('[role=alert]').textContent.includes('No briefing items')"));
   await evaluate("window.__aiEmpty=false");
   console.log("PASS five-item presentation, citation touch targets, keyboard navigation/collapse, empty response and screenshots");
-  console.log("PASS click-only fetch, loading state, timestamp, metadata disclaimer, trusted links, reopen cache, four viewport widths");
+  console.log("PASS click-only fetch, loading state, timestamps, metadata disclaimer, trusted links, reopen cache, five viewport widths");
+  console.log("PASS cached/new labels, expiry notice, explicit refresh without automatic requests, constrained reading width and citation labels");
   for (const status of [401, 429, 503, 0]) {
     await evaluate(`window.__aiMode = ${status}; document.getElementById('reset-fixture').click()`); await delay(100);
     await evaluate(`${button}.click()`);

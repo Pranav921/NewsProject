@@ -17,10 +17,12 @@ and ran checks recorded in the final handoff. This is not independent human revi
 The developer still needs to review grounding quality, real Redis behavior,
 telemetry, provider configuration, and cost before production enablement.
 
-The application prompt is versioned by `BRIEFING_VERSION` in `lib/ai/briefing.ts`.
+The application cache contract is versioned by `BRIEFING_VERSION` in `lib/ai/briefing.ts`.
 Model selection is explicit deployment configuration with no implicit default.
-Changes to prompt semantics should increment that version, invalidating cached
-briefings while preserving global budgets. The feature sends bounded publisher
+Changes to the output/grounding safety contract should increment that version,
+invalidating cached briefings while preserving global budgets. Compatible editorial
+preferences use a separate revision and allow validated caches to expire naturally.
+The feature sends bounded publisher
 metadata to the configured provider; it never sends account history or full articles.
 
 No paid AI Briefing API call or production deployment was performed during
@@ -146,3 +148,14 @@ has not been paid-tested. The reviewer checked current official pricing and
 prepared the staged deployment plan in [AI_PREDEPLOY_REVIEW.md](AI_PREDEPLOY_REVIEW.md).
 All provider tests and browser responses were mocked. No commit/push/deployment,
 provider request, email, production write or Vercel settings change occurred.
+
+## Editorial and reader-experience refinement — November 14, 2026
+
+Codex inspected the selector, prompt, schema, cache validation and real component,
+then implemented deterministic public-interest preferences and soft diversity,
+cache-compatible stored-order validation, clearer typography/citations and explicit
+cache-expiry feedback. The existing shared deduplicator, provider validation and
+security/Redis limits were retained. Synthetic fixtures and mocked Chrome checks
+support the review; they are not proof of factuality or live model reliability.
+No paid call, production write, deployment or Vercel change was performed.
+See [editorial reasoning, limitations and review criteria](AI_EDITORIAL_REVIEW.md).

@@ -17,6 +17,10 @@ necessary. Nothing is generated on page load, feed polling, or newsletter sendin
 The panel displays when the briefing was generated, up to five headline/explanation
 items, and source article links. It explicitly describes the output as AI-generated
 summaries of available publisher metadata, **not full-article analysis**.
+The compact **Your News Briefing** panel distinguishes cached/new responses, shows
+cache expiry without implying the reporting is current, and offers explicit refresh
+after expiry. It never generates in the background. See the
+[editorial evaluation and compatible rollout](AI_EDITORIAL_REVIEW.md).
 
 ## Request and data flow
 
@@ -31,7 +35,8 @@ summaries of available publisher metadata, **not full-article analysis**.
    `getAllNewsItems({ fresh: true })`. Existing homepage/API caching is untouched.
 5. Selection accepts only valid credential-free HTTP(S) canonical links, nonempty
    source/title metadata, and publication times within the last 24 hours. It removes
-   exact-link duplicates, bounds candidates to the newest 60, reuses
+   exact-link duplicates, ranks using category/recency/evidence and soft source/topic
+   diversity preferences, bounds candidates to 60, reuses
    `deduplicateNewsletterArticles()`, and selects at most 12 stories. Input objects
    are cloned and no existing RSS or newsletter implementation is modified.
 6. Only link, title (200 characters), source (80), summary (220 or null), and
@@ -52,7 +57,9 @@ summaries of available publisher metadata, **not full-article analysis**.
    links, repeated headlines/references, empty output, and URLs in prose are rejected.
    Source names, titles, and clickable URLs are resolved from application input.
 10. Success is published atomically with a success cooldown matching cache duration.
-    Cache keys include provider, model, prompt version, limits, and cache settings. Budgets and
+    Cache keys include provider, model, cache-contract version, limits, and cache settings. Compatible
+    editorial refinements preserve valid existing caches until expiry; cached evidence is
+    revalidated in its stored order. Budgets and
     the lease remain global across configuration changes. Only validated output is
     stored; authenticated HTTP responses use `private, no-store`.
 

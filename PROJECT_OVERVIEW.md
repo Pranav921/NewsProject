@@ -1061,6 +1061,15 @@ remain null. All model references must exactly match input links; displayed sour
 labels/titles/URLs come from application data. Structured output and local validation
 reject malformed results, but do not prove factual grounding.
 
+The [November 14 editorial refinement](docs/AI_EDITORIAL_REVIEW.md) ranks eligible
+stories using category, recency, summary availability and soft topic/source diversity
+before bounding the pool, while retaining the existing event deduplicator. The
+panel is titled **Your News Briefing**, limits reading width and shows cache origin
+and expiry with manual refresh. Compatible `editorial-v1` guidance keeps the
+`metadata-v2` cache contract: valid cached evidence is revalidated in stored order
+and served until expiry without an extra generation. No production settings or
+deployment were changed for this refinement; default flags remain disabled.
+
 Server-only Claude Messages integration uses Anthropic's official TypeScript SDK
 and the explicitly configured model `claude-haiku-5-5` (verified against official
 Anthropic documentation). `output_config.format` supplies a transformed wire

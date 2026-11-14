@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { getOrGenerateBriefing, briefingScope } from "../lib/ai/service.ts";
 import { readBriefingConfig, BriefingError } from "../lib/ai/settings.ts";
+import { selectBriefingArticles } from "../lib/ai/briefing.ts";
+import { editorialNow, editorialArticles } from "./fixtures/briefing-editorial.mjs";
 
 const config = readBriefingConfig({ AI_BRIEFING_MODEL: "fixture-model", AI_BRIEFING_DAILY_ATTEMPTS: "2" });
 const article = { title: "Mission preparations", link: "https://example.com/a", source: "NASA", summary: null, publishedAt: "2026-11-13T11:00:00Z" };
@@ -102,4 +104,36 @@ test("a worker that loses its lease cannot publish or release another worker's l
   deps.store.complete = async (...args) => { state.lock = "other-worker"; return complete(...args); };
   await assert.rejects(getOrGenerateBriefing(deps));
   assert.equal(state.lock, "other-worker"); assert.equal(state.cached, null);
+});
+
+test("compatible old cache and new editorial order are served without fetching, locking or spending", async () => {
+  for (const articles of [selectBriefingArticles(editorialArticles, editorialNow).reverse(), selectBriefingArticles(editorialArticles, editorialNow)]) {
+    const { deps, state } = fixture();
+    const generatedAt = "2026-11-13T11:59:00Z";
+    state.cached = { articles, generatedAt, expiresAt: "2026-11-13T12:14:00Z", fingerprint: "fixture",
+      output: { items: articles.slice(0, 5).map(item => ({ headline: item.title, explanation: item.summary ?? item.title, sourceLinks: [item.link] })) } };
+    state.attempts = 2;
+    deps.store.acquire = async () => assert.fail("cache hits never acquire a generation lease");
+    const result = await getOrGenerateBriefing(deps);
+    assert.equal(result.cacheHit, true);
+    assert.equal(result.briefing.generatedAt, generatedAt);
+    assert.equal(state.calls, 0); assert.equal(state.reads, 0); assert.equal(state.attempts, 2);
+  }
+});
+
+test("generation keeps editorial order for Claude but persists chronological evidence for deployed readers", async () => {
+  const { deps, state } = fixture();
+  deps.fetchArticles = async () => editorialArticles;
+  let supplied;
+  deps.generate = async articles => {
+    supplied = structuredClone(articles);
+    return { output: { items: articles.slice(0, 5).map(item => ({ headline: item.title, explanation: item.summary ?? item.title, sourceLinks: [item.link] })) }, usage: {} };
+  };
+  const first = await getOrGenerateBriefing(deps);
+  assert.equal(supplied[0].title, editorialArticles[0].title);
+  const expected = [...supplied].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || a.link.localeCompare(b.link));
+  assert.deepEqual(state.cached.articles, expected);
+  assert.notDeepEqual(state.cached.articles, supplied);
+  assert.deepEqual((await getOrGenerateBriefing(deps)).briefing, first.briefing);
+  assert.deepEqual(first.briefing.items.map(item => item.references[0].url), supplied.slice(0, 5).map(item => item.link));
 });
