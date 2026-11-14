@@ -113,7 +113,7 @@ export function NewsFeed({
 }: NewsFeedProps) {
   const isPublicViewer = viewerMode === "public";
   const normalizedInitialPreferences = normalizeUserPreferences(initialPreferences);
-  const [supabase] = useState(() => createSupabaseBrowserClient());
+  const supabase = useMemo(() => isPublicViewer ? null : createSupabaseBrowserClient(), [isPublicViewer]);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<NewsCategory | "all">("all");
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
@@ -639,7 +639,7 @@ export function NewsFeed({
   }, [alertKeywords, hasLoadedAlertKeywords, isPublicViewer, userId]);
 
   useEffect(() => {
-    if (!userId || !hasMountedPreferences) {
+    if (!supabase || !userId || !hasMountedPreferences) {
       return;
     }
 
@@ -757,7 +757,7 @@ export function NewsFeed({
       return;
     }
 
-    if (!userId || isSavingArticle) {
+    if (!supabase || !userId || isSavingArticle) {
       return;
     }
 
@@ -845,7 +845,7 @@ export function NewsFeed({
       return;
     }
 
-    if (!userId || isSavingAlertKeyword) {
+    if (!supabase || !userId || isSavingAlertKeyword) {
       return;
     }
 
@@ -904,6 +904,7 @@ export function NewsFeed({
 
   return (
     <div className="space-y-5">
+      {feedErrorMessage && articles.length > 0 ? <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">{feedErrorMessage}</p> : null}
       <section className="border-y border-[var(--border)] bg-white px-3 py-2.5 shadow-[0_8px_24px_rgba(26,24,20,0.03)] sm:px-4 sm:py-3.5 lg:-mx-7 lg:px-7 xl:-mx-7 xl:px-[28px] xl:py-[10px] 2xl:-mx-8 2xl:px-8">
         <div
           className="flex flex-col gap-2.5 xl:flex-row xl:flex-wrap xl:items-center xl:gap-[10px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

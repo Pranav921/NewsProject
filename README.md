@@ -187,6 +187,26 @@ unavailable (CNN, USA Today, Reuters U.S., Reuters World); all 18 added feeds
 returned parseable articles. Feed failures remain isolated and requests time out
 after 12 seconds.
 
+## AI News Briefing (disabled by default)
+
+The signed-in dashboard can show **View AI Briefing**, an on-demand, shared briefing
+with up to five sourced items. It reuses RSS ingestion and story deduplication.
+Results summarize bounded publisher metadata, not full articles. Claude calls use
+Anthropic's official TypeScript SDK and Messages API server-side, with structured
+output, validated input references, Redis caching,
+generation leases, authenticated-user limits, and global attempt budgets.
+
+See [AI Briefing setup and tests](docs/AI_BRIEFING.md),
+[AI development provenance](docs/AI_DEVELOPMENT.md), and
+[separate repository follow-up issues](docs/FOLLOW_UP_ISSUES.md).
+Keep `AI_BRIEFING_ENABLED=false` until paid testing is approved. Production also
+requires `AI_BRIEFING_PRODUCTION_VERIFIED=true` after rollout review and approval.
+Configure private `ANTHROPIC_API_KEY`, `AI_BRIEFING_PROVIDER=anthropic`, and
+`AI_BRIEFING_MODEL=claude-haiku-5-5`. This model ID and structured JSON compatibility
+were verified against official Anthropic documentation; account access still needs
+the separately approved live smoke test. Existing private environment files are
+not modified automatically.
+
 ## Newsletter System Overview
 
 Newsletter delivery uses:
@@ -314,3 +334,20 @@ The account settings page now includes a visible `Account & data` section with:
 - `Delete my account` placeholder
 
 These are intentionally marked as coming soon. Destructive deletion is not enabled yet.
+
+## Local performance diagnostics
+
+For shared Upstash databases, read [Redis keyspaces](docs/REDIS_KEYSPACES.md).
+Local Redis use requires server-only `REDIS_KEYSPACE=dev`. Vercel Preview gets a
+separate prefix; production retains legacy keys pending an approved rollover.
+Logical key separation does not isolate credentials or free-tier resource usage.
+
+See [the performance review](docs/PERFORMANCE_REVIEW.md) for measured improvements,
+remaining authentication checks and local testing instructions. With the local
+server running and AI disabled, `node scripts/profile-local.mjs after` measures
+Chrome rendering, checks pagination/filtering and mocks a failed login. It does
+not submit credentials or call the AI provider. Raw reports are ignored under
+`.next/performance/`.
+
+For final AI review evidence, costs, blockers and the disabled-first deployment
+sequence, see [AI pre-deployment review](docs/AI_PREDEPLOY_REVIEW.md).

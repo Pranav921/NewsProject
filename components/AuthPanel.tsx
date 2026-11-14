@@ -1,6 +1,7 @@
 "use client";
 
 import { trackEvent } from "@/lib/analytics";
+import { submitPasswordAuth } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -66,41 +67,27 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
     setIsSubmitting(true);
     setMessage(null);
 
-    const response = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: email.trim(),
-        password,
-      }),
-    });
-    const result = (await response.json()) as {
-      confirmationRequired?: boolean;
-      error?: string;
-      message?: string;
-    };
+    try {
+      const result = await submitPasswordAuth("signup", email, password);
+      if (result.confirmationRequired) {
+        trackEvent("account_signup_success", {
+          auth_mode: "signup",
+          confirmation_required: true,
+        });
+        setMessage(result.message ?? "Sign-up successful. Check your email to confirm your account.");
+      } else {
+        trackEvent("account_signup_success", {
+          auth_mode: "signup",
+          confirmation_required: false,
+        });
+        router.replace("/");
+        router.refresh();
+        return;
+      }
 
-    if (!response.ok) {
-      setMessage(result.error ?? "Unable to sign up right now.");
-    } else if (result.confirmationRequired) {
-      trackEvent("account_signup_success", {
-        auth_mode: "signup",
-        confirmation_required: true,
-      });
-      setMessage(result.message ?? "Sign-up successful. Check your email to confirm your account.");
-    } else {
-      trackEvent("account_signup_success", {
-        auth_mode: "signup",
-        confirmation_required: false,
-      });
-      router.replace("/");
-      router.refresh();
-      return;
-    }
-
-    setIsSubmitting(false);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to sign up right now.");
+    } finally { setIsSubmitting(false); }
   }
 
   async function handleSignIn() {
@@ -112,33 +99,17 @@ export function AuthPanel({ syncWithHash = false }: AuthPanelProps) {
     setIsSubmitting(true);
     setMessage(null);
 
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: email.trim(),
-        password,
-      }),
-    });
-    const result = (await response.json()) as {
-      error?: string;
-      message?: string;
-    };
-
-    if (!response.ok) {
-      setMessage(result.error ?? "Unable to log in right now.");
-    } else {
+    try {
+      await submitPasswordAuth("login", email, password);
       trackEvent("account_login_success", {
         auth_mode: "login",
       });
       router.replace("/");
       router.refresh();
       return;
-    }
-
-    setIsSubmitting(false);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to log in right now.");
+    } finally { setIsSubmitting(false); }
   }
 
   return (

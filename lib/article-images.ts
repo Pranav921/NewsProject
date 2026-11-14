@@ -173,6 +173,7 @@ async function fetchLeadImageFromArticle(articleUrl: string): Promise<string | n
         "User-Agent": "breaking-news-site/0.1 (+https://github.com/)",
       },
       next: { revalidate: 21600 },
+      signal: AbortSignal.timeout(1500),
     });
 
     if (!response.ok) {
@@ -193,7 +194,23 @@ export async function enhanceLeadArticleImage(articles: NewsItem[]): Promise<New
     return articles;
   }
 
-  const enhancedImageUrl = await fetchLeadImageFromArticle(leadArticle.link);
+  // Keep enhancement off the critical path beyond a short deadline. Cache the
+  // promise too, so homepage/API callers do not fetch the same HTML concurrently.
+  const imageGlobal = globalThis as typeof globalThis & { __kickerLeadImages?: Map<string, { expires: number; value: Promise<string | null> }> };
+  const cache = imageGlobal.__kickerLeadImages ??= new Map();
+  let cached = cache.get(leadArticle.link);
+  if (!cached || cached.expires <= Date.now()) {
+    const link = leadArticle.link;
+    const value = fetchLeadImageFromArticle(link).then((image) => {
+      const entry = cache.get(link);
+      if (entry?.value === value) entry.expires = Date.now() + (image ? 21600000 : 60000);
+      return image;
+    });
+    cached = { expires: Date.now() + 1500, value };
+    if (cache.size >= 100) cache.delete(cache.keys().next().value!);
+    cache.set(link, cached);
+  }
+  const enhancedImageUrl = await cached.value;
 
   if (!enhancedImageUrl || enhancedImageUrl === leadArticle.imageUrl) {
     return articles;

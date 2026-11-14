@@ -51,10 +51,10 @@ test("/api/news payload preserves article.link values for new-article detection"
   );
 });
 
-test("/api/news bypasses the RSS cache for polling and manual refresh checks", () => {
+test("/api/news shares the RSS snapshot for polling and bypasses it for manual refresh", () => {
   assert.equal(
     shouldBypassNewsCache(new URLSearchParams("checkForUpdates=1")),
-    true,
+    false,
   );
   assert.equal(
     shouldBypassNewsCache(new URLSearchParams("refresh=1")),

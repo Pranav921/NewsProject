@@ -6,6 +6,5 @@ export function buildNewsApiPayload(articles: NewsItem[]) {
 
 export function shouldBypassNewsCache(searchParams: URLSearchParams): boolean {
   return ["1", "true"].includes(searchParams.get("fresh") ?? "") ||
-    ["1", "true"].includes(searchParams.get("refresh") ?? "") ||
-    ["1", "true"].includes(searchParams.get("checkForUpdates") ?? "");
+    ["1", "true"].includes(searchParams.get("refresh") ?? "");
 }
