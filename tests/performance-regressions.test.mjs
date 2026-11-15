@@ -34,6 +34,19 @@ test("publisher cache shares refreshes, preserves last-good data, backs off fail
   assert.equal((await cache.read("publisher", async () => ["recovered"])).failed, false);
 });
 
+test("feed cache reports the last successful load without changing freshness decisions", async () => {
+  let clock = 5000;
+  const { createFeedCache } = loadAiModule("../../lib/feed-cache.ts");
+  const cache = createFeedCache(() => clock);
+  const fail = async () => { throw new Error("upstream unavailable"); };
+  assert.equal((await cache.read("never", fail)).lastSuccessAt, null, "a feed that never loaded has no success time");
+  assert.equal((await cache.read("publisher", async () => ["story"])).lastSuccessAt, 5000);
+  clock += 91000;
+  const stale = await cache.read("publisher", fail);
+  assert.deepEqual([stale.failed, stale.stale, stale.lastSuccessAt], [true, true, 5000]);
+  assert.equal((await cache.read("publisher", fail)).lastSuccessAt, 5000, "backoff reads keep the same success time");
+});
+
 test("password auth handles HTML 404, JSON errors, network failures and timeout without leaking raw response", async () => {
   const { submitPasswordAuth } = loadAiModule("../../lib/auth-client.ts", {}, { TypeError });
   await assert.rejects(submitPasswordAuth("login", "user@example.test", "fake", async () => new Response("<html>private upstream data</html>", { status: 404 })), /service was not found/);
@@ -152,12 +165,22 @@ test("login route preserves successful and invalid-credential behavior and stops
   assert.equal(calls, 2);
 });
 
-test("news client rejects empty responses and surfaces partial-feed warnings", async () => {
+test("news client rejects empty responses and surfaces structured partial-feed status", async () => {
   let payload = { articles: [] };
-  const { fetchLatestNews } = loadAiModule("../../lib/news-client.ts", {}, { URLSearchParams, fetch: async () => Response.json(payload) });
+  const { fetchLatestNews, parseFeedStatus } = loadAiModule("../../lib/news-client.ts", {}, { URLSearchParams, fetch: async () => Response.json(payload) });
   await assert.rejects(fetchLatestNews("refresh"), /keeping the current feed/);
-  payload = { articles: [{ link: "https://publisher.example/story" }], feedStatus: { failedFeeds: 2, staleFeeds: 1 } };
-  let warning;
-  assert.equal((await fetchLatestNews("refresh", { onWarning: message => { warning = message; } })).length, 1);
-  assert.match(warning, /2 feeds are unavailable/);
+  const issue = { source: "BBC News", topic: "technology", state: "stale", lastSuccessAt: "2026-11-15T01:00:00.000Z" };
+  payload = { articles: [{ link: "https://publisher.example/story" }], feedStatus: { failedFeeds: 2, staleFeeds: 1, issues: [issue, { source: "NPR", topic: "headlines", state: "unavailable", lastSuccessAt: null, url: "https://private.example" }] } };
+  const plain = (value) => JSON.parse(JSON.stringify(value)); // the module runs in a separate VM realm
+  let status;
+  assert.equal((await fetchLatestNews("refresh", { onFeedStatus: value => { status = value; } })).length, 1);
+  assert.deepEqual(plain(status), { failedFeeds: 2, staleFeeds: 1, issues: [issue, { source: "NPR", topic: "headlines", state: "unavailable", lastSuccessAt: null }] }, "unknown fields such as URLs are dropped");
+  payload = { articles: [{ link: "https://publisher.example/story" }], feedStatus: { failedFeeds: 0, staleFeeds: 0, issues: [] } };
+  await fetchLatestNews("refresh", { onFeedStatus: value => { status = value; } });
+  assert.deepEqual(plain(status), { failedFeeds: 0, staleFeeds: 0, issues: [] }, "a healthy refresh clears an earlier notice");
+  // Malformed health data is ignored rather than rendered.
+  assert.equal(parseFeedStatus({ failedFeeds: -1, staleFeeds: 0 }), null);
+  assert.equal(parseFeedStatus("4 feeds are unavailable"), null);
+  assert.deepEqual(plain(parseFeedStatus({ failedFeeds: 1, staleFeeds: 0, issues: [{ source: "", topic: "x", state: "unavailable" }, { source: "A", topic: "b", state: "broken" }, null] }).issues), []);
+  assert.equal(parseFeedStatus({ failedFeeds: 60, staleFeeds: 0, issues: Array.from({ length: 60 }, (_, i) => ({ source: `S${i}`, topic: "headlines", state: "unavailable", lastSuccessAt: null })) }).issues.length, 50);
 });

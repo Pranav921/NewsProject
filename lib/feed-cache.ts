@@ -1,5 +1,8 @@
 type Entry<T> = { items: T[]; updatedAt: number; retryAt: number; failed: boolean };
-export type FeedCacheResult<T> = { items: T[]; failed: boolean; stale: boolean };
+// lastSuccessAt is the time of the last successful load (null if never); it is
+// reporting metadata only and does not change freshness or fallback decisions.
+export type FeedCacheResult<T> = { items: T[]; failed: boolean; stale: boolean; lastSuccessAt: number | null };
+const lastSuccess = (entry?: Entry<unknown>) => (entry?.updatedAt ? entry.updatedAt : null);
 
 // Per-feed last-good values prevent one failed publisher from removing its
 // stories. One pending fetch is shared even by explicit concurrent refreshes.
@@ -11,7 +14,7 @@ export function createFeedCache<T>(now: () => number = Date.now) {
       const current = entries.get(key);
       const alive = current && now() - current.updatedAt <= 1800000;
       if (current && now() < current.retryAt && (current.failed || !fresh)) {
-        return { items: alive ? current.items : [], failed: current.failed, stale: Boolean(alive && current.failed && current.items.length) };
+        return { items: alive ? current.items : [], failed: current.failed, stale: Boolean(alive && current.failed && current.items.length), lastSuccessAt: lastSuccess(current) };
       }
       const running = pending.get(key);
       if (running) return running;
@@ -19,13 +22,14 @@ export function createFeedCache<T>(now: () => number = Date.now) {
         try {
           const items = await load();
           if (!items.length) throw new Error("empty-feed");
-          entries.set(key, { items, updatedAt: now(), retryAt: now() + 90000, failed: false });
-          return { items, failed: false, stale: false };
+          const entry = { items, updatedAt: now(), retryAt: now() + 90000, failed: false };
+          entries.set(key, entry);
+          return { items, failed: false, stale: false, lastSuccessAt: entry.updatedAt };
         } catch {
           const usable = current && now() - current.updatedAt <= 1800000;
           const entry = { items: usable ? current.items : [], updatedAt: current?.updatedAt ?? 0, retryAt: now() + 15000, failed: true };
           entries.set(key, entry);
-          return { items: entry.items, failed: true, stale: Boolean(usable && entry.items.length) };
+          return { items: entry.items, failed: true, stale: Boolean(usable && entry.items.length), lastSuccessAt: lastSuccess(entry) };
         } finally { pending.delete(key); }
       })();
       pending.set(key, request);

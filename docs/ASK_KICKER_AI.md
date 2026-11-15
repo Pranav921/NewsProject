@@ -532,21 +532,36 @@ changed. Both Ask flags stay false everywhere; no paid call or deployment occurr
 
 ### What the reader sees
 
-An **Ask Kicker AI** card sits directly below the AI Briefing card and above the
-feed. It reuses the briefing's card, eyebrow, heading and citation styles: navy
-heading and primary button, magenta accents and focus rings, warm-paper surfaces.
+*Updated November 15, 2026 (AI Hub redesign; presentation only, no backend change).*
+
+The signed-in dashboard has two top-level sections: **News Feed** (default, clean
+URL) and **AI Hub** (`/?view=ai`, a shareable direct link). They are WAI-ARIA tabs:
+arrow keys and Home/End switch sections, and Back/Forward follow them. Both panels
+stay mounted (inactive one `hidden`), so feed filters, the Ask draft and an
+in-flight Ask request survive a switch. The AI Hub is one centered reading column
+(≤768 px): **Ask Kicker AI** first, then **Your News Briefing** in the same card
+style. Without the shared AI switch there are no tabs; `?view=ai` falls back to the feed.
 
 - Idle: eyebrow, heading, one-paragraph description (answers use headlines and short
-  summaries from available news article metadata; no full articles), a question
-  input with an **Ask** button, a hint line and four example questions. Selecting an
-  example fills and focuses the input; it never submits.
+  summaries from available news article metadata; no full articles), one prominent
+  question field with an **Ask** button, a hint line and three example questions
+  (shown only before a question). Selecting an example fills and focuses the input;
+  it never submits.
 - Loading: "You asked" echo, a short progress message (up to 30 seconds), a skeleton
   and an **Asking…** button. The skeleton/spinner stop under reduced motion.
-- Answered: a status pill, generated time, **Fresh answer** or **Saved answer (no new
-  AI request)**, the question, then up to five numbered statements. Each statement
-  has one to three citation cards (publisher, article title, new-tab icon). A
-  coverage panel and the backend disclaimer follow.
-- No results: keyword-search tips plus the coverage panel, so the reader sees what
+- Answered: the question as the heading; generated time, **Fresh answer** or
+  **Saved answer (no new AI request)** and **New question**; then up to five
+  statements as readable prose. Each ends with compact numbered source links
+  (24 px, accessible name "Source n: publisher, title (opens in a new tab)"). One
+  **Sources** list follows, with each cited article once (number, publisher, title,
+  44 px target). Identity is the exact backend `articleId` + URL, and titles,
+  publishers and URLs are shown unchanged (`indexAskSources`). Incomplete-coverage
+  warnings (failed/stale feeds, truncation) stay **visible**; the backend disclaimer
+  is always visible; the routine coverage figures (window, counts, published range,
+  feeds-checked time, "RSS coverage is incomplete") sit in a collapsed **About this
+  answer** disclosure. Statement text is never rewritten: publisher names the model
+  wrote stay, and repetition is reduced by listing each source once.
+- No results: keyword-search tips plus the coverage details, so the reader sees what
   was searched. Needs clarification: the single clarifying question and an **Edit your
   question** button that focuses and selects the input. Unsupported: what Ask Kicker
   can and cannot do. **New question** clears the panel and refocuses the input.

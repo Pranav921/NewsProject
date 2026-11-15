@@ -10,11 +10,19 @@ const nextConfig: NextConfig = {
   },
 };
 
+// Source maps and Sentry releases are produced only by builds running on Vercel.
+// The Sentry bundler plugin also loads a local `.env.sentry-build-plugin` token by
+// itself (overriding process.env), so local and CI builds must opt out explicitly
+// instead of relying on SENTRY_* variables being absent.
+const isVercelBuild = process.env.VERCEL === "1";
+
 export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
   authToken: process.env.SENTRY_AUTH_TOKEN,
+  sourcemaps: { disable: !isVercelBuild },
+  release: { create: isVercelBuild, finalize: isVercelBuild },
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
 

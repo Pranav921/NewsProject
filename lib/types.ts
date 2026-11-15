@@ -5,6 +5,22 @@ export type FeedDefinition = {
   url: string;
 };
 
+// Public, reader-safe feed health: publisher names and timestamps only, never URLs,
+// error text or upstream responses. "unavailable" = no stories from that feed right
+// now; "stale" = its last good stories (under 30 minutes old) are still shown.
+export type FeedIssue = {
+  source: string;
+  topic: string;
+  state: "unavailable" | "stale";
+  lastSuccessAt: string | null;
+};
+
+export type FeedStatus = {
+  failedFeeds: number;
+  staleFeeds: number;
+  issues?: FeedIssue[];
+};
+
 export type CoverageFilter = "all" | "national" | "international";
 
 export type SponsorConfig = {

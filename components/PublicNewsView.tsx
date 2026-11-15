@@ -6,20 +6,23 @@ import { NewArticlesPrompt } from "@/components/NewArticlesPrompt";
 import { NewsFeed } from "@/components/NewsFeed";
 import { PublicFooter } from "@/components/PublicFooter";
 import { fetchLatestNews } from "@/lib/news-client";
-import type { NewsItem } from "@/lib/types";
+import type { FeedStatus, NewsItem } from "@/lib/types";
 import { useEffect, useState } from "react";
 
 type PublicNewsViewProps = {
   articles: NewsItem[];
   feedErrorMessage?: string | null;
+  feedStatus?: FeedStatus | null;
 };
 
 export function PublicNewsView({
   articles,
   feedErrorMessage = null,
+  feedStatus = null,
 }: PublicNewsViewProps) {
   const [currentArticles, setCurrentArticles] = useState(articles);
   const [currentFeedError, setCurrentFeedError] = useState(feedErrorMessage);
+  const [currentFeedStatus, setCurrentFeedStatus] = useState(feedStatus);
   const [activeShellTab, setActiveShellTab] = useState<ShellTab>("feed");
   const [isAuthPanelVisible, setIsAuthPanelVisible] = useState(false);
   const [pendingUpdateCount, setPendingUpdateCount] = useState(0);
@@ -27,11 +30,12 @@ export function PublicNewsView({
   const articleLinks = currentArticles.map((article) => article.link);
 
   // Reset local refresh results only when a new server snapshot arrives.
-  const [serverSnapshot, setServerSnapshot] = useState({ articles, feedErrorMessage });
-  if (serverSnapshot.articles !== articles || serverSnapshot.feedErrorMessage !== feedErrorMessage) {
-    setServerSnapshot({ articles, feedErrorMessage });
+  const [serverSnapshot, setServerSnapshot] = useState({ articles, feedErrorMessage, feedStatus });
+  if (serverSnapshot.articles !== articles || serverSnapshot.feedErrorMessage !== feedErrorMessage || serverSnapshot.feedStatus !== feedStatus) {
+    setServerSnapshot({ articles, feedErrorMessage, feedStatus });
     setCurrentArticles(articles);
     setCurrentFeedError(feedErrorMessage);
+    setCurrentFeedStatus(feedStatus);
   }
 
   useEffect(() => {
@@ -53,8 +57,9 @@ export function PublicNewsView({
   }, []);
 
   async function refreshArticles() {
-    const latestArticles = await fetchLatestNews("refresh", { onWarning: setCurrentFeedError });
+    const latestArticles = await fetchLatestNews("refresh", { onFeedStatus: setCurrentFeedStatus });
     setCurrentArticles(latestArticles);
+    setCurrentFeedError(null); // stories loaded, so any earlier "no stories" error is resolved
   }
 
   return (
@@ -142,6 +147,7 @@ export function PublicNewsView({
         authCtaHref="#public-auth-panel-login"
         authSignupHref="#public-auth-panel-signup"
         feedErrorMessage={currentFeedError}
+        feedStatus={currentFeedStatus}
         onShellTabChange={setActiveShellTab}
         viewerMode="public"
       />

@@ -2,7 +2,7 @@ import { categoryFromPublisherLabels, getArticleCategory } from "./news-categori
 import { RSS_FEEDS } from "./feeds.ts";
 import { normalizeArticleLink } from "./news-updates.ts";
 import { cleanSummary, stripCdata, stripHtml } from "./rss-format.ts";
-import type { FeedDefinition, NewsItem } from "./types.ts";
+import type { FeedDefinition, FeedIssue, FeedStatus, NewsItem } from "./types.ts";
 import { createFeedCache } from "./feed-cache.ts";
 
 const cacheGlobal = globalThis as typeof globalThis & { __kickerFeedCache?: ReturnType<typeof createFeedCache<NewsItem>> };
@@ -326,10 +326,36 @@ type GetAllNewsItemsOptions = {
   fresh?: boolean;
 };
 
+class FeedFetchError extends Error {
+  reason: string;
+  constructor(reason: string) { super("feed-unavailable"); this.reason = reason; }
+}
+
+// Maps a feed failure to one short, fixed category for logs and diagnostics:
+// timeout | dns | tls | network | http-<status> | not-a-feed | empty-feed | unknown.
+// It never returns URLs, response bodies, headers or raw error messages.
+export function classifyFeedFailure(error: unknown): string {
+  if (error instanceof FeedFetchError) return error.reason;
+  const failure = error as { name?: unknown; code?: unknown; cause?: { code?: unknown } } | null;
+  if (failure?.name === "TimeoutError" || failure?.name === "AbortError") return "timeout";
+  const code = String(failure?.cause?.code ?? failure?.code ?? "");
+  if (/^(ENOTFOUND|EAI_AGAIN|ENODATA)$/.test(code)) return "dns";
+  if (/CERT|SSL|TLS|SELF_SIGNED|HOSTNAME|UNABLE_TO_VERIFY/i.test(code)) return "tls";
+  if (/^(ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENETUNREACH|EPIPE)$|^UND_ERR/.test(code)) return "network";
+  return "unknown";
+}
+
+// A 200 response with no items is either a removed endpoint redirected to an HTML
+// page (often a homepage) or a genuinely empty/unparseable feed.
+function emptyFeedReason(contentType: string, body: string) {
+  return /html/i.test(contentType) || /^\s*(<!doctype html|<html)/i.test(body.slice(0, 200)) ? "not-a-feed" : "empty-feed";
+}
+
 async function fetchFeed(
   feed: FeedDefinition,
 ): Promise<NewsItem[]> {
   const startedAt = Date.now();
+  let redirected = false;
   try {
     const fetchOptions: RequestInit = {
       // The shared per-feed cache owns freshness for every consumer.
@@ -344,15 +370,17 @@ async function fetchFeed(
       signal: AbortSignal.timeout(12000),
     });
 
-    if (!response.ok) throw new Error(`feed-http-${response.status}`);
+    redirected = response.redirected;
+    if (!response.ok) throw new FeedFetchError(`http-${response.status}`);
 
     const xml = await response.text();
     const items = parseRssXml(xml, feed);
-    if (!items.length) throw new Error("empty-feed");
+    if (!items.length) throw new FeedFetchError(emptyFeedReason(response.headers.get("content-type") ?? "", xml));
     console.info("[rss][feed]", { source: feed.name, category: feed.category ?? "headlines", count: items.length, durationMs: Date.now() - startedAt });
     return items;
-  } catch {
-    console.warn("[rss][feed][unavailable]", { source: feed.name, category: feed.category ?? "headlines", durationMs: Date.now() - startedAt });
+  } catch (error) {
+    // Bounded, sanitized diagnostics: publisher, topic, failure category only.
+    console.warn("[rss][feed][unavailable]", { source: feed.name, category: feed.category ?? "headlines", reason: classifyFeedFailure(error), redirected, durationMs: Date.now() - startedAt });
     throw new Error("feed-unavailable");
   }
 }
@@ -396,12 +424,20 @@ export async function getNewsSnapshot(options: GetAllNewsItemsOptions = {}) {
     RSS_FEEDS.map((feed) => feedCache.read(feed.url, () => fetchFeed(feed), options.fresh)),
   );
   const mergedItems = feedResults.flatMap((result) => result.items.map((item) => ({ ...item })));
+  // Reader-facing detail for the feed-health notice. Counts keep their existing
+  // meaning (Ask Kicker coverage relies on them); a stale feed is also a failed one.
+  const issues: FeedIssue[] = feedResults.flatMap((result, index) => result.failed ? [{
+    source: RSS_FEEDS[index].name,
+    topic: RSS_FEEDS[index].category ?? "headlines",
+    state: result.stale ? "stale" as const : "unavailable" as const,
+    lastSuccessAt: result.lastSuccessAt ? new Date(result.lastSuccessAt).toISOString() : null,
+  }] : []);
 
   // Keep the homepage predictable: no duplicates and newest stories first.
   const snapshot = {
     articles: sortNewestFirst(dedupeByLink(mergedItems)),
-    feedStatus: { failedFeeds: feedResults.filter((result) => result.failed).length, staleFeeds: feedResults.filter((result) => result.stale).length },
+    feedStatus: { failedFeeds: feedResults.filter((result) => result.failed).length, staleFeeds: feedResults.filter((result) => result.stale).length, issues } satisfies FeedStatus,
   };
-  console.info("[rss][snapshot]", { articleCount: snapshot.articles.length, ...snapshot.feedStatus });
+  console.info("[rss][snapshot]", { articleCount: snapshot.articles.length, failedFeeds: snapshot.feedStatus.failedFeeds, staleFeeds: snapshot.feedStatus.staleFeeds });
   return snapshot;
 }

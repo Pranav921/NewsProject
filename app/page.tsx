@@ -15,7 +15,7 @@ import {
 } from "@/lib/seo";
 import { isAiEnabled } from "@/lib/ai/feature-flag";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { NewsItem } from "@/lib/types";
+import type { FeedStatus, NewsItem } from "@/lib/types";
 import { normalizeUserPreferences } from "@/lib/user-preferences";
 import type { Metadata } from "next";
 
@@ -35,12 +35,15 @@ export default async function Home() {
   } = await supabase.auth.getUser();
 
   let articles: NewsItem[] = [];
+  // Partial outages travel as structured feedStatus (shown as a quiet notice);
+  // feedErrorMessage is reserved for "no stories could be loaded at all".
+  let feedStatus: FeedStatus | null = null;
   let feedErrorMessage: string | null = null;
 
   try {
     const snapshot = await getNewsSnapshot();
     articles = snapshot.articles;
-    if (snapshot.feedStatus.failedFeeds) feedErrorMessage = `${snapshot.feedStatus.failedFeeds} feeds are unavailable. ${snapshot.feedStatus.staleFeeds ? "Recent cached stories are included where available." : "Showing stories from the available feeds."}`;
+    feedStatus = snapshot.feedStatus;
     if (!articles.length) throw new Error("no-available-feeds");
     articles = await enhanceLeadArticleImage(articles);
   } catch {
@@ -100,7 +103,7 @@ export default async function Home() {
             __html: serializeJsonLd(homepageStructuredData),
           }}
         />
-        <PublicNewsView articles={articles} feedErrorMessage={feedErrorMessage} />
+        <PublicNewsView articles={articles} feedErrorMessage={feedErrorMessage} feedStatus={feedStatus} />
       </main>
     );
   }
@@ -147,6 +150,7 @@ export default async function Home() {
         askKickerEnabled={aiEnabled}
         articles={articles}
         feedErrorMessage={feedErrorMessage}
+        feedStatus={feedStatus}
         initialAlertKeywords={initialAlertKeywords}
         initialPreferences={initialPreferences}
         initialSavedArticles={initialSavedArticles}

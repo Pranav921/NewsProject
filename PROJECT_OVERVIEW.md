@@ -143,12 +143,15 @@ type EmailSendLog           = { status: "failed"|"sent"|"skipped"; error; articl
 
 ### 5.1 Feed configuration — [lib/feeds.ts](lib/feeds.ts)
 
-Thirty feeds share 18 source names. Each has a display `name`, `url`, `coverage`,
-and optional `category`. The original twelve headline feeds remain, alongside
+Twenty-six active feeds share 14 source names. Each has a display `name`, `url`,
+`coverage`, and optional `category`. Eight original headline feeds remain, alongside
 18 added feeds: BBC technology/business/health/science; Guardian
 technology/business/environment/sports/culture/education; NPR politics/health;
 and Ars Technica, TechCrunch, NASA, ScienceDaily, PBS NewsHour, Deutsche Welle.
-Topic feeds retain their publisher's existing source name.
+Topic feeds retain their publisher's existing source name. Four original endpoints
+(CNN, USA Today, Reuters U.S., Reuters World) are in `RETIRED_FEEDS`: their publishers
+removed them, so they are not fetched, but their coverage remains for saved stories.
+See [docs/RSS_FEED_HEALTH.md](docs/RSS_FEED_HEALTH.md).
 
 Coverage lookup is **source-based**: only uncategorized or `general` feed entries
 populate the map. Topic-feed coverage does not override a publisher's headline
@@ -156,9 +159,9 @@ coverage; topic-only sources fall back to `both`.
 
 | Source | Coverage |
 |---|---|
-| BBC News, The Guardian, Al Jazeera, Sky News, Reuters World, Deutsche Welle | `international` |
-| CBS News, NBC News, USA Today, Reuters U.S. | `national` |
-| The New York Times, NPR, CNN, PBS NewsHour | `both` |
+| BBC News, The Guardian, Al Jazeera, Sky News, Deutsche Welle (retired: Reuters World) | `international` |
+| CBS News, NBC News (retired: USA Today, Reuters U.S.) | `national` |
+| The New York Times, NPR, PBS NewsHour (retired: CNN) | `both` |
 | Ars Technica, TechCrunch, NASA, ScienceDaily | `both` (fallback) |
 
 Two exported helpers:
@@ -835,8 +838,10 @@ and [sentry.edge.config.ts](sentry.edge.config.ts). Sampling is 10 % in producti
 100 % in development; `sendDefaultPii: false` everywhere.
 [next.config.ts](next.config.ts) wraps the config with `withSentryConfig`, enabling
 a `/monitoring` tunnel route (ad-blocker evasion), widened source-map upload, and
-Vercel cron monitors. Source-map upload only activates when `SENTRY_AUTH_TOKEN` is
-set. Stage C registers the shared [privacy allowlist](lib/sentry.ts) in all three
+Vercel cron monitors. Source-map upload and release creation run only in builds on
+Vercel (`VERCEL=1`) with `SENTRY_AUTH_TOKEN` set; local and CI builds never upload,
+even though the Sentry plugin reads a local `.env.sentry-build-plugin` token by itself
+(`tests/sentry-build-config.test.mjs`). Stage C registers the shared [privacy allowlist](lib/sentry.ts) in all three
 runtimes: outgoing request data/headers/cookies, private text, arbitrary context,
 attachments and span payloads are removed. SDK logs, breadcrumbs and replay are
 disabled, reducing general diagnostic detail. Deployed telemetry is not verified.
@@ -967,16 +972,17 @@ send real email or write production data. Coverage:
 Additional opt-in validation (Node 24):
 
 ```bash
-node --experimental-strip-types scripts/validate-news-feeds.mjs       # 18 added feeds
-node --experimental-strip-types scripts/validate-news-feeds.mjs --all # all 30 feeds
+node --experimental-strip-types scripts/validate-news-feeds.mjs           # 18 topic feeds
+node --experimental-strip-types scripts/validate-news-feeds.mjs --all     # all 26 active feeds
+node --experimental-strip-types scripts/validate-news-feeds.mjs --retired # 4 retired endpoints
 node scripts/validate-news-ui.mjs
 node scripts/validate-news-ui.mjs --live-homepage
 ```
 
-The feed script makes network requests with 15-second timeouts; live availability
-can vary. README.md records four original feeds unavailable during the October 30
-check (CNN, USA Today, Reuters U.S., Reuters World); that is historical evidence,
-not a current availability check.
+The feed script makes one request per feed with production's 12-second timeout and
+prints a sanitized failure category; live availability can vary. The four feeds that
+always failed (CNN, USA Today, Reuters U.S., Reuters World) were retired on November
+15, 2026 after root-cause evidence (docs/RSS_FEED_HEALTH.md); `--retired` re-checks them.
 
 The UI script uses installed Chrome (`CHROME_PATH` overrides the default path),
 ports 3100/9311, and a temporary local route with real components. It checks seven

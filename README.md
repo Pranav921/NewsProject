@@ -167,9 +167,11 @@ the nullable `saved_articles.category` field. Deploy the migration before the ap
 Additional validation commands (Node 24):
 
 ```bash
-# Verify added feeds over the network; --all also checks original feeds.
+# Verify topic feeds over the network; --all checks every active feed;
+# --retired re-checks the four retired endpoints (see docs/RSS_FEED_HEALTH.md).
 node --experimental-strip-types scripts/validate-news-feeds.mjs
 node --experimental-strip-types scripts/validate-news-feeds.mjs --all
+node --experimental-strip-types scripts/validate-news-feeds.mjs --retired
 
 # Real-component browser checks, using installed Chrome and a temporary local route.
 # Override CHROME_PATH when Chrome is installed elsewhere.
@@ -181,11 +183,18 @@ The browser check uses local ports 3100 and 9311, mocks newsletter saves, checks
 seven viewport widths from 320px to 1920px, saved-story filtering, and both header
 variants with pending updates. `--live-homepage` also checks the actual homepage
 with live news. It removes its temporary route and generated route types on exit. It does
-not sign in, write account data, or send email. Live feed availability varies:
-the full catalog check on October 30, 2026 found four pre-existing endpoints
-unavailable (CNN, USA Today, Reuters U.S., Reuters World); all 18 added feeds
-returned parseable articles. Feed failures remain isolated and requests time out
-after 12 seconds.
+not sign in, write account data, or send email. Live feed availability varies.
+The four endpoints that always failed (CNN, USA Today, Reuters U.S., Reuters World)
+were confirmed permanently retired by their publishers on November 15, 2026 and are
+no longer fetched; evidence and the re-check procedure are in
+[docs/RSS_FEED_HEALTH.md](docs/RSS_FEED_HEALTH.md). Feed failures remain isolated,
+requests time out after 12 seconds, and a partial outage shows a compact notice
+listing the affected publishers instead of a banner.
+
+`node scripts/validate-dashboard-ui.mjs` checks the signed-in dashboard's **News
+Feed** / **AI Hub** sections (ports 3104/9315): tabs and keyboard, `?view=ai` direct
+links, Back/Forward, state and scroll preservation, the feed-health notice and three
+widths, with every `/api/*` request intercepted in the browser.
 
 ## AI News Briefing (disabled by default)
 
@@ -288,7 +297,8 @@ Optional build-time source map upload vars:
 - `SENTRY_ORG`
 - `SENTRY_PROJECT`
 
-Source map upload stays optional and only activates when the auth token is configured.
+Source map upload stays optional and only runs in builds on Vercel with the auth token
+configured. Local and CI builds never upload, even if `.env.sentry-build-plugin` holds a token.
 
 ### UptimeRobot
 

@@ -80,6 +80,35 @@ export function safeCitationUrl(url: string): string | null {
   } catch { return null; }
 }
 
+export type AskSource = { number: number; source: string; title: string; href: string | null };
+export type AskSourceIndex = { sources: AskSource[]; markers: number[][] };
+
+// Numbers each distinct cited article once, in order of first citation, so the answer
+// reads as prose with compact numbered markers and one "Sources" list instead of
+// repeating publisher cards under every statement. Identity is the exact
+// backend-validated articleId + URL pair; titles, publishers and URLs pass through unchanged.
+export function indexAskSources(statements: AskAnswer["statements"]): AskSourceIndex {
+  const sources: AskSource[] = [];
+  const numbers = new Map<string, number>();
+  const markers = statements.map(statement => {
+    const seen = new Set<number>();
+    return statement.citations.flatMap(citation => {
+      const key = `${citation.articleId}\u0000${citation.url}`;
+      let number = numbers.get(key);
+      if (number === undefined) {
+        number = sources.length + 1;
+        numbers.set(key, number);
+        sources.push({ number, source: citation.source, title: citation.title, href: safeCitationUrl(citation.url) });
+      }
+      // Within one statement each source number appears once.
+      if (seen.has(number)) return [];
+      seen.add(number);
+      return [number];
+    });
+  });
+  return { sources, markers };
+}
+
 const defaultTime = (date: Date) => date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
 export function formatWait(seconds: number, now: number, formatTime = defaultTime): string {
@@ -124,8 +153,8 @@ export function describeAskFailure(input: { status: number; code?: string | null
   if (code && UNVERIFIED.has(code)) {
     return failure("unverified", "No verified answer this time", "Ask Kicker couldn't produce an answer that passed its citation and safety checks, so nothing was shown. Try rephrasing your question.", true);
   }
-  if (code?.startsWith("provider-")) return failure("provider", "AI service unavailable", "The AI service didn't respond normally. Try again in a moment; the news feed below is unaffected.", true);
-  return failure("unavailable", "Ask Kicker is unavailable", "Ask Kicker is temporarily unavailable. You can keep reading the news feed below.", true);
+  if (code?.startsWith("provider-")) return failure("provider", "AI service unavailable", "The AI service didn't respond normally. Try again in a moment; the News Feed is unaffected.", true);
+  return failure("unavailable", "Ask Kicker is unavailable", "Ask Kicker is temporarily unavailable. You can keep reading the News Feed.", true);
 }
 
 export function coverageWindowLabel(coverage: AskCoverage): string {

@@ -93,6 +93,27 @@ test("Ask UI coverage labels and incomplete-coverage notes come from structured 
   assert.match(notes[0], /^2 news feeds could not be loaded/); assert.match(notes[1], /^1 feed used a recently cached copy/);
 });
 
+test("Ask UI numbers each cited article once and keeps exact backend source identities", () => {
+  const cite = (articleId, url, source = "Wire Desk", title = `Title ${articleId}`) => ({ articleId, url, source, title });
+  const a = cite("a1", "https://wire.example/a");
+  const b = cite("b2", "https://radio.example/b", "Public Radio");
+  const { sources, markers } = ui.indexAskSources([
+    { text: "First.", citations: [a, b] },
+    { text: "Second.", citations: [b] },
+    { text: "Third.", citations: [cite("c3", "https://wire.example/c"), a, a] },
+  ]);
+  assert.deepEqual(markers, [[1, 2], [2], [3, 1]], "first-cited order; repeats reuse the number; one marker per source per statement");
+  assert.deepEqual(sources.map((source) => [source.number, source.source, source.title, source.href]), [
+    [1, "Wire Desk", "Title a1", "https://wire.example/a"],
+    [2, "Public Radio", "Title b2", "https://radio.example/b"],
+    [3, "Wire Desk", "Title c3", "https://wire.example/c"],
+  ]);
+  // Same article id with a different URL is a different identity, and unsafe URLs are never linked.
+  const tampered = ui.indexAskSources([{ text: "x", citations: [a, { ...a, url: "javascript:alert(1)" }] }]);
+  assert.deepEqual(tampered.markers, [[1, 2]]);
+  assert.equal(tampered.sources[1].href, null);
+});
+
 test("Ask UI client bundle cannot reach server modules, persist questions, or render raw HTML", () => {
   const component = readFileSync(new URL("../components/AskKicker.tsx", import.meta.url), "utf8");
   const helpers = readFileSync(new URL("../lib/ai/ask-ui.ts", import.meta.url), "utf8");

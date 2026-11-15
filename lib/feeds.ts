@@ -24,11 +24,6 @@ export const RSS_FEEDS: FeedDefinition[] = [
     url: "https://www.theguardian.com/world/rss",
   },
   {
-    coverage: "both",
-    name: "CNN",
-    url: "https://rss.cnn.com/rss/cnn_topstories.rss",
-  },
-  {
     coverage: "national",
     name: "CBS News",
     url: "https://www.cbsnews.com/latest/rss/main",
@@ -37,21 +32,6 @@ export const RSS_FEEDS: FeedDefinition[] = [
     coverage: "national",
     name: "NBC News",
     url: "https://feeds.nbcnews.com/nbcnews/public/news",
-  },
-  {
-    coverage: "national",
-    name: "USA Today",
-    url: "https://rssfeeds.usatoday.com/usatoday-NewsTopStories",
-  },
-  {
-    coverage: "national",
-    name: "Reuters U.S.",
-    url: "https://feeds.reuters.com/Reuters/domesticNews",
-  },
-  {
-    coverage: "international",
-    name: "Reuters World",
-    url: "https://feeds.reuters.com/Reuters/worldNews",
   },
   {
     coverage: "international",
@@ -174,8 +154,26 @@ export const RSS_FEEDS: FeedDefinition[] = [
   },
 ];
 
+// Endpoints that publishers retired. They are not fetched: every request failed,
+// returned no stories and inflated the "feeds unavailable" count shown to readers
+// and Ask Kicker. Evidence (one bounded check per URL, Nov 15 2026, local and
+// production /api/news): see docs/RSS_FEED_HEALTH.md. Re-check with
+// `node --experimental-strip-types scripts/validate-news-feeds.mjs --retired`
+// before restoring one; never substitute an unofficial proxy feed.
+// Their coverage stays known so any previously saved stories filter as before.
+export const RETIRED_FEEDS: Array<FeedDefinition & { reason: string }> = [
+  { coverage: "both", name: "CNN", url: "https://rss.cnn.com/rss/cnn_topstories.rss",
+    reason: "HTTPS handshake fails; the HTTP copy has not changed since 2023 (newest item 2023-05-01)." },
+  { coverage: "national", name: "USA Today", url: "https://rssfeeds.usatoday.com/usatoday-NewsTopStories",
+    reason: "Permanent 301 redirect to the usatoday.com HTML homepage; no feed is advertised there." },
+  { coverage: "national", name: "Reuters U.S.", url: "https://feeds.reuters.com/Reuters/domesticNews",
+    reason: "feeds.reuters.com no longer exists (NXDOMAIN); Reuters offers no public RSS replacement." },
+  { coverage: "international", name: "Reuters World", url: "https://feeds.reuters.com/Reuters/worldNews",
+    reason: "feeds.reuters.com no longer exists (NXDOMAIN); Reuters offers no public RSS replacement." },
+];
+
 const FEED_COVERAGE_BY_SOURCE = new Map(
-  RSS_FEEDS.filter((feed) => !feed.category || feed.category === "general").map((feed) => [feed.name, feed.coverage] as const),
+  [...RETIRED_FEEDS, ...RSS_FEEDS].filter((feed) => !feed.category || feed.category === "general").map((feed) => [feed.name, feed.coverage] as const),
 );
 
 export function getFeedCoverage(source: string) {

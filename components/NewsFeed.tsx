@@ -1,5 +1,6 @@
 "use client";
 
+import { FeedHealthNotice } from "@/components/FeedHealthNotice";
 import { NewsList } from "@/components/NewsList";
 import { trackEvent } from "@/lib/analytics";
 import {
@@ -24,6 +25,7 @@ import {
 } from "@/lib/smart-alerts";
 import type {
   CoverageFilter,
+  FeedStatus,
   NewsCategory,
   NewsItem,
   SavedArticle,
@@ -44,7 +46,9 @@ type NewsFeedProps = {
   articles: NewsItem[];
   authCtaHref?: string;
   authSignupHref?: string;
+  /** Hard failure only (no articles at all). Partial outages use feedStatus. */
   feedErrorMessage?: string | null;
+  feedStatus?: FeedStatus | null;
   initialAlertKeywords?: string[];
   initialPreferences?: UserPreferences | null;
   initialSavedArticles?: SavedArticle[];
@@ -103,6 +107,7 @@ export function NewsFeed({
   authCtaHref = "#public-auth-panel",
   authSignupHref = "#public-auth-panel",
   feedErrorMessage = null,
+  feedStatus = null,
   initialAlertKeywords = EMPTY_ALERT_KEYWORDS,
   initialPreferences = null,
   initialSavedArticles = EMPTY_SAVED_ARTICLES,
@@ -904,7 +909,6 @@ export function NewsFeed({
 
   return (
     <div className="space-y-5">
-      {feedErrorMessage && articles.length > 0 ? <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">{feedErrorMessage}</p> : null}
       <section className="border-y border-[var(--border)] bg-white px-3 py-2.5 shadow-[0_8px_24px_rgba(26,24,20,0.03)] sm:px-4 sm:py-3.5 lg:-mx-7 lg:px-7 xl:-mx-7 xl:px-[28px] xl:py-[10px] 2xl:-mx-8 2xl:px-8">
         <div
           className="flex flex-col gap-2.5 xl:flex-row xl:flex-wrap xl:items-center xl:gap-[10px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -1211,6 +1215,9 @@ export function NewsFeed({
           ) : null}
         </div>
       </section>
+
+      {/* Below the filters and above the stories: visible, but never the first thing on the page. */}
+      {articles.length > 0 && effectiveFeedMode !== "saved" ? <FeedHealthNotice status={feedStatus} /> : null}
 
       {activeShellTab === "saved" && isPublicViewer ? (
         renderSignedOutTabCta("saved")

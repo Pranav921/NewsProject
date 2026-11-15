@@ -62,16 +62,15 @@ const briefing = { briefing: { generatedAt: new Date().toISOString(), expiresAt:
 mkdirSync(fixtureDir);
 writeFileSync(fixturePath, `"use client";
 import { useEffect, useState } from "react";
-import { AiNewsBriefing } from "@/components/AiNewsBriefing";
-import { AskKicker } from "@/components/AskKicker";
-// Same order and wrappers as DashboardView: briefing, Ask Kicker, then the feed.
+import { AiHub } from "@/components/AiHub";
+// The real AI Hub composition (Ask Kicker first, then the briefing) inside the
+// dashboard's page wrapper; the News Feed lives in its own tab panel.
 export default function Page() {
   useEffect(() => { document.documentElement.dataset.askFixtureReady = "true"; }, []);
   const [key, setKey] = useState(0);
   return <main className="mx-auto flex w-full flex-1 flex-col px-3 py-4 sm:px-6 lg:px-7 lg:py-5">
     <button id="reset-fixture" hidden onClick={() => setKey(key + 1)}>Reset</button>
-    <AiNewsBriefing /><AskKicker key={key} />
-    <section className="mt-3 rounded-2xl border border-border bg-surface p-4 text-sm text-text-sub">News feed placeholder</section>
+    <AiHub key={key} askKickerEnabled briefingEnabled />
   </main>;
 }
 `);
@@ -183,12 +182,13 @@ try {
   assert.ok(await js("__askInput().getAttribute('aria-describedby').split(' ').every(id => document.getElementById(id))"));
   assert.equal(await js("__askRoot().querySelector('form').getAttribute('aria-label')"), "Ask Kicker AI a question");
   assert.equal(await js("__askSubmit().getAttribute('aria-disabled')"), "true", "empty question cannot submit");
-  assert.equal(await js("__askRoot().querySelectorAll('ul[aria-labelledby] button').length"), 4);
+  assert.equal(await js("__askRoot().querySelectorAll('ul[aria-labelledby] button').length"), 3);
   assert.equal(await state(), "idle");
+  assert.ok(await js("__askRoot().compareDocumentPosition(document.querySelector('[aria-label=\"AI news briefing\"]')) & Node.DOCUMENT_POSITION_FOLLOWING"), "Ask Kicker comes before the briefing");
   await js("__askSubmit().click()"); await enter(); await delay(300);
   assert.equal(askLog.length, 0, "empty submit never sends a request");
   assert.ok(await js("__text().includes('Type a question first.')"));
-  pass("heading, metadata description, accessible label/description, four examples, empty-input guard; no request on load");
+  pass("heading, metadata description, accessible label/description, three examples, Ask first in the AI Hub, empty-input guard; no request on load");
 
   // B. Example questions populate (never submit)
   await js("__askRoot().querySelectorAll('ul[aria-labelledby] button')[1].click()");
@@ -220,22 +220,35 @@ try {
   const fresh = success(ANSWERS.answered);
   await fulfill(first.requestId, 200, fresh);
   await expectState("answered");
-  assert.equal(await js("__askRoot().querySelectorAll('article ol > li').length"), 3);
+  assert.equal(await js("__askRoot().querySelectorAll('article ul[aria-label=\"Answer\"] > li').length"), 3);
+  assert.equal(await js("__askRoot().querySelector('article h3').textContent"), QUESTION, "the question heads the answer");
   const links = await js("[...__askRoot().querySelectorAll('article a')].map(a => ({ href: a.href, target: a.target, rel: a.rel, text: a.textContent }))");
-  assert.equal(links.length, 4);
+  assert.equal(links.length, 7, "4 inline source markers + 3 distinct sources");
   for (const link of links) {
     assert.ok(fixtureLinks.has(link.href), link.href); assert.equal(link.target, "_blank");
     assert.ok(link.rel.includes("noopener") && link.rel.includes("noreferrer")); assert.ok(link.text.includes("(opens in a new tab)"));
   }
-  assert.ok(await js("[...__askRoot().querySelectorAll('article ul[aria-label]')].every((ul, i) => ul.getAttribute('aria-label') === 'Sources for statement ' + (i + 1))"));
+  assert.ok(await js("[...__askRoot().querySelectorAll('article [role=group][aria-label^=\"Sources for statement\"]')].every((group, i) => group.getAttribute('aria-label') === 'Sources for statement ' + (i + 1))"));
+  assert.deepEqual(await js("[...__askRoot().querySelectorAll('article [role=group] a')].map(a => a.textContent.match(/^Source (\\d+)/)[1])"), ["1", "2", "2", "3"], "statement markers reuse source numbers");
+  const sourceList = await js("[...__askRoot().querySelectorAll('article section ol > li')].map(li => li.textContent)");
+  assert.equal(sourceList.length, 3, "each cited article is listed once");
+  const listed = await js("[...__askRoot().querySelectorAll('article section ol > li a')].map(a => a.href)");
+  assert.equal(new Set(listed).size, 3);
   assert.equal(await js(`__askRoot().querySelector('article p time').getAttribute('datetime')`), fresh.generatedAt);
   assert.equal(await js("__askRoot().querySelector('[data-ask-cache]').textContent"), "Fresh answer");
   assert.ok(await js(`__text().includes(${JSON.stringify(QUESTION)}) && __text().includes('RSS coverage is incomplete') && __text().includes('Citations are not factual verification')`));
+  assert.ok(await js("[...__askRoot().querySelectorAll('article p')].some(p => p.textContent.includes('not full-article analysis') && !p.closest('details') && p.getBoundingClientRect().height > 0)"), "metadata-only disclaimer is visible");
   assert.ok(await js("__askRoot().querySelector('[aria-label=\"Coverage used for this answer\"]').querySelectorAll('time').length === 3"), "available window + checked time");
   assert.ok(await js(`__text().includes('Past 24 hours') && __text().includes('Articles available${snapshot.articles.length}')`));
+  assert.equal(await js("__askRoot().querySelector('article details').open"), false, "technical details start collapsed");
+  assert.equal(await js("__askRoot().querySelector('article details summary').textContent.trim()"), "About this answer");
+  assert.equal(await js("Boolean(__askRoot().querySelector('[aria-label=\"Coverage warnings\"]'))"), false, "no warnings when coverage is complete");
+  await js("__askRoot().querySelector('article details summary').click()");
+  assert.ok(await js("__askRoot().querySelector('[aria-label=\"Coverage used for this answer\"]').getBoundingClientRect().height > 0"), "About this answer expands");
+  await js("__askRoot().querySelector('article details summary').click()");
   assert.match(await js("__live()"), /Answer ready with 3 statements and 4 citations\./);
   pass("Enter submits; POST body is only {question}; loading/aria-busy/disabled state; reduced-motion spinner; duplicate clicks/Enter blocked");
-  pass("answer: 3 numbered statements, 4 trusted citations (new tab, noopener), generated time, fresh label, coverage dates, disclaimer, announcement");
+  pass("answer: question heading, 3 prose statements with numbered source links, 3 deduplicated sources (new tab, noopener), visible disclaimer, collapsed 'About this answer' with coverage dates");
 
   // D. Citation link opens a new tab and keeps the dashboard in place
   const before = created.length;
@@ -263,7 +276,7 @@ try {
   request = await ask("Any volcanic eruption news?");
   await fulfill(request.requestId, 200, success(ANSWERS.no_results)); await expectState("no_results");
   assert.ok(await js("__text().includes('No matching coverage found') && __text().includes('matches keywords, not meanings')"));
-  assert.ok(await js("Boolean(__askRoot().querySelector('[aria-label=\"Coverage used for this answer\"]')) && !__askRoot().querySelector('article ol')"));
+  assert.ok(await js("Boolean(__askRoot().querySelector('[aria-label=\"Coverage used for this answer\"]')) && !__askRoot().querySelector('article [aria-label=\"Answer\"]') && !__askRoot().querySelector('article ol')"));
   const CLARIFY = "What did the company announce?";
   request = await ask(CLARIFY);
   await fulfill(request.requestId, 200, success(ANSWERS.needs_clarification)); await expectState("needs_clarification");
@@ -279,11 +292,14 @@ try {
   const warnings = await js("[...__askRoot().querySelectorAll('[aria-label=\"Coverage warnings\"] li')].map(li => li.textContent)");
   assert.equal(warnings.length, 3);
   assert.match(warnings[0], /2 news feeds could not be loaded/); assert.match(warnings[1], /1 feed used a recently cached copy/); assert.match(warnings[2], /More articles matched/);
+  assert.ok(await js("(() => { const list = __askRoot().querySelector('[aria-label=\"Coverage warnings\"]'); return !list.closest('details') && list.getBoundingClientRect().height > 0; })()"), "incomplete-coverage warnings stay visible outside 'About this answer'");
   request = await ask("Hostile metadata test");
   await fulfill(request.requestId, 200, success(ANSWERS.hostile)); await expectState("answered");
   assert.equal(await js("__askRoot().querySelectorAll('article img, article b, article script').length"), 0);
   assert.ok(await js("__text().includes('<img src=x') && __text().includes('<script>window.__xss=2</script>Hostile title')"));
-  assert.equal(await js("__askRoot().querySelectorAll('article a').length"), 3, "javascript: citation is not rendered as a link");
+  // The tampered citation (same article, javascript: URL) becomes its own unlinked source: 3 linked markers + 3 linked list entries.
+  assert.equal(await js("__askRoot().querySelectorAll('article a').length"), 6, "javascript: citation is not rendered as a link");
+  assert.ok(await js("[...__askRoot().querySelectorAll('article a')].every(a => a.protocol === 'https:')"));
   assert.equal(await js("typeof window.__xss"), "undefined");
   pass("server cache label, no-results tips + coverage, clarification with edit focus/selection, unsupported scope, degraded-coverage warnings");
   pass("hostile statement/title text renders inert; javascript: citation URL is not linked");
@@ -337,16 +353,19 @@ try {
   await fulfill(request.requestId, 200, success(ANSWERS.answered)); await expectState("answered");
   await js("__askInput().focus()");
   const order = [];
-  for (let i = 0; i < 7; i++) { await tab(); order.push(await active()); }
-  assert.deepEqual(order.slice(0, 6), ["BUTTON:Ask", "BUTTON:What's the latest on AI?", "BUTTON:How are publishers covering Nvidia?",
-    "BUTTON:Summarize today's economy news", "BUTTON:Top technology headlines this week", "BUTTON:New question"]);
-  assert.match(order[6], /^A:/, "keyboard reaches the first citation");
-  await tab(true); assert.equal(await active(), "BUTTON:New question");
+  for (let i = 0; i < 4; i++) { await tab(); order.push(await active()); }
+  assert.deepEqual(order.slice(0, 2), ["BUTTON:Ask", "BUTTON:New question"], "examples are hidden once an answer is shown");
+  assert.match(order[2], /^A:Source 1/, "keyboard reaches the first inline source");
+  assert.match(order[3], /^A:Source 2/);
+  await tab(true); await tab(true); assert.equal(await active(), "BUTTON:New question");
+  await enter();
+  await expectState("idle"); assert.equal(await js("__askInput().value"), ""); assert.equal(await active(), "INPUT:question");
+  const idleOrder = [];
+  for (let i = 0; i < 4; i++) { await tab(); idleOrder.push(await active()); }
+  assert.deepEqual(idleOrder, ["BUTTON:Ask", "BUTTON:What's the latest on AI?", "BUTTON:How are publishers covering Nvidia?", "BUTTON:Summarize today's economy news"]);
   await js("__askRoot().querySelectorAll('ul[aria-labelledby] button')[0].focus()"); await key(" ", { code: "Space", vk: 32 });
   assert.equal(await js("__askInput().value"), "What's the latest on AI?"); assert.equal(await active(), "INPUT:question");
-  await js("__button('New question').focus()"); await enter();
-  await expectState("idle"); assert.equal(await js("__askInput().value"), ""); assert.equal(await active(), "INPUT:question");
-  pass("Tab order input → Ask → examples → New question → citations; Shift+Tab; Space selects example; Enter on New question resets and refocuses");
+  pass("Tab order input → Ask → New question → inline sources; Enter on New question resets and refocuses; idle order input → Ask → examples; Space selects example");
 
   // N. Responsive layout at phone, tablet and desktop widths (with screenshots for review)
   request = await ask("How are publishers covering artificial intelligence developments across technology and education this week?");
@@ -356,9 +375,11 @@ try {
     await delay(150);
     assert.ok(await js("document.documentElement.scrollWidth <= window.innerWidth"), `horizontal overflow at ${width}px`);
     assert.ok(await js("__askInput().getBoundingClientRect().height >= 44 && __askSubmit().getBoundingClientRect().height >= 44"), `input/submit target at ${width}`);
-    assert.ok(await js("[...__askRoot().querySelectorAll('ul[aria-labelledby] button')].every(b => b.getBoundingClientRect().height >= 40)"), `example targets at ${width}`);
-    assert.ok(await js("[...__askRoot().querySelectorAll('article a')].every(a => a.getBoundingClientRect().height >= 44)"), `citation targets at ${width}`);
-    assert.ok(await js("__askRoot().querySelector('.max-w-3xl').getBoundingClientRect().width <= 768"), `reading width at ${width}`);
+    assert.ok(await js("[...__askRoot().querySelectorAll('article section ol a')].every(a => a.getBoundingClientRect().height >= 44)"), `source list targets at ${width}`);
+    // Inline markers sit inside prose: WCAG 2.2 target size (minimum) 24×24 CSS px; the list above offers 44px targets.
+    assert.ok(await js("[...__askRoot().querySelectorAll('article [role=group] a')].every(a => { const r = a.getBoundingClientRect(); return r.height >= 24 && r.width >= 24; })"), `inline source targets at ${width}`);
+    assert.ok(await js("__askRoot().querySelector('article details summary').getBoundingClientRect().height >= 44"), `details summary target at ${width}`);
+    assert.ok(await js("__askRoot().getBoundingClientRect().width <= 768"), `reading width at ${width}`);
     assert.ok(await js("__askSubmit().getBoundingClientRect().right <= __askRoot().getBoundingClientRect().right"), `submit fits at ${width}`);
     const box = await js("(() => { const r = __askRoot().getBoundingClientRect(); return { x: r.x, y: r.y + scrollY, width: r.width, height: r.height }; })()");
     const shot = await cdp("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { ...box, scale: 1 } });
@@ -375,7 +396,7 @@ try {
     await delay(1300);
   }
   await cdp("Emulation.clearDeviceMetricsOverride");
-  pass("320/375/390/768/1024/1440px: no horizontal overflow, ≥44px input/submit/citations, ≥40px examples, constrained reading width; screenshots saved");
+  pass("320/375/390/768/1024/1440px: no horizontal overflow, ≥44px input/submit/source list/details, ≥24px inline source markers, ≤768px reading width; screenshots saved");
 
   // O. The AI Briefing on the same dashboard still works independently
   const askBefore = askLog.length;

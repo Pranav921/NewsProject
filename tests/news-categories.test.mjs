@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { NEWS_CATEGORIES, categoryFromPublisherLabels, filterArticlesByCategory, getArticleCategory, orderNewsletterArticles } from "../lib/news-categories.ts";
-import { RSS_FEEDS, filterArticlesByCoverage } from "../lib/feeds.ts";
+import { RETIRED_FEEDS, RSS_FEEDS, filterArticlesByCoverage, getFeedCoverage } from "../lib/feeds.ts";
 import { parseRssXml, getAllNewsItems } from "../lib/rss.ts";
 import { buildNewsletterEmailHtml, buildNewsletterEmailText } from "../lib/newsletter.ts";
 import { getValidatedNewsletterSettings } from "../lib/newsletter-subscription-settings.ts";
@@ -16,10 +16,24 @@ const feed = { name: "Test", coverage: "both", url: "https://example.com/feed" }
 const xml = (metadata = "", id = "one") => `<rss><channel><item><title>Story ${id}</title><link>https://example.com/${id}</link>${metadata}</item></channel></rss>`;
 
 test("every category has a dedicated feed and configured feed URLs are unique HTTPS URLs", () => {
-  assert.ok(new Set(RSS_FEEDS.map((entry) => entry.name)).size >= 18);
+  // 14 publishers with working feeds; the 4 retired endpoints (CNN, USA Today, both
+  // Reuters) used to be counted here even though they never returned a story.
+  assert.ok(new Set(RSS_FEEDS.map((entry) => entry.name)).size >= 14);
   assert.equal(new Set(RSS_FEEDS.map((entry) => entry.url)).size, RSS_FEEDS.length);
   for (const entry of RSS_FEEDS) assert.equal(new URL(entry.url).protocol, "https:");
   for (const category of NEWS_CATEGORIES) assert.ok(RSS_FEEDS.some((entry) => entry.category === category.value), category.value);
+});
+
+test("retired publisher endpoints are never fetched but keep their coverage for saved stories", () => {
+  const active = new Set(RSS_FEEDS.map((entry) => entry.url));
+  assert.deepEqual(RETIRED_FEEDS.map((entry) => entry.name).sort(), ["CNN", "Reuters U.S.", "Reuters World", "USA Today"]);
+  for (const entry of RETIRED_FEEDS) {
+    assert.equal(active.has(entry.url), false, entry.name);
+    assert.ok(entry.reason.length > 20, `${entry.name} documents why it was retired`);
+  }
+  assert.equal(getFeedCoverage("USA Today"), "national");
+  assert.equal(getFeedCoverage("Reuters World"), "international");
+  assert.equal(getFeedCoverage("CNN"), "both");
 });
 
 test("RSS and Atom topics use publisher metadata with a safe general fallback", () => {

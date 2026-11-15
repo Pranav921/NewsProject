@@ -119,3 +119,19 @@ keep form fields at 16 px or more on mobile (iOS zoom), and keep tap targets and
 label sizes legible (the card "Save" buttons would have been 10 px). One visible
 inconsistency was preserved on purpose: AccountMenu's "Log in" button (weight 400)
 sits beside the "Newsletter" link (weight 500).
+
+## KN-RSS-008 — "4 feeds are unavailable" on every visit (resolved locally; not deployed)
+
+Root cause (November 15, 2026): four configured endpoints were retired by their
+publishers. CNN's HTTPS host fails the TLS handshake and its HTTP copy froze in 2023.
+USA Today redirects to its homepage. `feeds.reuters.com` is NXDOMAIN, which takes out
+both Reuters feeds. The same four failed locally and in production (`failedFeeds: 4,
+staleFeeds: 0`, uncached). They had never returned a story. They moved to
+`RETIRED_FEEDS`; failures now log a sanitized category; the banner became a compact
+notice listing affected publishers. Evidence: [RSS_FEED_HEALTH.md](RSS_FEED_HEALTH.md).
+
+Still open: the per-feed cache is process-local (instances can briefly disagree), and
+a `429` gets the normal 15-second retry rather than honouring `Retry-After`. Re-run
+`validate-news-feeds.mjs --all` periodically. After deployment, confirm production
+`/api/news` reports `failedFeeds: 0` and that Ask answers no longer carry the
+four-feed disclosure.
