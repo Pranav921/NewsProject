@@ -17,6 +17,8 @@ const decoder = new TextDecoder();
 Sentry.init({
   dsn: "https://publickey@sentry.invalid/1",
   tracesSampleRate: 1,
+  // Production (Vercel) and CI always have a release; release health only runs with one.
+  release: "privacy-check@1.0.0",
   transport: () => ({
     send: async (envelope) => { envelopes.push(envelope); return { statusCode: 200 }; },
     flush: async () => true,
@@ -51,7 +53,7 @@ const items = envelopes.flatMap(([, list]) => list.map(([header]) => header.type
 console.log(`Captured ${envelopes.length} envelopes; item types: ${[...new Set(items)].join(", ")}`);
 assert.ok(items.filter((type) => type === "event").length >= 3, "error events were captured (test is not vacuous)");
 assert.ok(items.includes("transaction"), "a transaction was captured (test is not vacuous)");
-for (const forbidden of ["attachment", "log", "replay_event", "replay_recording"]) assert.ok(!items.includes(forbidden), `${forbidden} item was sent`);
+for (const forbidden of ["attachment", "log", "replay_event", "replay_recording", "session", "sessions"]) assert.ok(!items.includes(forbidden), `${forbidden} item was sent`);
 assert.ok(!serialized.includes(SENTINEL), `sentinel leaked: ${serialized.slice(Math.max(0, serialized.indexOf(SENTINEL) - 200), serialized.indexOf(SENTINEL) + 60)}`);
 assert.doesNotMatch(serialized, /203\.0\.113\.9|sb-access-token|Bearer |question\.txt/);
 console.log("PASS no question/answer/prompt/cookie/header/user/IP/attachment/log text in any outgoing envelope (headers included)");

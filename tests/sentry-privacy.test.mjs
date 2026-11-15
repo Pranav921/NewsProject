@@ -37,8 +37,11 @@ test("Sentry privacy hooks are actually registered in server, edge and browser i
     assert.equal(options.beforeSendTransaction, privacy.sanitizeSentryEvent);
     assert.equal(options.beforeSendSpan, privacy.sanitizeSentrySpan);
     assert.equal(options.sendDefaultPii, false); assert.equal(options.enableLogs, false);
-    assert.equal(options.integrations, undefined); assert.equal(options.replaysOnErrorSampleRate, undefined);
+    assert.equal(options.integrations, privacy.withoutSessionIntegrations); assert.equal(options.replaysOnErrorSampleRate, undefined);
   }
+  // Session integrations bypass beforeSend; everything else (and no Replay) is unchanged.
+  const defaults = ["InboundFilters", "ProcessSession", "BrowserSession", "Http", "Dedupe"].map((name) => ({ name }));
+  assert.deepEqual(privacy.withoutSessionIntegrations(defaults).map((i) => i.name), ["InboundFilters", "Http", "Dedupe"]);
 });
 
 test("the real Sentry SDK pipeline emits no sentinel text in any envelope (in-memory transport, no network)", () => {

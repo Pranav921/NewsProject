@@ -34,7 +34,9 @@ Live-evaluation review update: synthetic sentinels sent through the real
 private text, attachments, logs, replay or dynamic sampling context; this runs in
 `npm test`. Still unverified: the edge and browser pipelines end to end, the
 `/monitoring` tunnel, real envelopes received by the Sentry project, and Vercel
-function logs/drains.
+function logs/drains. Release-health session envelopes, which bypass `beforeSend` and
+carry `did`/user agent once a release is set, are now disabled in every runtime (found
+by CI, November 15, 2026).
 
 ## KN-OBS-002 — App Router cron monitoring claim (open)
 

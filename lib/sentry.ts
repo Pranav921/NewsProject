@@ -33,7 +33,15 @@ export function sanitizeSentrySpan(span: SpanJSON): SpanJSON {
     op: "application", description: "Private span content removed", data: {} };
 }
 
+// Release-health session envelopes (ProcessSession on the server, BrowserSession in
+// the browser) bypass beforeSend and carry user identity (`did`) and user agent once a
+// release is set, as on Vercel. Drop them so nothing leaves outside the allowlist.
+export function withoutSessionIntegrations<T extends { name: string }>(defaults: T[]): T[] {
+  return defaults.filter((integration) => !/Session$/.test(integration.name));
+}
+
 export const sentryPrivacyOptions = {
+  integrations: withoutSessionIntegrations,
   beforeSend: sanitizeSentryEvent,
   beforeSendTransaction: sanitizeSentryEvent,
   beforeSendSpan: sanitizeSentrySpan,

@@ -901,3 +901,13 @@ owner's choice there is no Ask-only switch.
 envelopes and Vercel logs are unverified; the snapshot-bound cache will hit less
 often than its TTL suggests; a few abusive accounts can exhaust the 20 daily
 generations for everyone (an availability limit, not a cost risk).
+
+**Post-release fix (CI):** the first release commit deployed successfully, but CI's
+real-SDK Sentry test failed on Linux. With a release set (CI's `GITHUB_SHA`, Vercel's
+commit SHA), Sentry's release-health integrations (`ProcessSession` on the server,
+`BrowserSession` in the browser) send session envelopes that bypass `beforeSend` and
+carry the user identity (`did`) and user agent. The app never calls `Sentry.setUser`,
+so no identity or Ask text was exposed, but this was a hole in the privacy
+allowlist. `sentryPrivacyOptions` now drops every `*Session` integration in all
+runtimes. Sentry therefore no longer reports release-health/crash-free session
+metrics. The real-SDK test now pins a release so it exercises this path everywhere.
