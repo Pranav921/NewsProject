@@ -324,7 +324,7 @@ export function AccountSettings({
             </label>
             <select
               id="default-source-filter"
-              className="editorial-input mt-2 min-h-11 w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)]"
+              className="editorial-input mt-2 min-h-11 w-full rounded-xl px-3.5 py-2.5 outline-none transition-colors focus:border-[var(--accent)]"
               value={defaultSourceFilter}
               onChange={(event) => setDefaultSourceFilter(event.target.value)}
             >
@@ -345,7 +345,7 @@ export function AccountSettings({
             </label>
             <select
               id="default-time-filter"
-              className="editorial-input mt-2 min-h-11 w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)]"
+              className="editorial-input mt-2 min-h-11 w-full rounded-xl px-3.5 py-2.5 outline-none transition-colors focus:border-[var(--accent)]"
               value={defaultTimeFilter}
               onChange={(event) =>
                 setDefaultTimeFilter(event.target.value as TimeFilter)
@@ -368,7 +368,7 @@ export function AccountSettings({
             </label>
             <select
               id="default-view-mode"
-              className="editorial-input mt-2 min-h-11 w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)]"
+              className="editorial-input mt-2 min-h-11 w-full rounded-xl px-3.5 py-2.5 outline-none transition-colors focus:border-[var(--accent)]"
               value={defaultViewMode}
               onChange={(event) =>
                 setDefaultViewMode(event.target.value as ViewMode)
@@ -381,7 +381,7 @@ export function AccountSettings({
         </div>
 
         <button
-          className="editorial-primary-button mt-5 inline-flex min-h-11 items-center justify-center px-4.5 py-2.5 text-sm font-medium transition-colors hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+          className="editorial-primary-button mt-5 inline-flex min-h-11 items-center justify-center px-4.5 py-2.5 transition-colors hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
           type="button"
           onClick={handleSavePreferences}
           disabled={isSavingPreferences}
@@ -423,14 +423,14 @@ export function AccountSettings({
           </label>
           <input
             id="alert-keyword-input"
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
             type="text"
             placeholder="Add alert keyword"
             value={alertKeywordInput}
             onChange={(event) => setAlertKeywordInput(event.target.value)}
           />
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
             type="submit"
             disabled={isSavingAlert}
           >
@@ -448,7 +448,7 @@ export function AccountSettings({
                 {keyword}
                 <button
                   aria-label={`Remove alert keyword ${keyword}`}
-                  className="font-medium text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+                  className="text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
                   type="button"
                   onClick={() => handleRemoveAlertKeyword(keyword)}
                   disabled={isSavingAlert}
@@ -500,7 +500,7 @@ export function AccountSettings({
           </label>
           <select
             id="newsletter-frequency"
-            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             value={newsletterFrequency}
             onChange={(event) =>
               setNewsletterFrequency(event.target.value as NewsletterFrequency)
@@ -524,7 +524,7 @@ export function AccountSettings({
           </label>
           <select
             id="newsletter-email-format"
-            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             value={newsletterEmailFormat}
             onChange={(event) =>
               setNewsletterEmailFormat(
@@ -547,7 +547,7 @@ export function AccountSettings({
           </label>
           <select
             id="newsletter-sort-order"
-            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 focus-visible:ring-2 focus-visible:ring-sky-500 disabled:opacity-60"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-700 focus-visible:ring-2 focus-visible:ring-sky-500 disabled:opacity-60"
             value={newsletterSortOrder}
             onChange={(event) => setNewsletterSortOrder(event.target.value as NewsletterSortOrder)}
             disabled={!newsletterEnabled}
@@ -569,7 +569,7 @@ export function AccountSettings({
           </label>
           <select
             id="newsletter-article-mode"
-            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             value={newsletterArticleMode}
             onChange={(event) =>
               setNewsletterArticleMode(
@@ -625,7 +625,7 @@ export function AccountSettings({
             </label>
             <input
               id="newsletter-custom-frequency"
-            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-700 outline-none transition-colors focus:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
               type="number"
               min="1"
               step="1"
@@ -640,7 +640,7 @@ export function AccountSettings({
         ) : null}
 
         <button
-          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
           type="button"
           onClick={handleSaveNewsletter}
           disabled={isSavingNewsletter}

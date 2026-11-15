@@ -829,16 +829,17 @@ uses `useSearchParams`.
 
 Standard Next.js SDK layout: [instrumentation.ts](instrumentation.ts) (loads the
 node or edge config by runtime, exports `onRequestError`),
-[instrumentation-client.ts](instrumentation-client.ts) (replay integration, exports
+[instrumentation-client.ts](instrumentation-client.ts) (exports
 `onRouterTransitionStart`), plus [sentry.server.config.ts](sentry.server.config.ts)
 and [sentry.edge.config.ts](sentry.edge.config.ts). Sampling is 10 % in production,
 100 % in development; `sendDefaultPii: false` everywhere.
 [next.config.ts](next.config.ts) wraps the config with `withSentryConfig`, enabling
 a `/monitoring` tunnel route (ad-blocker evasion), widened source-map upload, and
 Vercel cron monitors. Source-map upload only activates when `SENTRY_AUTH_TOKEN` is
-set. [lib/sentry.ts](lib/sentry.ts) provides `sanitizeSentryEvent()` which redacts
-`authorization`, `cookie`, `set-cookie`, `x-supabase-auth` headers and any
-`token=…` query value.
+set. Stage C registers the shared [privacy allowlist](lib/sentry.ts) in all three
+runtimes: outgoing request data/headers/cookies, private text, arbitrary context,
+attachments and span payloads are removed. SDK logs, breadcrumbs and replay are
+disabled, reducing general diagnostic detail. Deployed telemetry is not verified.
 
 ### Rate limiting — [lib/ratelimit.ts](lib/ratelimit.ts)
 
@@ -1041,6 +1042,13 @@ Worth knowing about before you assume something is missing or delete it as dead:
    previous state and revert on error.
 9. **`proxy.ts`, not `middleware.ts`** — Next.js 16 naming.
 10. **Logging is structured and scoped**; follow the `[area][action][step]` pattern.
+11. **Never add unlayered element rules that style form controls.** Tailwind v4 puts
+    utilities in a cascade layer, and any unlayered rule in [globals.css](app/globals.css)
+    beats them regardless of specificity. An unlayered `font: inherit` once silently
+    disabled every `text-*`/`font-*` class on buttons and inputs (KN-UI-005, fixed;
+    `tests/global-css.test.mjs` guards it). Preflight already resets these elements in
+    `@layer base`. Keep form fields at 16 px or more so iOS Safari does not zoom on
+    focus. The unlayered `a {}` rule has the same flaw for link colours (KN-UI-006).
 
 ---
 
@@ -1138,3 +1146,70 @@ or timing. Only cache scope changes; Redis budget/lock/cooldown keys are preserv
 The review includes the exact cached metadata audit, current cost estimates, 148
 passing mocked tests and the remaining production authentication/telemetry gates.
 No push, deployment or new paid model call was performed in that review.
+
+## Ask Kicker AI — Stage A, internal retrieval only
+
+See [the plan and implementation progress](docs/ASK_KICKER_AI_PLAN.md) and
+[retrieval contracts/evaluation](docs/ASK_KICKER_AI.md). Pure `search_articles`,
+`recent_news` and `article_details` functions share a bounded immutable metadata
+snapshot. The optional server-only loader reuses existing RSS caching; canonical
+link IDs and the shared story deduplicator are preserved. Publisher-comparison
+mode retains distinct source coverage. This is keyword/alias retrieval, not semantic
+search or a complete weekly archive. Stage A adds schemas, fixed evaluation data
+and tests, with no Claude requests, public endpoint, UI, new Redis keys, Supabase
+tables or deployment. The existing AI Briefing is unchanged.
+
+Stage B adds an internal server-only Claude Messages workflow: one allowlisted,
+validated tool execution and at most two model requests, with full assistant-history
+preservation, matching tool-result IDs and tools disabled for the final structured
+answer. Citations resolve only against the selected tool result. Byte/token limits,
+shared deadline and sanitized failure handling are exercised with mocked responses.
+At the end of Stage B there was no public Ask endpoint, UI, Redis budget system
+or deployed Ask feature. The briefing provider and infrastructure were unchanged.
+
+Stage C adds `POST /api/ai/ask`, independently disabled by default, with exact-origin
+checks, Supabase authentication, bounded streamed JSON, private validated cache,
+owned user/global leases and atomic request/model-attempt/token-unit accounting.
+It preserves the two-call/one-tool design and all legacy Redis keys; new Ask keys
+have distinct environment-specific hash tags. The 30-second whole-request ceiling
+includes RSS loading. Sentry privacy hooks are now registered in every runtime.
+See [lifecycle and limits](docs/ASK_KICKER_AI.md#stage-c-secure-backend-disabled-by-default).
+
+Stage D adds the **Ask Kicker AI** dashboard panel ([AskKicker](components/AskKicker.tsx),
+browser-safe helpers in [lib/ai/ask-ui.ts](lib/ai/ask-ui.ts)) directly below the
+briefing. It renders only when `app/page.tsx` evaluates the route's own flag
+predicate, and the route still enforces it. The browser POSTs only `{question}`
+same-origin; the Supabase cookie supplies identity. The panel shows numbered cited
+statements with publisher links (backend-resolved, escaped, http(s)-only, new tab),
+coverage dates and counts, incomplete-RSS warnings, fresh/saved labels and the
+generation time. It handles no-results, clarification, unsupported, rate limits
+(with countdown), busy, budget, provider, deadline, session and network failures
+accessibly. An identical unexpired question is re-shown without spending a request.
+The Stage C Lua passed 18/18 checks on a disposable local Redis through the real
+Upstash client (`scripts/verify-ask-redis-local.mjs`). Sentry privacy was checked
+through the real SDK (`scripts/verify-sentry-privacy-local.mjs`, also run by
+`npm test`). The mocked Chrome check is `node scripts/validate-ask-kicker-ui.mjs`;
+it intercepts every AI request at the network layer. There is still no enabled
+environment, live Ask test, deployment or production data change. See
+[Stage D and the remaining production steps](docs/ASK_KICKER_AI.md#stage-d-dashboard-interface-disabled-by-default).
+
+The live-evaluation readiness review (November 14, 2026) made three changes. Cache
+hits no longer consume global capacity: per-user/IP abuse limits still count every
+request, while the global cap now counts only cache-miss generations (20/day, checked
+atomically with the attempt and token budgets at reservation). Client disconnects
+no longer skip lease release and refunds of never-started calls. Global CSS no longer
+overrides font utilities on form controls (KN-UI-005), with zero measured visual
+change. It also adds a reusable evaluation harness (`scripts/eval-ask-kicker.mjs`,
+zero-cost mock by default) and a controlled live procedure with approval checkpoints
+that uses shell-only settings and a disposable local Redis. No paid call, shared-Redis
+write or deployment occurred. See [the review](docs/ASK_KICKER_AI.md#live-evaluation-readiness-review-november-14-2026)
+and [the evaluation plan](docs/ASK_KICKER_EVAL.md).
+
+**Production release (November 15, 2026).** Ask Kicker ships enabled whenever the AI
+Briefing is: `AI_BRIEFING_ENABLED` (plus `AI_BRIEFING_PRODUCTION_VERIFIED` in production)
+is now the shared master switch, checked server-side on every Ask request by
+`isAiEnabled()` in [lib/ai/feature-flag.ts](lib/ai/feature-flag.ts). Ask needs no
+variables of its own: it reuses `ANTHROPIC_API_KEY`, `AI_BRIEFING_MODEL` (allowlisted to
+models that accept its forced tool call, currently `claude-haiku-5-5`) and Upstash.
+Quotas, budgets, leases, cache and Redis keys (`kicker:prod:{kicker-prod-ask}:v1:`)
+stay separate from the briefing. See [the release notes](docs/ASK_KICKER_AI.md#production-release-shared-ai-switch-november-15-2026).

@@ -155,7 +155,7 @@ export function LeadStoryCard({
           <div className="mt-5 flex flex-wrap items-center gap-2.5 lg:mt-6">
             {shouldShowAlertAction ? (
               <button
-                className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/14 bg-white/8 px-3.5 py-2 text-sm font-medium text-[var(--hero-headline)] transition-colors hover:bg-white/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)]"
+                className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/14 bg-white/8 px-3.5 py-2 text-[var(--hero-headline)] transition-colors hover:bg-white/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)]"
                 type="button"
                 onClick={() => onAlertAction?.(article)}
               >
@@ -165,7 +165,7 @@ export function LeadStoryCard({
             <button
               aria-label={`${isSaved ? "Remove saved article" : saveButtonLabel}: ${article.title}`}
               aria-pressed={isSaved}
-              className={`inline-flex min-h-10 items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)] ${
+              className={`inline-flex min-h-10 items-center justify-center rounded-xl border px-3.5 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--hero-dark)] ${
                 isSaved
                   ? "border-white/20 bg-white/12 text-[var(--hero-headline)] hover:bg-white/16"
                   : isSignInToSaveCta

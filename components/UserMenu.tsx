@@ -39,7 +39,7 @@ export function UserMenu({
   if (variant === "button") {
     return (
       <button
-        className={`inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 font-sans text-sm font-medium tracking-normal text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
+        className={`inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 tracking-normal text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
         type="button"
         onClick={handleSignOut}
         disabled={isPending}
@@ -61,7 +61,7 @@ export function UserMenu({
           </p>
         </div>
         <button
-          className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 font-sans text-sm font-medium tracking-normal text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--text-sub)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 tracking-normal text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--text-sub)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
           type="button"
           onClick={handleSignOut}
           disabled={isPending}
@@ -87,7 +87,7 @@ export function UserMenu({
           {email ?? "Account"}
         </span>
         <button
-          className="inline-flex min-h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex min-h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
           type="button"
           onClick={handleSignOut}
           disabled={isPending}
@@ -120,7 +120,7 @@ export function UserMenu({
 
         <div className="flex sm:items-center sm:justify-end">
           <button
-            className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
             type="button"
             onClick={handleSignOut}
             disabled={isPending}

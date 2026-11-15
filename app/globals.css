@@ -69,12 +69,10 @@ a {
   background: color-mix(in srgb, var(--accent) 18%, white);
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
+/* No form-control font reset here: Tailwind's preflight already applies
+   `font: inherit` to button/input/select/textarea inside @layer base. An unlayered
+   copy beats every layered utility, silently ignoring text-*, font-* and
+   leading-* classes on those elements (KN-UI-005; tests/global-css.test.mjs). */
 
 button:not(:disabled),
 input[type="button"]:not(:disabled),

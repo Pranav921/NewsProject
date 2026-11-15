@@ -13,6 +13,7 @@ import {
   serializeJsonLd,
   SITE_NAME,
 } from "@/lib/seo";
+import { isAiEnabled } from "@/lib/ai/feature-flag";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { NewsItem } from "@/lib/types";
 import { normalizeUserPreferences } from "@/lib/user-preferences";
@@ -130,6 +131,7 @@ export default async function Home() {
   );
   const initialSavedArticles = fromSavedArticleRows(savedArticleRows);
   const initialAlertKeywords = fromAlertKeywordRows(alertKeywordRows);
+  const aiEnabled = isAiEnabled(process.env);
 
   return (
     <main className="mx-auto flex w-full flex-1 flex-col px-3 py-4 sm:px-6 lg:px-7 lg:py-5 xl:px-7 2xl:px-8">
@@ -140,7 +142,9 @@ export default async function Home() {
         }}
       />
       <DashboardView
-        aiBriefingEnabled={process.env.AI_BRIEFING_ENABLED === "true" && (process.env.NODE_ENV !== "production" || process.env.AI_BRIEFING_PRODUCTION_VERIFIED === "true")}
+        // One shared AI switch for both panels; both API routes still enforce it per request.
+        aiBriefingEnabled={aiEnabled}
+        askKickerEnabled={aiEnabled}
         articles={articles}
         feedErrorMessage={feedErrorMessage}
         initialAlertKeywords={initialAlertKeywords}

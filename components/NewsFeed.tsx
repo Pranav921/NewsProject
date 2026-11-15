@@ -482,7 +482,7 @@ export function NewsFeed({
       return {
         action: (
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-white transition-colors hover:bg-slate-800"
             type="button"
             onClick={() => window.location.reload()}
           >
@@ -500,7 +500,7 @@ export function NewsFeed({
       return {
         action: (
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-slate-700 transition-colors hover:bg-slate-50"
             type="button"
             onClick={() => setFeedMode("all")}
           >
@@ -516,7 +516,7 @@ export function NewsFeed({
       return {
         action: (
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-slate-700 transition-colors hover:bg-slate-50"
             type="button"
             onClick={() => setAlertMatchView("off")}
           >
@@ -533,7 +533,7 @@ export function NewsFeed({
       return {
         action: (
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-slate-700 transition-colors hover:bg-slate-50"
             type="button"
             onClick={resetFilters}
           >
@@ -549,7 +549,7 @@ export function NewsFeed({
     return {
       action: (
         <button
-          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4.5 py-2.5 text-slate-700 transition-colors hover:bg-slate-50"
           type="button"
           onClick={() => window.location.reload()}
         >
@@ -924,7 +924,7 @@ export function NewsFeed({
               </span>
               <input
                 id="article-search"
-                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 pl-8 text-sm text-[var(--foreground)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 pl-8 text-[var(--foreground)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
                 type="search"
                 placeholder="Search headlines, sources..."
                 value={searchQuery}
@@ -940,7 +940,7 @@ export function NewsFeed({
               </label>
               <select
                 id="coverage-filter"
-                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
                 value={coverageFilter}
                 onChange={(event) =>
                   setCoverageFilter(event.target.value as CoverageFilter)
@@ -960,7 +960,7 @@ export function NewsFeed({
               </label>
               <select
                 id="category-filter"
-                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-[var(--foreground)] outline-none focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
                 value={categoryFilter}
                 onChange={(event) => setCategoryFilter(event.target.value as NewsCategory | "all")}
               >
@@ -976,7 +976,7 @@ export function NewsFeed({
               </label>
               <select
                 id="source-filter"
-                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
                 value={activeSource}
                 onChange={(event) => {
                   setSelectedSource(event.target.value);
@@ -999,7 +999,7 @@ export function NewsFeed({
               </label>
               <select
                 id="time-filter"
-                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
+                className="min-h-10 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-3.5 py-2 text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-1 focus-visible:ring-[var(--accent)] focus-visible:ring-inset"
                 value={timeFilter}
                 onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
               >
@@ -1021,7 +1021,7 @@ export function NewsFeed({
               aria-label="Article list scope"
             >
               <button
-                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
                   useTightestDesktopControls
                     ? "px-3.5"
                     : useTightDesktopControls
@@ -1041,7 +1041,7 @@ export function NewsFeed({
                 All articles
               </button>
               <button
-                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
                   useTightestDesktopControls
                     ? "px-3.5"
                     : useTightDesktopControls
@@ -1070,7 +1070,7 @@ export function NewsFeed({
               aria-label="Article view mode"
             >
               <button
-                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
                   useTightestDesktopControls
                     ? "px-3.5"
                     : useTightDesktopControls
@@ -1088,7 +1088,7 @@ export function NewsFeed({
                 Grid
               </button>
               <button
-                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+                className={`min-h-9 shrink-0 rounded-full py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
                   useTightestDesktopControls
                     ? "px-3.5"
                     : useTightDesktopControls
@@ -1109,10 +1109,10 @@ export function NewsFeed({
 
             {newArticleLinks.length > 0 ? (
               <button
-                className={`hidden rounded-full border font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 md:inline-flex xl:col-auto ${
+                className={`hidden rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 md:inline-flex xl:col-auto ${
                   showOnlyNew
-                    ? "px-3 py-[3px] text-[12px]"
-                    : "px-3.5 py-1 text-[12px]"
+                    ? "px-3 py-[3px]"
+                    : "px-3.5 py-1"
                 } ${
                   showOnlyNew
                     ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
@@ -1171,7 +1171,7 @@ export function NewsFeed({
 
             {newArticleLinks.length > 0 ? (
               <button
-                className={`inline-flex min-h-8 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
+                className={`inline-flex min-h-8 rounded-full border px-3 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 ${
                   showOnlyNew
                     ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
                     : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -1252,7 +1252,7 @@ export function NewsFeed({
               </div>
               <button
                 aria-label="Close alert dialog"
-                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full text-[32px] leading-none text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--background)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
                 type="button"
                 onClick={closeAlertDialog}
               >
@@ -1270,7 +1270,7 @@ export function NewsFeed({
                 </label>
                 <input
                   id="suggested-alert-keyword"
-                  className="mt-2 min-h-12 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-4 py-3 text-base text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                  className="mt-2 min-h-12 w-full rounded-[8px] border border-[var(--border)] bg-[#faf9f7] px-4 py-3 text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
                   type="text"
                   value={alertDraftKeyword}
                   onChange={(event) => setAlertDraftKeyword(event.target.value)}
@@ -1305,7 +1305,7 @@ export function NewsFeed({
                   </p>
                   <div className="flex flex-col gap-2.5 sm:flex-row">
                     <button
-                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[10px] bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition-colors hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[10px] bg-[var(--accent)] px-4 py-3 text-white transition-colors hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
                       type="submit"
                       disabled={isSavingAlertKeyword}
                     >

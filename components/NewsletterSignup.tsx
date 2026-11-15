@@ -150,7 +150,7 @@ export function NewsletterSignup({
               Change newsletter settings
             </a>
             <button
-              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-rose-200 bg-white px-4.5 py-2.5 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-rose-200 bg-white px-4.5 py-2.5 text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
               type="button"
               onClick={() => void saveSubscription("DELETE")}
               disabled={isSubmitting}
@@ -169,7 +169,7 @@ export function NewsletterSignup({
           </p>
           <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
             <button
-              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-900 px-4.5 py-2.5 text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
               type="button"
               onClick={() => void saveSubscription("POST")}
               disabled={isSubmitting}
@@ -187,7 +187,7 @@ export function NewsletterSignup({
       ) : (
         <form className="mt-3.5 space-y-3" onSubmit={handleSubmit}>
           <input
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-700 outline-none transition-colors focus:border-sky-400"
             type="email"
             placeholder="Email address"
             value={email}
@@ -196,7 +196,7 @@ export function NewsletterSignup({
           />
 
           <select
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-700 outline-none transition-colors focus:border-sky-400"
             value={preferredFrequency}
             onChange={(event) =>
               setPreferredFrequency(event.target.value as FrequencyOption)
@@ -211,14 +211,14 @@ export function NewsletterSignup({
 
           <label className="block text-sm font-medium text-slate-700">
             Newsletter order
-            <select className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm focus-visible:ring-2 focus-visible:ring-sky-500" value={sortOrder} onChange={(event) => setSortOrder(event.target.value as NewsletterSortOrder)}>
+            <select className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 focus-visible:ring-2 focus-visible:ring-sky-500" value={sortOrder} onChange={(event) => setSortOrder(event.target.value as NewsletterSortOrder)}>
               <option value="default">Default article order</option>
               <option value="category">Group by category</option>
             </select>
           </label>
           {preferredFrequency === "custom" ? (
             <input
-              className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+              className="min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-700 outline-none transition-colors focus:border-sky-400"
               type="number"
               min="1"
               step="1"
@@ -230,7 +230,7 @@ export function NewsletterSignup({
           ) : null}
 
           <button
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
             type="submit"
             disabled={isSubmitting}
             onClick={() =>

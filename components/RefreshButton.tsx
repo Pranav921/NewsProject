@@ -55,7 +55,7 @@ export function RefreshButton({
     <>
     <button
       aria-label="Refresh headlines"
-      className={`inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 font-sans text-sm font-medium tracking-normal text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--text-sub)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
+      className={`inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-[var(--border)] bg-white px-4 py-2 tracking-normal text-[var(--text-sub)] transition-colors hover:bg-[var(--background)] hover:text-[var(--text-sub)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
       type="button"
       onClick={handleRefresh}
       disabled={isRefreshing}

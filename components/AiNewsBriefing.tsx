@@ -66,7 +66,7 @@ export function AiNewsBriefing() {
         </div>
         <button type="button" onClick={() => void viewBriefing()} disabled={loading}
           aria-expanded={open} aria-controls="ai-briefing-content"
-          className="min-h-11 w-full shrink-0 rounded-xl border border-border-strong px-4 py-2 text-sm font-semibold text-accent hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-wait disabled:opacity-60 sm:w-auto">
+          className="min-h-11 w-full shrink-0 rounded-xl border border-border-strong px-4 py-2 text-accent hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-wait disabled:opacity-60 sm:w-auto">
           {loading ? "Preparing briefing…" : error ? "Try AI Briefing again" : open ? "Hide AI Briefing" : "View AI Briefing"}
         </button>
       </div>
@@ -81,7 +81,7 @@ export function AiNewsBriefing() {
               <p>{cacheHit ? "Shared cached briefing" : "Generated on request"}</p>
               <p role="status">{expired ? "Earlier briefing — news may have changed." : <>Cached until <time dateTime={briefing.expiresAt}>{new Date(briefing.expiresAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time>. News may have changed.</>}</p>
             </div>
-            {expired && <button type="button" onClick={() => void viewBriefing(true)} className="mt-1 min-h-11 rounded-md text-sm font-semibold text-accent underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Refresh AI Briefing</button>}
+            {expired && <button type="button" onClick={() => void viewBriefing(true)} className="mt-1 min-h-11 rounded-md text-accent underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">Refresh AI Briefing</button>}
             <p role="status" className="sr-only">{briefing.items.length} briefing items loaded.</p>
             <ol className="mt-4 divide-y divide-border">
               {briefing.items.map((item, index) => (

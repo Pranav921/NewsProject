@@ -32,7 +32,7 @@ export function AdvertiseContactForm() {
 
       <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={handleSubmit}>
         <input
-          className="editorial-input min-h-11 rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)]"
+          className="editorial-input min-h-11 rounded-xl px-3.5 py-2.5 outline-none transition-colors focus:border-[var(--accent)]"
           type="text"
           placeholder="Name"
           value={name}
@@ -40,7 +40,7 @@ export function AdvertiseContactForm() {
           required
         />
         <input
-          className="editorial-input min-h-11 rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)]"
+          className="editorial-input min-h-11 rounded-xl px-3.5 py-2.5 outline-none transition-colors focus:border-[var(--accent)]"
           type="email"
           placeholder="Email"
           value={email}
@@ -48,21 +48,21 @@ export function AdvertiseContactForm() {
           required
         />
         <input
-          className="editorial-input min-h-11 rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)]"
+          className="editorial-input min-h-11 rounded-xl px-3.5 py-2.5 outline-none transition-colors focus:border-[var(--accent)]"
           type="text"
           placeholder="Company"
           value={company}
           onChange={(event) => setCompany(event.target.value)}
         />
         <input
-          className="editorial-input min-h-11 rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)]"
+          className="editorial-input min-h-11 rounded-xl px-3.5 py-2.5 outline-none transition-colors focus:border-[var(--accent)]"
           type="text"
           placeholder="Budget or range (optional)"
           value={budget}
           onChange={(event) => setBudget(event.target.value)}
         />
         <textarea
-          className="editorial-input min-h-32 rounded-xl px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent)] sm:col-span-2"
+          className="editorial-input min-h-32 rounded-xl px-3.5 py-2.5 outline-none transition-colors focus:border-[var(--accent)] sm:col-span-2"
           placeholder="Tell us about your launch timing, target audience, and placement goals."
           value={message}
           onChange={(event) => setMessage(event.target.value)}
@@ -70,7 +70,7 @@ export function AdvertiseContactForm() {
         />
         <div className="sm:col-span-2">
           <button
-            className="editorial-primary-button inline-flex min-h-11 items-center justify-center px-4.5 py-2.5 text-sm font-medium transition-colors hover:opacity-95"
+            className="editorial-primary-button inline-flex min-h-11 items-center justify-center px-4.5 py-2.5 transition-colors hover:opacity-95"
             type="submit"
           >
             Send inquiry

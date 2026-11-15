@@ -135,7 +135,7 @@ export function NewsList({
         <div className="flex flex-wrap items-center justify-center gap-3 py-3">
           <p className="text-sm text-text-sub">Showing {visibleArticles.length} of {articles.length} stories</p>
           <button type="button" onClick={() => setPage({ articles, limit: visibleLimit + 30 })}
-            className="min-h-11 rounded-xl border border-border-strong bg-surface px-5 py-2 text-sm font-semibold text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+            className="min-h-11 rounded-xl border border-border-strong bg-surface px-5 py-2 text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
             Show more stories
           </button>
         </div>

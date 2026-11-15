@@ -3,18 +3,16 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { sentryPrivacyOptions } from "./lib/sentry";
 
 const isProduction = process.env.NODE_ENV === "production";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
-  integrations: [Sentry.replayIntegration()],
   tracesSampleRate: isProduction ? 0.1 : 1,
-  enableLogs: !isProduction,
-  replaysSessionSampleRate: isProduction ? 0 : 0.1,
-  replaysOnErrorSampleRate: isProduction ? 0.1 : 1,
-  sendDefaultPii: false,
+  // Replay is absent: future Ask questions/answers must not enter DOM recordings.
+  ...sentryPrivacyOptions,
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

@@ -351,3 +351,13 @@ not submit credentials or call the AI provider. Raw reports are ignored under
 
 For final AI review evidence, costs, blockers and the disabled-first deployment
 sequence, see [AI pre-deployment review](docs/AI_PREDEPLOY_REVIEW.md).
+
+Ask Kicker AI lets signed-in readers ask cited questions about recent coverage. It is
+enabled exactly when the AI Briefing is (`AI_BRIEFING_ENABLED`, plus
+`AI_BRIEFING_PRODUCTION_VERIFIED` in production) and needs no variables of its own. It
+reuses the Anthropic key, `AI_BRIEFING_MODEL` (must be `claude-haiku-5-5`) and Upstash,
+with its own separate Redis keys, quotas, budgets and private cache.
+Mocked browser check: `node scripts/validate-ask-kicker-ui.mjs`.
+Zero-cost evaluation: `node --experimental-strip-types scripts/eval-ask-kicker.mjs`; the
+paid procedure and its approval checkpoints are in [ASK_KICKER_EVAL.md](docs/ASK_KICKER_EVAL.md).
+See [Ask UI, verification and remaining production steps](docs/ASK_KICKER_AI.md#stage-d-dashboard-interface-disabled-by-default).

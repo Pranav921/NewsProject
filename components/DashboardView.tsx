@@ -2,6 +2,7 @@
 
 import { AppShell, type ShellTab } from "@/components/AppShell";
 import { AiNewsBriefing } from "@/components/AiNewsBriefing";
+import { AskKicker } from "@/components/AskKicker";
 import { NewArticlesPrompt } from "@/components/NewArticlesPrompt";
 import { NewsFeed } from "@/components/NewsFeed";
 import { fetchLatestNews } from "@/lib/news-client";
@@ -10,6 +11,7 @@ import { useState } from "react";
 
 type DashboardViewProps = {
   aiBriefingEnabled?: boolean;
+  askKickerEnabled?: boolean;
   articles: NewsItem[];
   feedErrorMessage?: string | null;
   initialAlertKeywords: string[];
@@ -21,6 +23,7 @@ type DashboardViewProps = {
 
 export function DashboardView({
   aiBriefingEnabled = false,
+  askKickerEnabled = false,
   articles,
   feedErrorMessage = null,
   initialAlertKeywords,
@@ -73,6 +76,7 @@ export function DashboardView({
       />
 
       {aiBriefingEnabled && <AiNewsBriefing />}
+      {askKickerEnabled && <AskKicker />}
 
       <section className="mt-3">
         <NewsFeed

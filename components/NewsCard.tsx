@@ -142,7 +142,7 @@ function ArticleActions({
     <div className={layoutClasses}>
       {shouldShowAlertAction ? (
         <button
-          className={`${stacked ? "w-full" : ""} ${mobile ? "min-h-7 px-2.5 py-[3px] text-[10px]" : "min-h-8 px-[11px] py-[4px] text-[11px]"} inline-flex items-center justify-center rounded-[6px] border border-[var(--border)] bg-white font-medium text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2`}
+          className={`${stacked ? "w-full" : ""} ${mobile ? "min-h-7 px-2.5 py-[3px]" : "min-h-8 px-[11px] py-[4px]"} inline-flex items-center justify-center rounded-[6px] border border-[var(--border)] bg-white text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2`}
           type="button"
           onClick={() => onAlertAction?.(article)}
         >
@@ -152,7 +152,7 @@ function ArticleActions({
       <button
         aria-label={`${isSaved ? "Remove saved article" : saveButtonLabel}: ${article.title}`}
         aria-pressed={isSaved}
-        className={`${stacked ? "w-full" : ""} ${mobile ? "min-h-7 px-2.5 py-[3px] text-[10px]" : "min-h-8 px-[11px] py-[4px] text-[11px]"} inline-flex items-center justify-center rounded-[6px] border font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
+        className={`${stacked ? "w-full" : ""} ${mobile ? "min-h-7 px-2.5 py-[3px]" : "min-h-8 px-[11px] py-[4px]"} inline-flex items-center justify-center rounded-[6px] border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
           isSaved
             ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,white)] text-[var(--accent)]"
             : "border-[var(--border)] bg-white text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"

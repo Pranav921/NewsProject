@@ -80,7 +80,7 @@ export function AccountMenu({
       {isPublicViewer ? (
         <>
           <button
-            className={`inline-flex items-center justify-center border border-[var(--border)] bg-white font-sans font-medium tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${sharedButtonTone} ${buttonClasses}`}
+            className={`inline-flex items-center justify-center border border-[var(--border)] bg-white tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${sharedButtonTone} ${buttonClasses}`}
             type="button"
             onClick={() => handlePublicAuthOpen("login")}
           >
@@ -88,7 +88,7 @@ export function AccountMenu({
           </button>
           {isMobileLayout ? null : (
             <button
-              className={`inline-flex items-center justify-center border border-[var(--border)] bg-white font-sans font-medium tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${sharedButtonTone} ${buttonClasses}`}
+              className={`inline-flex items-center justify-center border border-[var(--border)] bg-white tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${sharedButtonTone} ${buttonClasses}`}
               type="button"
               onClick={() => handlePublicAuthOpen("signup")}
             >

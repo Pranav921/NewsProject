@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Ask Kicker evaluation reports (may contain model output; review before sharing)
+/.ask-eval/

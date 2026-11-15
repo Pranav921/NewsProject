@@ -32,8 +32,9 @@ Redis credentials are entirely missing is unchanged; no Redis commands occur.
 
 All preview deployments share the preview namespace, including their AI quotas
 and locks. This is intentional for this small change; it does not isolate preview
-deployments from one another. Production-prefixed `kicker:prod:...` keys are a
-future proposal, not an enabled configuration option.
+deployments from one another. Moving existing briefing/rate-limit keys under a
+production prefix remains a future proposal. New Ask-only keys use a production
+prefix from inception, without migrating any legacy data.
 
 Generation budgets are independent per keyspace. Enabling model generation in
 multiple environments increases potential total provider spending; Redis
@@ -41,7 +42,7 @@ namespaces do not impose a shared account-wide Claude billing cap.
 
 ## Inventory
 
-Repository search found two Redis clients:
+Redis clients:
 
 - `lib/ratelimit.ts`: the Upstash SDK's five-per-minute IP sliding window used
   by authentication, subscription and briefing endpoints. The SDK receives an
@@ -52,6 +53,15 @@ Repository search found two Redis clients:
   `user:<hashed-user-id>` and `rss-snapshot`, all under one resolved AI prefix.
   Cache reads/writes, lease acquisition/release, budget reservation, success/failure
   cooldowns, per-user limits and RSS snapshots all use it.
+
+- `lib/ai/ask-store.ts` (Stage C, feature disabled): separate
+  `kicker:dev:{kicker-dev-ask}:v1:`, `kicker:preview:{kicker-preview-ask}:v1:` and
+  `kicker:prod:{kicker-prod-ask}:v1:` prefixes. Suffixes: `lease:<userHash>`,
+  `minute:<userHash>`, `ip:<ipHash>`, `user-day:<userHash>`, `generation-day`, `active`,
+  `model-day`, `reservation:<ownerHash>`, `cache:<identityHash>`. All multi-key
+  scripts share the environment-specific Ask hash tag. There is no migration,
+  scan or deletion of unrelated keys. Ask storage always fails closed, even in
+  development. See [accounting/expiry semantics](ASK_KICKER_AI.md#stage-c-secure-backend-disabled-by-default).
 
 No other Redis consumers were found in app, lib or scripts. Feed/image memory
 caches, browser storage and Next caches do not use Redis.

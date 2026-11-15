@@ -79,8 +79,8 @@ export async function POST(request: Request) {
     return reply({ briefing: result.briefing, cacheHit: result.cacheHit }, 200);
   } catch (error) {
     const safe = error instanceof BriefingError ? error : new BriefingError("briefing-unavailable");
-    // The existing Sentry sanitizer is not wired up. Contain all provider/Redis
-    // errors here and log only our own codes; never hand raw errors to telemetry.
+    // Contain provider/Redis errors locally as well as the shared telemetry
+    // boundary. Log only our own codes; never hand raw errors to telemetry.
     logApiError("[ai][briefing][error]", new Error(safe.code), { durationMs: Date.now() - started });
     return reply({ error: "The AI briefing is unavailable right now. Please try again later." }, safe.status, safe.retryAfter);
   }

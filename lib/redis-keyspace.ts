@@ -26,5 +26,8 @@ export function getRedisKeyspace(env: ServerEnvironment = process.env) {
     environment,
     rateLimitPrefix: environment === "prod" ? "@upstash/ratelimit" : `kicker:${environment}:ratelimit`,
     briefingPrefix: environment === "prod" ? "kicker:{ai-briefing}:v1:" : `kicker:${environment}:{kicker-${environment}-ai-briefing}:v1:`,
+    // New Ask keys have no legacy data. One environment-specific slot spans
+    // global budgets, per-user leases and private answer caches.
+    askPrefix: `kicker:${environment}:{kicker-${environment}-ask}:v1:`,
   };
 }
